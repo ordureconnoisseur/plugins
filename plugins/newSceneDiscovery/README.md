@@ -14,6 +14,16 @@ Inspired by [SceneHub](https://discourse.stashapp.cc/t/scenehub/123) on the Stas
 
 ## Installation
 
+### Option 1 — Automatic (recommended)
+
+1. In Stash go to **Settings → Plugins → Add Source** and enter:
+   ```
+   https://ordureconnoisseur.github.io/plugins/main/index.yml
+   ```
+2. Find **New Scene Discovery** in the plugin browser and click **Install**
+
+### Option 2 — Manual
+
 1. Download this repository (Code → Download ZIP) and extract it
 2. Place the extracted folder inside a category subfolder of your Stash plugins directory:
    - **Linux/Mac:** `~/.stash/plugins/UI & Stats/New Scene Discovery/`
