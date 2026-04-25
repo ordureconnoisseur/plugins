@@ -10,11 +10,10 @@ try:
     import stashapi.log as log
     from stashapi.stashapp import StashInterface
 except ModuleNotFoundError:
-    print(
-        "You need to install the stashapi module. (pip install stashapp-tools)",
-        file=sys.stderr,
-    )
-    sys.exit(1)
+    import subprocess
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "stashapp-tools"])
+    import stashapi.log as log
+    from stashapi.stashapp import StashInterface
 
 # TAGS
 TAG_PATTERN = re.compile(r"^(.+?)\s*:\s*([0-5])$")
