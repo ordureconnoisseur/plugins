@@ -11,7 +11,12 @@ try:
     from stashapi.stashapp import StashInterface
 except ModuleNotFoundError:
     import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "stashapp-tools"])
+    for flags in [[], ["--break-system-packages"], ["--user"]]:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "stashapp-tools", "--quiet"] + flags)
+            break
+        except subprocess.CalledProcessError:
+            continue
     import stashapi.log as log
     from stashapi.stashapp import StashInterface
 
