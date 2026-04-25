@@ -11,16 +11,23 @@ try:
     from stashapi.stashapp import StashInterface
 except ModuleNotFoundError:
     import subprocess, importlib, site
+    _installed = False
     for flags in [[], ["--break-system-packages"], ["--user"]]:
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", "stashapp-tools", "--quiet"] + flags)
+            _installed = True
             break
         except subprocess.CalledProcessError:
             continue
-    importlib.invalidate_caches()
-    user_site = site.getusersitepackages()
-    if user_site not in sys.path:
-        sys.path.insert(0, user_site)
+    if _installed:
+        importlib.invalidate_caches()
+        user_site = site.getusersitepackages()
+        if user_site not in sys.path:
+            sys.path.insert(0, user_site)
+    else:
+        # pip unavailable — fall back to bundled vendor copy
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "vendor"))
     import stashapi.log as log
     from stashapi.stashapp import StashInterface
 
