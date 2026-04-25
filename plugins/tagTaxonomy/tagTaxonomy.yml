@@ -1,0 +1,25 @@
+name: Tag Taxonomy
+description: Sets up a tag hierarchy for organised scene browsing
+version: 1.0.0
+exec:
+  - python3
+  - "{pluginDir}/tagTaxonomy.py"
+interface: raw
+settings:
+  min_categories:
+    displayName: Minimum Categories for Organised
+    description: Number of taxonomy categories a scene must have tags from to be marked as organised
+    type: NUMBER
+tasks:
+  - name: Setup Taxonomy
+    description: Create parent category tags, assign children, and merge duplicate tags
+    execArgs:
+      - setup_taxonomy
+  - name: Apply Tag Images
+    description: Assign a scene screenshot as the cover image for each category tag
+    execArgs:
+      - apply_tag_images
+  - name: Mark Organised
+    description: Mark scenes as organised if they have tags from the taxonomy
+    execArgs:
+      - mark_organised
