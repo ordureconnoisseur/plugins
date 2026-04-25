@@ -14,7 +14,7 @@ except ModuleNotFoundError:
     _installed = False
     for flags in [[], ["--break-system-packages"], ["--user"]]:
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "stashapp-tools", "--quiet"] + flags)
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "stashapp-tools", "--quiet", "--timeout", "5"] + flags)
             _installed = True
             break
         except subprocess.CalledProcessError:
