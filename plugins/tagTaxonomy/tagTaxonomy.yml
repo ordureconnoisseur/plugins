@@ -13,13 +13,13 @@ settings:
 tasks:
   - name: Setup Taxonomy
     description: Create parent category tags, assign children, and merge duplicate tags
-    execArgs:
-      - setup_taxonomy
+    defaultArgs:
+      mode: setup_taxonomy
   - name: Apply Tag Images
     description: Assign a scene screenshot as the cover image for each category tag
-    execArgs:
-      - apply_tag_images
+    defaultArgs:
+      mode: apply_tag_images
   - name: Mark Organised
     description: Mark scenes as organised if they have tags from the taxonomy
-    execArgs:
-      - mark_organised
+    defaultArgs:
+      mode: mark_organised
