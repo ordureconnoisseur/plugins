@@ -124,7 +124,7 @@ def handle_hooks(json_input, stash):
     args = json_input.get("args", {})
     hook = args.get("hookContext", {})
     if hook.get("type") == "Performer.Update.Post":
-        performerID = hook.get("id")
+        performerID = hook.get("id") or hook.get("input", {}).get("id")
         if not performerID:
             log.error("HANDLE HOOKS: Missing performer ID in hook context.")
             return
