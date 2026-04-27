@@ -47,25 +47,25 @@ SVG_TAG_IMG = (
     "ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPiA8L2c+Cg08L3N2Zz4="
 )
 TAG_RATING_PARENT = {
-    "name": "Performer Ratings",
-    "sort_name": "#Performer Ratings",
-    "description": "Performer Rating System",
+    "name": "Advanced Performer Rating",
+    "sort_name": "#Advanced Performer Rating",
+    "description": "Advanced Performer Rating System",
     "auto_ignore_tag": True,
     "image": SVG_TAG_IMG
 }
 
-ALL_PHYSICAL = ["Face", "Breasts", "Ass", "Body Overall", "Genitals"]
-ALL_PERFORMANCE = ["Technique", "Energy & Presence", "Sluttiness"]
+ALL_PHYSICAL = ["Face ★", "Breasts ★", "Ass ★", "Body Overall ★", "Genitals ★"]
+ALL_PERFORMANCE = ["Technique ★", "Energy & Presence ★", "Sluttiness ★"]
 
 DISABLE_KEYS = {
-    "Face":              "disable_face",
-    "Breasts":           "disable_breasts",
-    "Ass":               "disable_ass",
-    "Body Overall":      "disable_body_overall",
-    "Genitals":          "disable_genitals",
-    "Technique":         "disable_technique",
-    "Energy & Presence": "disable_energy_presence",
-    "Sluttiness":        "disable_sluttiness",
+    "Face ★":              "disable_face",
+    "Breasts ★":           "disable_breasts",
+    "Ass ★":               "disable_ass",
+    "Body Overall ★":      "disable_body_overall",
+    "Genitals ★":          "disable_genitals",
+    "Technique ★":         "disable_technique",
+    "Energy & Presence ★": "disable_energy_presence",
+    "Sluttiness ★":        "disable_sluttiness",
 }
 
 # GLOBALS
