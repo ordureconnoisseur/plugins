@@ -103,13 +103,14 @@
     }
 
     async function updatePerformerTag(performerId, allTags, category, newScore) {
+        const tagCategory = category.replace(/\s*★\s*$/, '').trim();
         const oldTags = allTags.filter(tag => {
             const match = tag.name.match(CATEGORY_PATTERN);
-            return match && match[1].trim() === category.trim();
+            return match && match[1].trim() === tagCategory;
         });
         let newTagIds = allTags.map(t => t.id).filter(id => !oldTags.find(ot => ot.id === id));
         if (newScore !== null) {
-            const newTagName = `${category}: ${newScore}`;
+            const newTagName = `${tagCategory}: ${newScore}`;
             const newTagId = await getTagIdByName(newTagName);
             if (newTagId) {
                 newTagIds.push(newTagId);
@@ -183,7 +184,7 @@
                     infoIcon.appendChild(tooltip); label.appendChild(infoIcon);
                 }
                 const starsDiv = document.createElement('div'); starsDiv.className = 'rating-stars-modal';
-                const score = currentScores[cat.trim()] !== undefined ? currentScores[cat.trim()] : null;
+                const score = currentScores[cat.replace(/\s*★\s*$/, '').trim()] !== undefined ? currentScores[cat.replace(/\s*★\s*$/, '').trim()] : null;
 
                 for (let i = 1; i <= 5; i++) {
                     const star = document.createElement('span'); star.className = 'rating-star';
