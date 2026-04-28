@@ -75,42 +75,72 @@ settings = {
 }
 
 def main():
+    log.info("RUNNING ...")
     global json_input, stash, phys_cats, perf_cats, minimum_required_tags
     json_input = read_stdin_json()
     stash = connect_to_stash(json_input)
     config = load_plugin_config(stash)
     update_settings_from_config(config)
-    phys_cats = [c for c in ALL_PHYSICAL  if not settings.get(DISABLE_KEYS[c], False)]
+    phys_cats = [c for c in ALL_PHYSICAL if not settings.get(DISABLE_KEYS[c], False)]
     perf_cats = [c for c in ALL_PERFORMANCE if not settings.get(DISABLE_KEYS[c], False)]
-    mrt_raw = settings.get("minimum_required_tags")
-    minimum_required_tags = int(mrt_raw) if mrt_raw is not None else 1
+    minimum_required_tags = get_minimum_required_tags()
     handle_actions(json_input, stash, phys_cats, perf_cats)
     handle_hooks(json_input, stash)
 
 def read_stdin_json():
+    log.debug("READING INPUT ...")
     try:
         raw_input = sys.stdin.read()
-        return json.loads(raw_input) if raw_input.strip() else {}
-    except Exception as e:
+        if not raw_input.strip():
+            raise ValueError("No input received from stdin")
+        return json.loads(raw_input)
+    except json.JSONDecodeError as e:
+        log.error(f"READ STDIN JSON: Failed to decode JSON: {e}")
+    except ValueError as e:
         log.error(f"READ STDIN JSON: {e}")
-        return {}
+    return {}
 
 def connect_to_stash(json_input):
+    log.debug("CONNECTING STASH INTERFACE ...")
     try:
         server_connection = json_input["server_connection"]
         return StashInterface(server_connection)
+    except KeyError:
+        log.error("STASH INTERFACE: Missing 'server_connection' in input.")
     except Exception as e:
-        log.error(f"CONNECT TO STASH: {e}")
-        return None
+        log.error(f"STASH INTERFACE: Failed to connect: {e}")
+    return None
 
 def load_plugin_config(stash):
-    try: return stash.get_configuration().get("plugins", {})
-    except: return {}
+    log.debug("LOADING PLUGIN CONFIGURATION ...")
+    try:
+        return stash.get_configuration().get("plugins", {})
+    except Exception as e:
+        log.error(f"PLUGIN CONFIGURATION: Failed to load: {e}")
+        return {}
 
 def update_settings_from_config(config):
-    if "advancedPerformerRating" in config: settings.update(config["advancedPerformerRating"])
+    log.debug("UPDATING SETTINGS WITH CONFIG ...")
+    try:
+        if "advancedPerformerRating" in config:
+            settings.update(config["advancedPerformerRating"])
+            log.debug(f"SETTINGS: {settings}")
+    except Exception as e:
+        log.error(f"PLUGIN CONFIGURATION: Failed to update settings: {e}")
+
+def get_minimum_required_tags():
+    log.debug("GET MINIMUM REQUIRED TAGS ...")
+    try:
+        mrt_raw = settings.get("minimum_required_tags")
+        value = int(mrt_raw) if mrt_raw is not None else 1
+        log.debug(f"MINIMUM REQUIRED TAGS: {value}")
+        return value
+    except Exception as e:
+        log.error(f"PLUGIN CONFIGURATION: Failed to parse minimum_required_tags: {e}")
+    return 1
 
 def handle_actions(json_input, stash, phys_cats, perf_cats):
+    log.debug("HANDLING ACTIONS ...")
     args = json_input.get("args", {})
     mode = args.get("mode")
     if mode == "process_performers": processPerformers(stash, phys_cats, perf_cats)
@@ -118,21 +148,29 @@ def handle_actions(json_input, stash, phys_cats, perf_cats):
     elif mode == "remove_tags": removeTags(ALL_PHYSICAL + ALL_PERFORMANCE)
 
 def handle_hooks(json_input, stash):
+    log.debug("HANDLING HOOKS ...")
     if not stash:
         log.error("HANDLE HOOKS: No stash connection.")
         return
-    args = json_input.get("args", {})
-    hook = args.get("hookContext", {})
-    if hook.get("type") == "Performer.Update.Post":
-        performerID = hook.get("id") or hook.get("input", {}).get("id")
-        if not performerID:
-            log.error("HANDLE HOOKS: Missing performer ID in hook context.")
-            return
-        performer = stash.find_performer(performerID)
-        if performer: calculate_rating(stash, performer, phys_cats, perf_cats)
+    try:
+        args = json_input.get("args", {})
+        hook = args.get("hookContext", {})
+        if hook.get("type") == "Performer.Update.Post":
+            performerID = hook.get("id") or hook.get("input", {}).get("id")
+            if not performerID:
+                log.error("HANDLE HOOKS: Missing performer ID in hook context.")
+                return
+            log.debug(f"HANDLE HOOKS: Processing performer {performerID}")
+            performer = stash.find_performer(performerID)
+            if performer:
+                calculate_rating(stash, performer, phys_cats, perf_cats)
+            else:
+                log.error(f"HANDLE HOOKS: Performer {performerID} not found.")
+    except Exception as e:
+        log.error(f"HANDLE HOOKS: Unexpected error: {e}")
 
 def calculate_rating(stash, performer, phys_cats, perf_cats):
-    tags = [tag['name'] for tag in performer['tags']]
+    tags = [tag['name'] for tag in (performer.get('tags') or [])]
     phys_scores = {}
     perf_scores = {}
     for tag in tags:
@@ -142,56 +180,117 @@ def calculate_rating(stash, performer, phys_cats, perf_cats):
             category = category.strip()
             if category in phys_cats: phys_scores[category] = int(score)
             elif category in perf_cats: perf_scores[category] = int(score)
-    if (len(phys_scores) + len(perf_scores)) < minimum_required_tags: return
+
+    total_scores = len(phys_scores) + len(perf_scores)
+    log.debug(f"SCORES: phys={phys_scores}, perf={perf_scores}")
+
+    if total_scores < minimum_required_tags:
+        log.debug(f"CALCULATE RATING: Skipping {performer.get('name', performer.get('id', '?'))} — needs {minimum_required_tags} tag(s), got {total_scores}")
+        return
+
     avg_phys = sum(phys_scores.values()) / len(phys_scores) if phys_scores else 0
     avg_perf = sum(perf_scores.values()) / len(perf_scores) if perf_scores else 0
     if phys_scores and perf_scores: final_avg = (avg_phys + avg_perf) / 2
     elif phys_scores: final_avg = avg_phys
     elif perf_scores: final_avg = avg_perf
     else: return
+
     precision_raw = settings.get("rating_precision")
     precision = max(1, int(precision_raw)) if precision_raw else 10
     final_rating100 = round(round(final_avg * 20 / precision) * precision)
     final_rating100 = max(precision, min(100, final_rating100))
-    if performer.get("rating100") != final_rating100:
-        log.info(f"Updating Performer {performer['name']} rating to {final_rating100}/100")
-        stash.update_performer({"id": performer["id"], "rating100": final_rating100})
+    current_rating = performer.get("rating100") or 0
+
+    log.debug(f"CURRENT: {current_rating}/100, AVERAGE: {final_avg:.2f}/5, NEW: {final_rating100}/100")
+
+    if current_rating != final_rating100:
+        try:
+            stash.update_performer({"id": performer["id"], "rating100": final_rating100})
+            log.info(f"Updating Performer {performer['name']} rating to {final_rating100}/100")
+        except Exception as e:
+            log.error(f"CALCULATE RATING: Failed to update performer {performer.get('id', '?')}: {e}")
 
 def processPerformers(stash, phys_cats, perf_cats):
-    performers = stash.find_performers({}, get_count=False, fragment="id name rating100 tags { id name }")
-    for p in performers: calculate_rating(stash, p, phys_cats, perf_cats)
+    log.info("PROCESSING ALL PERFORMERS")
+    try:
+        performers = stash.find_performers({}, get_count=False, fragment="id name rating100 tags { id name }")
+    except Exception as e:
+        log.error(f"PROCESS PERFORMERS: Failed to fetch performers: {e}")
+        return
+    total = len(performers)
+    log.info(f"PROCESS PERFORMERS: Found {total} performers")
+    for p in performers:
+        try:
+            calculate_rating(stash, p, phys_cats, perf_cats)
+        except Exception as e:
+            log.error(f"PROCESS PERFORMERS: Failed on performer {p.get('id', '?')} ({p.get('name', '?')}): {e}")
+    log.info(f"PROCESS PERFORMERS: Done ({total} processed)")
 
 def find_tag(name, create=False, parent_id=None):
-    tag = stash.find_tag(name, create=False)
-    if tag is None and create:
-        tag = stash.create_tag({"name": name})
-        if tag:
-            update_data = {"id": tag["id"], "ignore_auto_tag": True}
-            if parent_id: update_data["parent_ids"] = [parent_id]
-            stash.update_tag(update_data)
+    try:
+        tag = stash.find_tag(name, create=False)
+    except Exception as e:
+        log.error(f"FIND TAG: Error searching for '{name}': {e}")
+        return None
+
+    if tag is None:
+        log.debug(f"FIND TAG: '{name}' not found")
+        if create:
+            try:
+                tag = stash.create_tag({"name": name})
+                if tag:
+                    update_data = {"id": tag["id"], "ignore_auto_tag": True}
+                    if parent_id:
+                        update_data["parent_ids"] = [parent_id]
+                    stash.update_tag(update_data)
+                    log.debug(f"FIND TAG: Created '{name}'")
+                else:
+                    log.error(f"FIND TAG: Failed to create '{name}'")
+            except Exception as e:
+                log.error(f"FIND TAG: Error creating '{name}': {e}")
+                tag = None
+    else:
+        log.debug(f"FIND TAG: Found '{name}'")
     return tag
 
 def createTags(categories):
+    log.info("CREATING TAGS ...")
     root_tag = find_tag(TAG_RATING_PARENT["name"], create=True)
-    if not root_tag: return
+    if not root_tag:
+        log.error("CREATE TAGS: Failed to create or retrieve root tag.")
+        return
     parent_id = root_tag["id"]
     for cat in categories:
         cat_tag = find_tag(cat, create=True, parent_id=parent_id)
-        if cat_tag:
-            cat_id = cat_tag["id"]
-            for i in range(0, 6): find_tag(f"{cat}: {i}", create=True, parent_id=cat_id)
+        if not cat_tag:
+            log.error(f"CREATE TAGS: Failed to create tag for '{cat}', skipping.")
+            continue
+        cat_id = cat_tag["id"]
+        for i in range(0, 6):
+            num_tag_name = f"{cat}: {i}"
+            if not find_tag(num_tag_name, create=True, parent_id=cat_id):
+                log.error(f"CREATE TAGS: Failed to create subtag '{num_tag_name}'")
+
+def remove_tag(name):
+    try:
+        tag = stash.find_tag(name)
+        if tag:
+            stash.destroy_tag(tag["id"])
+            log.debug(f"REMOVE TAG: Removed '{name}'")
+        else:
+            log.debug(f"REMOVE TAG: '{name}' not found, skipping")
+    except Exception as e:
+        log.error(f"REMOVE TAG: Failed to remove '{name}': {e}")
 
 def removeTags(categories):
+    log.info("REMOVING TAGS ...")
     if not settings.get("allow_destructive_actions", False):
-        log.warning("Destructive actions disabled.")
+        log.warning("REMOVE TAGS: Destructive actions disabled.")
         return
     for cat in categories:
         for i in range(0, 6):
-            tag = stash.find_tag(f"{cat}: {i}")
-            if tag: stash.destroy_tag(tag["id"])
-        tag = stash.find_tag(cat)
-        if tag: stash.destroy_tag(tag["id"])
-    root = stash.find_tag(TAG_RATING_PARENT["name"])
-    if root: stash.destroy_tag(root["id"])
+            remove_tag(f"{cat}: {i}")
+        remove_tag(cat)
+    remove_tag(TAG_RATING_PARENT["name"])
 
 if __name__ == "__main__": main()
