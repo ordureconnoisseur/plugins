@@ -1,10 +1,10 @@
 name: Advanced Scene Rating
 description: Rate scenes based on advanced criteria using tags.
-version: 2.0.0
+version: 2.0.1
 url: https://github.com/ordureconnoisseur/stash-advanced-scene-rating
 exec:
   - python
-  - "{pluginDir}/stashAppAdvancedRating.py"
+  - "{pluginDir}/advancedSceneRating.py"
 interface: raw
 ui:
   javascript:
