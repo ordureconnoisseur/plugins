@@ -158,7 +158,7 @@ def calculate_rating(stash, performer, phys_cats, perf_cats):
         stash.update_performer({"id": performer["id"], "rating100": final_rating100})
 
 def processPerformers(stash, phys_cats, perf_cats):
-    performers = stash.find_performers({}, get_count=False)
+    performers = stash.find_performers({}, get_count=False, fragment="id name rating100 tags { id name }")
     for p in performers: calculate_rating(stash, p, phys_cats, perf_cats)
 
 def find_tag(name, create=False, parent_id=None):
