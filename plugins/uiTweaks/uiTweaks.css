@@ -1,9 +1,0 @@
-/* Hide donate button */
-a[href*="opencollective"] {
-    display: none !important;
-}
-
-/* Hide help (?) button in both the top bar and the xs dropdown */
-button.nav-utility {
-    display: none !important;
-}
