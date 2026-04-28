@@ -1,7 +1,0 @@
-name: UI Tweaks
-description: Cosmetic UI cleanup — hides unwanted navbar elements.
-version: 1.0.0
-url: https://github.com/ordureconnoisseur/stash-plugins
-ui:
-  css:
-    - uiTweaks.css
