@@ -127,8 +127,8 @@ def load_plugin_config(stash):
 def update_settings_from_config(config):
     log.debug("UPDATING SETTINGS WITH CONFIG ...")
     try:
-        if "stashAppAdvancedRating" in config:
-            settings.update(config["stashAppAdvancedRating"])
+        if "advancedSceneRating" in config:
+            settings.update(config["advancedSceneRating"])
             log.debug(f"SETTINGS-POST: {settings}")
     except Exception as e:
         log.error(f"PLUGIN CONFIGURATION: Failed to update settings: {e}")
@@ -179,7 +179,7 @@ def handle_hooks(json_input, stash):
     args = json_input.get("args", {})
     hook = args.get("hookContext", {})
     if hook.get("type") == "Scene.Update.Post":
-        sceneID = hook.get("id")
+        sceneID = hook.get("id") or hook.get("input", {}).get("id")
         if not sceneID:
             log.error("HANDLE HOOKS: Missing scene ID in hook context.")
             return
@@ -229,7 +229,7 @@ def processScene(scene):
 
 def processScenes(stash, categories, minimum_required_tags):
     log.info("PROCESSING ALL SCENES")
-    scenes = stash.find_scenes({}, get_count=False)
+    scenes = stash.find_scenes({}, get_count=False, fragment="id title rating100 tags { id name }")
     
     for scene in scenes:
         calculate_rating(stash, scene, categories, minimum_required_tags)

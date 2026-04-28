@@ -1,0 +1,17 @@
+#url-switcher-btn.url-switcher-link,
+#url-switcher-btn-xs.url-switcher-link {
+    cursor: pointer;
+    text-decoration: none;
+}
+
+#url-switcher-btn.url-switcher-link:hover,
+#url-switcher-btn-xs.url-switcher-link:hover {
+    opacity: 0.75;
+    text-decoration: none;
+}
+
+/* Orange icon when routing through Cloudflare tunnel */
+#url-switcher-btn.mode-tunnel .svg-inline--fa,
+#url-switcher-btn-xs.mode-tunnel .svg-inline--fa {
+    color: #f97316;
+}
