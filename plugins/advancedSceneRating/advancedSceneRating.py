@@ -73,7 +73,6 @@ settings = {
 }
 
 
-# MAIN
 def main():
     log.info("RUNNING ...")
     global json_input, stash, categories, minimum_required_tags
@@ -85,24 +84,23 @@ def main():
     update_settings_from_config(config)
     categories = get_categories()
     minimum_required_tags = get_minimum_required_tags()
-    allow_destructive_actions = get_allow_destructive_actions()
+    get_allow_destructive_actions()
 
     handle_actions(json_input, stash, categories, minimum_required_tags)
     handle_hooks(json_input, stash)
 
 
-# MAIN FUNCTIONS
 def read_stdin_json():
     log.debug("READING INPUT ...")
     try:
         raw_input = sys.stdin.read()
         if not raw_input.strip():
-            raise ValueError("READ STDIN JSON: No input received from stdin")
+            raise ValueError("No input received from stdin")
         return json.loads(raw_input)
     except json.JSONDecodeError as e:
         log.error(f"READ STDIN JSON: Failed to decode JSON: {e}")
     except ValueError as e:
-        log.error(f"READ STDIN JSON: Input error: {e}")
+        log.error(f"READ STDIN JSON: {e}")
     return {}
 
 def connect_to_stash(json_input):
@@ -111,9 +109,9 @@ def connect_to_stash(json_input):
         server_connection = json_input["server_connection"]
         return StashInterface(server_connection)
     except KeyError:
-        log.error("STASH INTERFACE: Missing 'server_connection' in user settings.")
+        log.error("STASH INTERFACE: Missing 'server_connection' in input.")
     except Exception as e:
-        log.error(f"STASH INTERFACE: Failed to initialize stash interface: {e}")
+        log.error(f"STASH INTERFACE: Failed to connect: {e}")
     return None
 
 def load_plugin_config(stash):
@@ -121,7 +119,7 @@ def load_plugin_config(stash):
     try:
         return stash.get_configuration().get("plugins", {})
     except Exception as e:
-        log.error(f"PLUGIN CONFIGURATION: Failed to load plugin configuration: {e}")
+        log.error(f"PLUGIN CONFIGURATION: Failed to load: {e}")
         return {}
 
 def update_settings_from_config(config):
@@ -129,7 +127,7 @@ def update_settings_from_config(config):
     try:
         if "advancedSceneRating" in config:
             settings.update(config["advancedSceneRating"])
-            log.debug(f"SETTINGS-POST: {settings}")
+            log.debug(f"SETTINGS: {settings}")
     except Exception as e:
         log.error(f"PLUGIN CONFIGURATION: Failed to update settings: {e}")
 
@@ -140,14 +138,14 @@ def get_categories():
     return result
 
 def get_minimum_required_tags():
-    log.debug("GET MINIMUM REQUIREMENT ...")
+    log.debug("GET MINIMUM REQUIRED TAGS ...")
     try:
         mrt_raw = settings.get("minimum_required_tags")
         value = int(mrt_raw) if mrt_raw is not None else 5
         log.debug(f"MINIMUM REQUIRED TAGS: {value}")
         return value
     except Exception as e:
-        log.error(f"PLUGIN CONFIGURATION: Failed to load minimum required tags: {e}")
+        log.error(f"PLUGIN CONFIGURATION: Failed to parse minimum_required_tags: {e}")
     return 5
 
 def get_allow_destructive_actions():
@@ -176,19 +174,25 @@ def handle_hooks(json_input, stash):
     if not stash:
         log.error("HANDLE HOOKS: No stash connection.")
         return
-    args = json_input.get("args", {})
-    hook = args.get("hookContext", {})
-    if hook.get("type") == "Scene.Update.Post":
-        sceneID = hook.get("id") or hook.get("input", {}).get("id")
-        if not sceneID:
-            log.error("HANDLE HOOKS: Missing scene ID in hook context.")
-            return
-        scene = stash.find_scene(sceneID)
-        processScene(scene)
+    try:
+        args = json_input.get("args", {})
+        hook = args.get("hookContext", {})
+        if hook.get("type") == "Scene.Update.Post":
+            sceneID = hook.get("id") or hook.get("input", {}).get("id")
+            if not sceneID:
+                log.error("HANDLE HOOKS: Missing scene ID in hook context.")
+                return
+            log.debug(f"HANDLE HOOKS: Processing scene {sceneID}")
+            scene = stash.find_scene(sceneID)
+            if scene:
+                processScene(scene)
+            else:
+                log.error(f"HANDLE HOOKS: Scene {sceneID} not found.")
+    except Exception as e:
+        log.error(f"HANDLE HOOKS: Unexpected error: {e}")
 
-
-def calculate_rating(stash, scene, categories, minimum_required_tags ):
-    tags = [tag['name'] for tag in scene['tags']]
+def calculate_rating(stash, scene, categories, minimum_required_tags):
+    tags = [tag['name'] for tag in (scene.get('tags') or [])]
     scores = {}
     for tag in tags:
         match = TAG_PATTERN.match(tag)
@@ -200,138 +204,119 @@ def calculate_rating(stash, scene, categories, minimum_required_tags ):
 
     log.debug(f"SCORES: {scores}")
     if len(scores) < minimum_required_tags:
-        log.debug(f"CALCULATE RATING: SKIPPED (Needs {minimum_required_tags}, got {len(scores)})")
-    else:
-        log.debug(f"CALCULATE RATING: {scene['title']}")
-        # Average only across categories that have scores
-        average = sum(scores.values()) / len(scores)
-        precision_raw = settings.get("rating_precision")
-        precision = max(1, int(precision_raw)) if precision_raw else 10
-        final_rating = round(round(average * 20 / precision) * precision)
-        final_rating = max(precision, min(100, final_rating))
-        current_rating = scene.get("rating100") or 0
+        log.debug(f"CALCULATE RATING: Skipping scene {scene.get('id', '?')} — needs {minimum_required_tags} tag(s), got {len(scores)}")
+        return
 
-        log.debug(f"CURRENT: {current_rating}/100, AVERAGE: {average}/5, NEW: {final_rating}/100")
-        try:
-            stash.update_scene( {"id": scene["id"], "rating100": final_rating} )
-            log.info(f"CALCULATE RATING: Scene {scene['id']} updated with rating {final_rating}")
-        except Exception as e:
-            log.error(f"CALCULATE RATING: Failed to update scene {scene['id']}: {e}")
+    average = sum(scores.values()) / len(scores)
+    precision_raw = settings.get("rating_precision")
+    precision = max(1, int(precision_raw)) if precision_raw else 10
+    final_rating = round(round(average * 20 / precision) * precision)
+    final_rating = max(precision, min(100, final_rating))
+    current_rating = scene.get("rating100") or 0
+
+    log.debug(f"CURRENT: {current_rating}/100, AVERAGE: {average:.2f}/5, NEW: {final_rating}/100")
+    try:
+        stash.update_scene({"id": scene["id"], "rating100": final_rating})
+        log.info(f"Updating Scene {scene.get('title', scene['id'])} rating to {final_rating}/100")
+    except Exception as e:
+        log.error(f"CALCULATE RATING: Failed to update scene {scene.get('id', '?')}: {e}")
 
 
-# SCENES
 def processScene(scene):
     if scene:
-        log.debug("PROCESSING SCENE: %s" % (scene["id"],))
+        log.debug(f"PROCESSING SCENE: {scene['id']}")
         calculate_rating(stash, scene, categories, minimum_required_tags)
     else:
-        log.debug("PROCESSING SCENE: SKIPPING ...")
+        log.debug("PROCESSING SCENE: SKIPPING (no scene data)")
 
 def processScenes(stash, categories, minimum_required_tags):
     log.info("PROCESSING ALL SCENES")
-    scenes = stash.find_scenes({}, get_count=False, fragment="id title rating100 tags { id name }")
-    
+    try:
+        scenes = stash.find_scenes({}, get_count=False, fragment="id title rating100 tags { id name }")
+    except Exception as e:
+        log.error(f"PROCESS SCENES: Failed to fetch scenes: {e}")
+        return
+    total = len(scenes)
+    log.info(f"PROCESS SCENES: Found {total} scenes")
     for scene in scenes:
-        calculate_rating(stash, scene, categories, minimum_required_tags)
+        try:
+            calculate_rating(stash, scene, categories, minimum_required_tags)
+        except Exception as e:
+            log.error(f"PROCESS SCENES: Failed on scene {scene.get('id', '?')}: {e}")
+    log.info(f"PROCESS SCENES: Done ({total} processed)")
 
 
-# TAGS
 def find_tag(name, create=False, parent_id=None):
-    tag = stash.find_tag(name, create=False)
+    try:
+        tag = stash.find_tag(name, create=False)
+    except Exception as e:
+        log.error(f"FIND TAG: Error searching for '{name}': {e}")
+        return None
+
     if tag is None:
-        log.debug(f"FIND TAG: {name} not found")
+        log.debug(f"FIND TAG: '{name}' not found")
         if create:
-            log.debug(f"FIND TAG: Creating {name}")
             try:
                 tag = stash.create_tag({"name": name})
                 if tag:
-                    log.debug(f"CREATE TAG: {tag['name']} created")
-                    # Parent must be set via update_tag
+                    update_data = {
+                        "id": tag["id"],
+                        "sort_name": f"#{name}",
+                        "description": TAG_RATING_PARENT["description"],
+                        "ignore_auto_tag": True,
+                        "image": SVG_TAG_IMG,
+                    }
                     if parent_id:
-                        try:
-                            stash.update_tag({
-                                "id": tag["id"],
-                                "sort_name": f"#{name}",
-                                "description": TAG_RATING_PARENT["description"],
-                                "ignore_auto_tag": True,
-                                "image": SVG_TAG_IMG,
-                                "parent_ids": [parent_id]
-                            })
-                            log.debug(f"FIND TAG: Set parent of {tag['name']} to {parent_id}")
-                        except Exception as e:
-                            log.error(f"FIND TAG ERROR: {e}")
-                    else:
-                        try:
-                            stash.update_tag({
-                                "id": tag["id"],
-                                "sort_name": f"#{name}",
-                                "description": TAG_RATING_PARENT["description"],
-                                "ignore_auto_tag": True,
-                                "image": SVG_TAG_IMG
-                            })
-                        except Exception as e:
-                            log.error(f"FIND TAG ERROR: {e}")
+                        update_data["parent_ids"] = [parent_id]
+                    stash.update_tag(update_data)
+                    log.debug(f"FIND TAG: Created '{name}'")
                 else:
-                    log.error(f"FIND TAG: Failed to create {name}")
+                    log.error(f"FIND TAG: Failed to create '{name}'")
             except Exception as e:
-                log.error(f"FIND TAG ERROR: {e}")
+                log.error(f"FIND TAG: Error creating '{name}': {e}")
                 tag = None
     else:
-        log.debug(f"FIND TAG: {tag['name']} found")
+        log.debug(f"FIND TAG: Found '{name}'")
     return tag
 
 def createTags(categories):
     log.info("CREATING TAGS ...")
-
-    # Ensure root tag exists or create it
     root_tag = find_tag(TAG_RATING_PARENT["name"], create=True)
     if not root_tag:
         log.error("CREATE TAGS: Failed to create or retrieve root tag.")
         return
     parent_id = root_tag["id"]
-
     for cat in categories:
-        # Create the main category tag under root
         cat_tag = find_tag(cat, create=True, parent_id=parent_id)
         if not cat_tag:
-            log.error(f"CREATE TAGS: Failed to create or retrieve tag for {cat}")
-            continue  # Skip this category if it failed
+            log.error(f"CREATE TAGS: Failed to create tag for '{cat}', skipping.")
+            continue
         cat_id = cat_tag["id"]
-
-        # Create numbered child tags under category
         for i in range(0, 6):
             num_tag_name = f"{cat}: {i}"
-            num_tag = find_tag(num_tag_name, create=True, parent_id=cat_id)
-            if not num_tag:
-                log.error(f"CREATE TAGS: Failed to create subtag {num_tag_name}")
-                continue
+            if not find_tag(num_tag_name, create=True, parent_id=cat_id):
+                log.error(f"CREATE TAGS: Failed to create subtag '{num_tag_name}'")
 
 def remove_tag(name):
     try:
-        remove_tag_tag = find_tag(name)
-        if remove_tag_tag is not None:
-            stash.destroy_tag(remove_tag_tag['id'])
-            log.debug(f"REMOVE TAG: Removed {remove_tag_tag['name']}")
+        tag = stash.find_tag(name)
+        if tag:
+            stash.destroy_tag(tag["id"])
+            log.debug(f"REMOVE TAG: Removed '{name}'")
         else:
-            log.debug(f"REMOVE TAG: Tag '{name}' not found")
+            log.debug(f"REMOVE TAG: '{name}' not found, skipping")
     except Exception as e:
-        log.error(f"REMOVE TAG: Failed to remove tag '{name}' — {str(e)}")
+        log.error(f"REMOVE TAG: Failed to remove '{name}': {e}")
 
 def removeTags(categories):
-    log.info(f"REMOVING TAGS ...")
+    log.info("REMOVING TAGS ...")
     if not allow_destructive_actions:
-        log.warning("REMOVING TAGS: Destructive actions are disabled. Enable 'allow_destructive_actions' in plugin settings to proceed.")
+        log.warning("REMOVE TAGS: Destructive actions disabled.")
         return
-
     for cat in categories:
-        # Remove numbered child tags under each category
         for i in range(0, 6):
-            num_tag_name = f"{cat}: {i}"
-            remove_tag(num_tag_name)
-        # Remove rating category tags
+            remove_tag(f"{cat}: {i}")
         remove_tag(cat)
-        
-    # Remove root tag
     remove_tag(TAG_RATING_PARENT["name"])
 
 if __name__ == "__main__":
