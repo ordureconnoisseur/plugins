@@ -116,8 +116,6 @@
 
     // ── Settings ──────────────────────────────────────────────────────────────
 
-    const SETTINGS_KEY = 'stash-multiview-settings';
-
     const QUALITY_OPTIONS = [
         { value: 'direct',   label: 'Direct Stream' },
         { value: 'webm1080', label: '1080p (WebM)' },
@@ -140,14 +138,11 @@
 
     const DEFAULT_QUALITY = { 1: 'webm1080', 2: 'webm720', 4: 'webm720', 6: 'webm480', 9: 'webm480' };
 
-    function loadPlayerSettings(serverDefault = false) {
-        try {
-            const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-            return {
-                directPlay: saved.directPlay ?? serverDefault,
-                quality: { ...DEFAULT_QUALITY, ...saved.quality }
-            };
-        } catch { return { directPlay: serverDefault, quality: { ...DEFAULT_QUALITY } }; }
+    function loadPlayerSettings(saved = {}) {
+        return {
+            directPlay: saved.directPlay ?? false,
+            quality: { ...DEFAULT_QUALITY, ...(saved.quality || {}) }
+        };
     }
 
     async function fetchPluginConfig() {
@@ -165,7 +160,14 @@
     let playerSettings = loadPlayerSettings();
 
     function savePlayerSettings() {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(playerSettings));
+        fetch('/graphql', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: 'mutation ConfigurePlugin($input: Map!) { configurePlugin(plugin_id: "multiView", input: $input) }',
+                variables: { input: playerSettings }
+            })
+        }).catch(() => {});
     }
 
     function openSettingsModal() {
@@ -777,7 +779,7 @@
 
     async function init() {
         const pluginConfig = await fetchPluginConfig();
-        playerSettings = loadPlayerSettings(pluginConfig.defaultDirectPlay ?? false);
+        playerSettings = loadPlayerSettings(pluginConfig);
 
         queue = getQueue();
 
