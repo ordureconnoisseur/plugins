@@ -2,11 +2,6 @@ name: Stash Multiview
 description: Queue scenes from browse pages and watch up to 9 simultaneously in a minimal grid layout.
 version: 2.2.0
 url: https://github.com/ordureconnoisseur/stash-multiview
-settings:
-  - name: defaultDirectPlay
-    display_name: Default Play Mode
-    description: Enable Direct Play by default for all users. Individual users can still override this in the player settings panel.
-    type: BOOLEAN
 ui:
   assets:
     /: .
