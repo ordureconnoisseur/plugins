@@ -140,14 +140,26 @@
 
     const DEFAULT_QUALITY = { 1: 'webm1080', 2: 'webm720', 4: 'webm720', 6: 'webm480', 9: 'webm480' };
 
-    function loadPlayerSettings() {
+    function loadPlayerSettings(serverDefault = false) {
         try {
             const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
             return {
-                directPlay: saved.directPlay ?? false,
+                directPlay: saved.directPlay ?? serverDefault,
                 quality: { ...DEFAULT_QUALITY, ...saved.quality }
             };
-        } catch { return { directPlay: false, quality: { ...DEFAULT_QUALITY } }; }
+        } catch { return { directPlay: serverDefault, quality: { ...DEFAULT_QUALITY } }; }
+    }
+
+    async function fetchPluginConfig() {
+        try {
+            const res = await fetch('/graphql', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: '{ configuration { plugins } }' })
+            });
+            const data = await res.json();
+            return data?.data?.configuration?.plugins?.multiView || {};
+        } catch { return {}; }
     }
 
     let playerSettings = loadPlayerSettings();
@@ -764,6 +776,9 @@
     // ── Init ──────────────────────────────────────────────────────────────────
 
     async function init() {
+        const pluginConfig = await fetchPluginConfig();
+        playerSettings = loadPlayerSettings(pluginConfig.defaultDirectPlay ?? false);
+
         queue = getQueue();
 
         document.getElementById('mv-playpause-all-btn').addEventListener('click', playPauseAll);
