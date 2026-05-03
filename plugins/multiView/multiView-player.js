@@ -97,7 +97,7 @@
             sf[type] = { value: (value.items || []).map(i => i.id), excludes: (value.excluded || []).map(i => i.id), modifier };
         } else if (['tags', 'studios', 'groups', 'performer_tags'].includes(type)) {
             sf[type] = { value: (value.items || []).map(i => i.id), excludes: (value.excluded || []).map(i => i.id), modifier, depth: value.depth ?? 0 };
-        } else if (['path', 'title', 'code', 'details', 'director', 'url', 'captions', 'video_codec', 'audio_codec', 'oshash', 'checksum', 'phash'].includes(type)) {
+        } else if (['path', 'title', 'code', 'details', 'director', 'url', 'captions', 'video_codec', 'audio_codec', 'oshash', 'checksum', 'phash', 'resolution'].includes(type)) {
             sf[type] = { value, modifier };
         } else if (['rating100', 'o_counter', 'play_count', 'play_duration', 'duration', 'framerate', 'bitrate', 'interactive_speed', 'resume_time', 'file_count', 'performer_age', 'performer_count', 'tag_count'].includes(type)) {
             sf[type] = { value: value?.value ?? 0, value2: value?.value2, modifier };
@@ -105,8 +105,6 @@
             sf[type] = value === 'true' || value === true;
         } else if (['has_markers', 'is_missing'].includes(type)) {
             sf[type] = String(value);
-        } else if (type === 'resolution') {
-            sf.resolution = { value, modifier };
         } else if (['date', 'created_at', 'updated_at', 'last_played_at'].includes(type)) {
             sf[type] = { value: value?.value, value2: value?.value2, modifier };
         }
