@@ -158,6 +158,36 @@
         return resolved.filter(Boolean);
     }
 
+    // Like resolveQueue but reuses currently-playing IDs for existing filter slots
+    // so adding a scene from Stash doesn't interrupt videos already playing.
+    async function resolveQueuePreserving(rawQueue) {
+        const available = new Map();
+        for (const [id, item] of filterBackedCells) {
+            const key = JSON.stringify(item.filter || {});
+            if (!available.has(key)) available.set(key, []);
+            available.get(key).push(id);
+        }
+        const newFilterBackedCells = new Map();
+        const resolved = await Promise.all(
+            rawQueue.map(async item => {
+                if (typeof item === 'string') return item;
+                const key = JSON.stringify(item.filter || {});
+                const pool = available.get(key);
+                if (pool && pool.length > 0) {
+                    const id = pool.shift();
+                    newFilterBackedCells.set(id, item);
+                    return id;
+                }
+                const id = await resolveFilterSlot(item);
+                if (id) newFilterBackedCells.set(id, item);
+                return id;
+            })
+        );
+        filterBackedCells.clear();
+        for (const [k, v] of newFilterBackedCells) filterBackedCells.set(k, v);
+        return resolved.filter(Boolean);
+    }
+
     function removeScene(id) {
         const idx = queue.indexOf(String(id));
         if (idx === -1) return;
@@ -939,7 +969,7 @@
 
     window.addEventListener('storage', e => {
         if (e.key !== STORAGE_KEY) return;
-        resolveQueue(getQueue()).then(resolved => {
+        resolveQueuePreserving(getQueue()).then(resolved => {
             queue = resolved;
             loadSceneMeta(queue).then(render);
         });
