@@ -657,6 +657,7 @@
             video.loop = !isFilterBacked;
             video.muted = !unmutedIds.has(id);
             video.playsInline = true;
+            video.disablePictureInPicture = true;
 
             if (isFilterBacked) {
                 video.addEventListener('ended', () => advanceFilterCell(id));
