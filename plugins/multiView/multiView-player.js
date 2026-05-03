@@ -3,6 +3,7 @@
 
     const STORAGE_KEY = 'stash-multiview-queue';
     const ROULETTE_COUNT_KEY = 'stash-multiview-roulette-count';
+    const SETTINGS_KEY = 'stash-multiview-settings';
 
     // �"?�"? SVGs �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
@@ -290,33 +291,20 @@
     function loadPlayerSettings(saved = {}) {
         return {
             directPlay: saved.directPlay ?? false,
-            quality: { ...DEFAULT_QUALITY, ...(saved.quality || {}) }
+            quality: { ...DEFAULT_QUALITY, ...(saved.quality || {}) },
+            focusMode: saved.focusMode ?? false
         };
-    }
-
-    async function fetchPluginConfig() {
-        try {
-            const res = await fetch('/graphql', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: '{ configuration { plugins } }' })
-            });
-            const data = await res.json();
-            return data?.data?.configuration?.plugins?.multiView || {};
-        } catch { return {}; }
     }
 
     let playerSettings = loadPlayerSettings();
 
     function savePlayerSettings() {
-        fetch('/graphql', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                query: 'mutation ConfigurePlugin($input: Map!) { configurePlugin(plugin_id: "multiView", input: $input) }',
-                variables: { input: playerSettings }
-            })
-        }).catch(() => {});
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(playerSettings));
+    }
+
+    function applyFocusMode(enabled) {
+        document.body.classList.toggle('mv-focus', enabled);
+        document.getElementById('mv-focus-btn')?.classList.toggle('is-active', enabled);
     }
 
     function openSettingsModal() {
@@ -1070,8 +1058,12 @@
     // �"?�"? Init �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
     async function init() {
-        const pluginConfig = await fetchPluginConfig();
-        playerSettings = loadPlayerSettings(pluginConfig);
+        const savedSettings = (() => {
+            try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); }
+            catch { return {}; }
+        })();
+        playerSettings = loadPlayerSettings(savedSettings);
+        applyFocusMode(playerSettings.focusMode);
 
         queue = await resolveQueue(getQueue());
 
@@ -1080,6 +1072,11 @@
         document.getElementById('mv-o-all-btn').addEventListener('click', incrementAllO);
         document.getElementById('mv-settings-btn').addEventListener('click', openSettingsModal);
         document.getElementById('mv-roulette-btn').addEventListener('click', openMenuPanel);
+        document.getElementById('mv-focus-btn').addEventListener('click', () => {
+            playerSettings.focusMode = !playerSettings.focusMode;
+            savePlayerSettings();
+            applyFocusMode(playerSettings.focusMode);
+        });
 
         document.addEventListener('mousemove', updateSeekFill);
         document.addEventListener('mouseup', () => { commitSeek(); activeSeek = null; });
