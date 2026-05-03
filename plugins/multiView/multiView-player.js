@@ -304,7 +304,12 @@
 
     function applyFocusMode(enabled) {
         document.body.classList.toggle('mv-focus', enabled);
-        document.getElementById('mv-focus-btn')?.classList.toggle('is-active', enabled);
+        if (enabled) {
+            applyJustifiedLayout();
+        } else {
+            clearJustifiedLayout();
+            detectAndApplyOrientation();
+        }
     }
 
     function toggleFocusMode() {
@@ -497,6 +502,10 @@
     }
 
     function detectAndApplyOrientation() {
+        if (playerSettings.focusMode) {
+            applyJustifiedLayout();
+            return;
+        }
         const videos = [...document.querySelectorAll('.mv-cell video')];
         const loaded = videos.filter(v => v.videoWidth > 0 && v.videoHeight > 0);
         if (!loaded.length) return;
@@ -509,6 +518,112 @@
         if (grid && grid.className !== 'layout-' + expectedLayout) {
             grid.className = 'layout-' + expectedLayout;
         }
+    }
+
+    function computeJustifiedLayout(aspectRatios, containerWidth, containerHeight, gap) {
+        const n = aspectRatios.length;
+        if (n === 0) return [];
+
+        // Snap to exact standard ratios — avoids weird sub-pixel aspect classes
+        const snapped = aspectRatios.map(a => a >= 1 ? 16 / 9 : 9 / 16);
+        const totalAspectSum = snapped.reduce((s, a) => s + a, 0);
+        const targetHeight = Math.sqrt((containerWidth * containerHeight) / totalAspectSum);
+
+        // Greedy row packing
+        const rows = [];
+        let rowStart = 0;
+        while (rowStart < n) {
+            let rowEnd = rowStart, rowAspectSum = 0;
+            while (rowEnd < n) {
+                const tentative = rowAspectSum + snapped[rowEnd];
+                const naturalWidth = tentative * targetHeight + (rowEnd - rowStart) * gap;
+                if (rowEnd > rowStart && naturalWidth > containerWidth) break;
+                rowAspectSum += snapped[rowEnd];
+                rowEnd++;
+            }
+            rows.push({ start: rowStart, end: rowEnd, aspectSum: rowAspectSum });
+            rowStart = rowEnd;
+        }
+
+        // Merge single-item rows into a neighbour — solo cells after scaling become very distorted
+        if (rows.length > 1) {
+            for (let r = rows.length - 1; r >= 0; r--) {
+                if (rows[r].end - rows[r].start === 1 && rows.length > 1) {
+                    if (r < rows.length - 1) {
+                        rows[r].end = rows[r + 1].end;
+                        rows[r].aspectSum += rows[r + 1].aspectSum;
+                        rows.splice(r + 1, 1);
+                    } else {
+                        rows[r - 1].end = rows[r].end;
+                        rows[r - 1].aspectSum += rows[r].aspectSum;
+                        rows.splice(r, 1);
+                    }
+                }
+            }
+        }
+
+        // Natural height per row: cells fill containerWidth at exact snapped aspect ratios
+        rows.forEach(row => {
+            row.naturalH = (containerWidth - gap * (row.end - row.start - 1)) / row.aspectSum;
+        });
+
+        // Scale all rows to fill containerHeight exactly
+        const totalNaturalH = rows.reduce((s, r) => s + r.naturalH, 0) + gap * (rows.length - 1);
+        const scale = containerHeight / totalNaturalH;
+
+        // Compute positions.
+        // Widths use naturalH (proportional across all cells, no last-cell distortion spike).
+        // Only the last cell absorbs the ±1–2 px integer rounding remainder.
+        const positions = [];
+        let top = 0;
+        for (let r = 0; r < rows.length; r++) {
+            const row = rows[r];
+            const rowH = Math.round(row.naturalH * scale);
+            if (r > 0) top += gap;
+            let left = 0;
+            for (let i = row.start; i < row.end; i++) {
+                const w = i === row.end - 1
+                    ? containerWidth - Math.round(left)
+                    : Math.round(snapped[i] * row.naturalH);
+                positions.push({ left: Math.round(left), top, width: w, height: rowH });
+                left += w + gap;
+            }
+            top += rowH;
+        }
+        return positions;
+    }
+
+    function applyJustifiedLayout() {
+        if (!playerSettings.focusMode) return;
+        const grid = document.getElementById('mv-grid');
+        if (!grid) return;
+        const cells = [...grid.querySelectorAll('.mv-cell')];
+        if (cells.length === 0) return;
+        const containerWidth  = grid.clientWidth;
+        const containerHeight = grid.clientHeight;
+        if (containerWidth === 0 || containerHeight === 0) return;
+        const GAP = 3;
+        const aspectRatios = cells.map(cell => {
+            const video = cell.querySelector('video');
+            return (video && video.videoWidth > 0 && video.videoHeight > 0)
+                ? video.videoWidth / video.videoHeight
+                : 16 / 9;
+        });
+        const positions = computeJustifiedLayout(aspectRatios, containerWidth, containerHeight, GAP);
+        cells.forEach((cell, i) => {
+            const p = positions[i];
+            if (!p) return;
+            cell.style.left   = p.left   + 'px';
+            cell.style.top    = p.top    + 'px';
+            cell.style.width  = p.width  + 'px';
+            cell.style.height = p.height + 'px';
+        });
+    }
+
+    function clearJustifiedLayout() {
+        document.querySelectorAll('.mv-cell').forEach(cell => {
+            cell.style.left = cell.style.top = cell.style.width = cell.style.height = '';
+        });
     }
 
     // �"?�"? Play / Pause All �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
@@ -1078,9 +1193,13 @@
         document.getElementById('mv-o-all-btn').addEventListener('click', incrementAllO);
         document.getElementById('mv-settings-btn').addEventListener('click', openSettingsModal);
         document.getElementById('mv-roulette-btn').addEventListener('click', openMenuPanel);
-        document.getElementById('mv-focus-btn').addEventListener('click', toggleFocusMode);
         document.addEventListener('keydown', e => {
             if (e.key === 'f' || e.key === 'F') toggleFocusMode();
+            else if (e.key === 'm' || e.key === 'M') toggleMuteAll();
+            else if (e.key === 'p' || e.key === 'P') playPauseAll();
+        });
+        window.addEventListener('resize', () => {
+            if (playerSettings.focusMode) applyJustifiedLayout();
         });
 
         document.addEventListener('mousemove', updateSeekFill);

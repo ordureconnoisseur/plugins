@@ -722,14 +722,15 @@ body.mv-focus #mv-topbar:hover {
 }
 body.mv-focus #mv-grid {
     top: 0;
+    display: block;
+    padding: 0;
+}
+body.mv-focus .mv-cell {
+    position: absolute;
 }
 body.mv-focus .mv-cell video {
     object-fit: cover;
 }
 body.mv-focus .mv-seekbar {
     display: none;
-}
-#mv-focus-btn.is-active {
-    color: #f97316;
-    border-color: #f97316;
 }
