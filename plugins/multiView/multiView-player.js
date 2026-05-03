@@ -397,6 +397,7 @@
             playerSettings.directPlay = dpToggle.checked;
             savePlayerSettings();
             Object.values(selects).forEach(sel => { sel.disabled = dpToggle.checked; });
+            applyQualityToAllCells();
         });
 
         card.append(header, dpRow, qualSection);
@@ -918,7 +919,7 @@
         });
 
         // Remove cells no longer in queue
-        document.querySelectorAll('.mv-cell').forEach(cell => {
+        grid.querySelectorAll('.mv-cell').forEach(cell => {
             if (!queue.includes(cell.dataset.sceneId)) cell.remove();
         });
     }
