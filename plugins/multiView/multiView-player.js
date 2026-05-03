@@ -386,6 +386,7 @@
             sel.addEventListener('change', () => {
                 playerSettings.quality[key] = sel.value;
                 savePlayerSettings();
+                applyQualityToAllCells();
             });
             selects[key] = sel;
             row.append(lbl, sel);
@@ -916,14 +917,15 @@
             grid.insertBefore(cell, refCell);
         });
 
-        // Remove cells no longer in queue, and update quality for existing ones
-        grid.querySelectorAll('.mv-cell').forEach(cell => {
-            const id = cell.dataset.sceneId;
-            if (!queue.includes(id)) {
-                cell.remove();
-                return;
-            }
+        // Remove cells no longer in queue
+        document.querySelectorAll('.mv-cell').forEach(cell => {
+            if (!queue.includes(cell.dataset.sceneId)) cell.remove();
+        });
+    }
 
+    function applyQualityToAllCells() {
+        document.querySelectorAll('.mv-cell').forEach(cell => {
+            const id = cell.dataset.sceneId;
             const video = cell.querySelector('video');
             if (!video) return;
 
@@ -931,37 +933,35 @@
             const currentSrc = video.getAttribute('src') || '';
             const baseSrc = currentSrc.split(/[?&]start=/)[0];
 
-            if (baseSrc && baseSrc !== optimalSrc) {
-                let currentTime = video.currentTime;
-                if (currentSrc.match(/[?&]start=/)) {
-                    currentTime += (seekBases.get(id) || 0);
-                }
+            if (!baseSrc || baseSrc === optimalSrc) return;
 
-                const wasPlaying = !video.paused;
-                const isTranscode = optimalSrc.includes('.webm') || optimalSrc.includes('.mp4');
+            let currentTime = video.currentTime;
+            if (currentSrc.match(/[?&]start=/)) currentTime += (seekBases.get(id) || 0);
 
-                if (!cell.querySelector('.mv-loading')) {
-                    const s = document.createElement('div');
-                    s.className = 'mv-loading';
-                    s.innerHTML = '<div class="mv-spinner"></div>';
-                    cell.appendChild(s);
-                }
+            const wasPlaying = !video.paused;
+            const isTranscode = optimalSrc.includes('.webm') || optimalSrc.includes('.mp4');
 
-                if (isTranscode && currentTime > 0) {
-                    const sep = optimalSrc.includes('?') ? '&' : '?';
-                    seekBases.set(id, currentTime);
-                    video.src = optimalSrc + sep + 'start=' + currentTime;
-                } else {
-                    seekBases.set(id, 0);
-                    video.src = optimalSrc;
-                    const onMeta = () => {
-                        if (currentTime > 0) video.currentTime = currentTime;
-                        video.removeEventListener('loadedmetadata', onMeta);
-                    };
-                    video.addEventListener('loadedmetadata', onMeta);
-                }
-                if (wasPlaying || video.autoplay) video.play();
+            if (!cell.querySelector('.mv-loading')) {
+                const s = document.createElement('div');
+                s.className = 'mv-loading';
+                s.innerHTML = '<div class="mv-spinner"></div>';
+                cell.appendChild(s);
             }
+
+            if (isTranscode && currentTime > 0) {
+                const sep = optimalSrc.includes('?') ? '&' : '?';
+                seekBases.set(id, currentTime);
+                video.src = optimalSrc + sep + 'start=' + currentTime;
+            } else {
+                seekBases.set(id, 0);
+                video.src = optimalSrc;
+                const onMeta = () => {
+                    if (currentTime > 0) video.currentTime = currentTime;
+                    video.removeEventListener('loadedmetadata', onMeta);
+                };
+                video.addEventListener('loadedmetadata', onMeta);
+            }
+            if (wasPlaying || video.autoplay) video.play();
         });
     }
 
