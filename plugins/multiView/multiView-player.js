@@ -304,7 +304,6 @@
 
     function applyFocusMode(enabled) {
         document.body.classList.toggle('mv-focus', enabled);
-        document.getElementById('mv-focus-btn')?.classList.toggle('is-active', enabled);
     }
 
     function openSettingsModal() {
@@ -1072,10 +1071,12 @@
         document.getElementById('mv-o-all-btn').addEventListener('click', incrementAllO);
         document.getElementById('mv-settings-btn').addEventListener('click', openSettingsModal);
         document.getElementById('mv-roulette-btn').addEventListener('click', openMenuPanel);
-        document.getElementById('mv-focus-btn').addEventListener('click', () => {
-            playerSettings.focusMode = !playerSettings.focusMode;
-            savePlayerSettings();
-            applyFocusMode(playerSettings.focusMode);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'f' || e.key === 'F') {
+                playerSettings.focusMode = !playerSettings.focusMode;
+                savePlayerSettings();
+                applyFocusMode(playerSettings.focusMode);
+            }
         });
 
         document.addEventListener('mousemove', updateSeekFill);

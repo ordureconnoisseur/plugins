@@ -729,7 +729,3 @@ body.mv-focus .mv-cell video {
 body.mv-focus .mv-seekbar {
     display: none;
 }
-#mv-focus-btn.is-active {
-    color: #f97316;
-    border-color: #f97316;
-}
