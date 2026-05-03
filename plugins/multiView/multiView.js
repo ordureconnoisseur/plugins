@@ -54,6 +54,7 @@
         const params = new URLSearchParams(window.location.search);
         const f = {};
 
+        // Entity-scoped scene pages
         const performerMatch = path.match(/^\/performers\/(\d+)\/scenes/);
         const tagMatch      = path.match(/^\/tags\/(\d+)\/scenes/);
         const studioMatch   = path.match(/^\/studios\/(\d+)\/scenes/);
@@ -61,8 +62,8 @@
         if (tagMatch)       f.tagId       = tagMatch[1];
         if (studioMatch)    f.studioId    = studioMatch[1];
 
-        const q = params.get('q');
-        if (q) f.q = q;
+        // Query-string filters (scenes browse page)
+        if (params.get('q')) f.q = params.get('q');
         const cParams = params.getAll('c');
         if (cParams.length) f.c = cParams;
 
