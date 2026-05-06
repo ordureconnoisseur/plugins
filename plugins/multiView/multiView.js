@@ -120,29 +120,47 @@
     function injectPickingModeToggle() {
         if (window.location.pathname.match(/^\/scenes\/\d+/)) {
             document.getElementById('mv-picking-standalone')?.remove();
+            document.querySelectorAll('.mv-picking-toggle-btn').forEach(b => b.remove());
             return;
         }
 
-        // Priority 1: append into the display-mode button group (last btn-group before the zoom slider)
         const zoomSlider = document.querySelector('input[type="range"]');
-        if (zoomSlider) {
+        if (!zoomSlider) {
             document.getElementById('mv-picking-standalone')?.remove();
-            document.querySelectorAll('.pagination .mv-picking-toggle-btn').forEach(b => b.remove());
-            const allGroups = [...document.querySelectorAll('.btn-group')];
-            const lastBtnGroup = allGroups.reverse().find(g =>
-                g.compareDocumentPosition(zoomSlider) & Node.DOCUMENT_POSITION_FOLLOWING
-            );
-            if (lastBtnGroup) {
-                if (!lastBtnGroup.querySelector('.mv-picking-toggle-btn')) {
-                    lastBtnGroup.appendChild(createPickingToggleBtn());
-                }
-            } else if (!zoomSlider.parentElement.querySelector('.mv-picking-toggle-btn')) {
-                zoomSlider.parentElement.insertBefore(createPickingToggleBtn(), zoomSlider);
-            }
             return;
         }
 
         document.getElementById('mv-picking-standalone')?.remove();
+        document.querySelectorAll('.pagination .mv-picking-toggle-btn').forEach(b => b.remove());
+
+        // Anchor: last btn-group before the zoom slider (the display-mode group).
+        const allGroups = [...document.querySelectorAll('.btn-group')];
+        const lastBtnGroup = allGroups.reverse().find(g =>
+            g.compareDocumentPosition(zoomSlider) & Node.DOCUMENT_POSITION_FOLLOWING
+        );
+
+        // Place the toggle as a SIBLING after the btn-group instead of inside it.
+        // Themes commonly hide / replace the display-mode btn-group (e.g. with a
+        // chevron dropdown) and the toggle would get hidden along with it; placing
+        // it outside keeps it visible and avoids cross-plugin "rescue" hacks.
+        let targetParent, insertBefore;
+        if (lastBtnGroup) {
+            targetParent = lastBtnGroup.parentElement;
+            insertBefore = lastBtnGroup.nextSibling;
+        } else {
+            targetParent = zoomSlider.parentElement;
+            insertBefore = zoomSlider;
+        }
+        if (!targetParent) return;
+
+        // If the toggle already sits at the right spot, no-op.
+        const existing = targetParent.querySelector(':scope > .mv-picking-toggle-btn');
+        if (existing) return;
+
+        // Otherwise clean any orphaned instances (e.g. inside a re-rendered group)
+        // and inject fresh at the stable location.
+        document.querySelectorAll('.mv-picking-toggle-btn').forEach(b => b.remove());
+        targetParent.insertBefore(createPickingToggleBtn(), insertBefore);
     }
 
     // ?"??"? Card buttons ?"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"?
@@ -161,13 +179,13 @@
             btn.className = 'mv-add-btn' + (isQueued(id) ? ' mv-queued' : '');
             btn.dataset.sceneId = id;
             btn.title = 'Add to Multiview';
-            btn.innerHTML = isQueued(id) ? '&#x2713;' : '+';
+            btn.innerHTML = isQueued(id) ? CHECK_SVG : PLUS_ICON_SVG;
 
             btn.addEventListener('click', e => {
                 e.preventDefault();
                 e.stopPropagation();
                 toggleScene(id);
-                btn.innerHTML = isQueued(id) ? '&#x2713;' : '+';
+                btn.innerHTML = isQueued(id) ? CHECK_SVG : PLUS_ICON_SVG;
                 btn.classList.toggle('mv-queued', isQueued(id));
             });
 
@@ -208,7 +226,7 @@
     function updateAllButtons() {
         document.querySelectorAll('.mv-add-btn').forEach(btn => {
             const queued = isQueued(btn.dataset.sceneId);
-            btn.innerHTML = queued ? '&#x2713;' : '+';
+            btn.innerHTML = queued ? CHECK_SVG : PLUS_ICON_SVG;
             btn.classList.toggle('mv-queued', queued);
         });
         const sceneBtn = document.getElementById('mv-scene-btn');
@@ -325,7 +343,9 @@
 
     const GRID_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>`;
 
-    const PLUS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 448 512" fill="currentColor" aria-hidden="true"><path d="M256 80c0-17.7-14.3-32-32-32s-32 14.3-32 32V224H48c-17.7 0-32 14.3-32 32s14.3 32 32 32H192V432c0 17.7 14.3 32 32 32s32-14.3 32-32V288H400c17.7 0 32-14.3 32-32s-14.3-32-32-32H256V80z"/></svg>`;
+    const PLUS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12H18M12 6V18"/></svg>`;
+
+    const CHECK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12L10 17L19 8"/></svg>`;
 
 
     // ?"??"? Init & navigation ?"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"?
