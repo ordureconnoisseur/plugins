@@ -59,17 +59,17 @@
         return res.json();
     }
 
-    const ALL_PHYSICAL    = ["Face ★", "Breasts ★", "Ass ★", "Body Overall ★", "Genitals ★"];
-    const ALL_PERFORMANCE = ["Technique ★", "Energy & Presence ★", "Sluttiness ★"];
+    const ALL_PHYSICAL    = ["Face", "Breasts", "Ass", "Body Overall", "Genitals"];
+    const ALL_PERFORMANCE = ["Technique", "Energy & Presence", "Sluttiness"];
     const DISABLE_KEYS = {
-        "Face ★":              "disable_face",
-        "Breasts ★":           "disable_breasts",
-        "Ass ★":               "disable_ass",
-        "Body Overall ★":      "disable_body_overall",
-        "Genitals ★":          "disable_genitals",
-        "Technique ★":         "disable_technique",
-        "Energy & Presence ★": "disable_energy_presence",
-        "Sluttiness ★":        "disable_sluttiness",
+        "Face":              "disable_face",
+        "Breasts":           "disable_breasts",
+        "Ass":               "disable_ass",
+        "Body Overall":      "disable_body_overall",
+        "Genitals":          "disable_genitals",
+        "Technique":         "disable_technique",
+        "Energy & Presence": "disable_energy_presence",
+        "Sluttiness":        "disable_sluttiness",
     };
 
     async function getPluginCategories() {
@@ -163,14 +163,14 @@
                 if (match) currentScores[match[1].trim()] = parseInt(match[2], 10);
             });
             const categoryDescriptions = {
-                "Face ★": "Facial attractiveness, eye appeal, lip shape, skin quality, and how good the face looks in close-ups, during oral, and while moaning or orgasming.",
-                "Breasts ★": "Shape, size, firmness, symmetry, nipple appearance, and natural movement/jiggle during sex.",
-                "Ass ★": "Shape, roundness, firmness, tightness, bounce, and visual appeal in doggy, cowgirl, and spanking shots.",
-                "Body Overall ★": "Proportions, waist-to-hip ratio, muscle tone, skin condition, legs, posture, and overall physical presence on camera.",
-                "Genitals ★": "Visual appeal and presentation of the performer's sexual organs when aroused and groomed.",
-                "Technique ★": "Technical ability and proficiency in sex: quality of oral, handjobs, riding rhythm, hip movement, depth control, muscle contractions, kissing, and overall sexual technique.",
-                "Energy & Presence ★": "Visible enthusiasm, stamina, vocalization, authenticity and intensity of pleasure expressions, eye contact, orgasm quality, and how strongly the performer commands attention.",
-                "Sluttiness ★": "Degree of uninhibitedness and sexual eagerness: willingness to embrace rough sex, anal, deepthroat, degradation, and extreme kinks, visible hunger and greed for cock/pussy, active begging or initiating sex, intensity of dirty talk, and overall attitude of shameless sexual availability."
+                "Face": "Facial attractiveness, eye appeal, lip shape, skin quality, and how good the face looks in close-ups, during oral, and while moaning or orgasming.",
+                "Breasts": "Shape, size, firmness, symmetry, nipple appearance, and natural movement/jiggle during sex.",
+                "Ass": "Shape, roundness, firmness, tightness, bounce, and visual appeal in doggy, cowgirl, and spanking shots.",
+                "Body Overall": "Proportions, waist-to-hip ratio, muscle tone, skin condition, legs, posture, and overall physical presence on camera.",
+                "Genitals": "Visual appeal and presentation of the performer's sexual organs when aroused and groomed.",
+                "Technique": "Technical ability and proficiency in sex: quality of oral, handjobs, riding rhythm, hip movement, depth control, muscle contractions, kissing, and overall sexual technique.",
+                "Energy & Presence": "Visible enthusiasm, stamina, vocalization, authenticity and intensity of pleasure expressions, eye contact, orgasm quality, and how strongly the performer commands attention.",
+                "Sluttiness": "Degree of uninhibitedness and sexual eagerness: willingness to embrace rough sex, anal, deepthroat, degradation, and extreme kinks, visible hunger and greed for cock/pussy, active begging or initiating sex, intensity of dirty talk, and overall attitude of shameless sexual availability."
             };
             categories.forEach(cat => {
                 const row = document.createElement('div'); row.className = 'rating-row';
