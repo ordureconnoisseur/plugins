@@ -32,10 +32,13 @@ except ModuleNotFoundError:
 
 PLUGIN_ID = "advancedSceneRating"
 
-# TAGS — scenes use a plain prefix (no star suffix) to keep tag names readable
-# and preserve compatibility with the pre-v2.3 tag schema users already have.
+# TAGS — append ★ to category names so they sort/group obviously and match
+# the convention used by the sibling Advanced Performer Rating plugin.
+# Users upgrading from v2.0.x had unsuffixed tags; on Save the panel renames
+# them in place, and the hook below also accepts the legacy unsuffixed names
+# so ratings keep working during the transition.
 TAG_PATTERN = re.compile(r"^(.+?)\s*:\s*([0-5])$")
-TAG_SUFFIX = ""
+TAG_SUFFIX = " ★"
 SVG_TAG_IMG = (
     "data:image/svg+xml;base64,PCFET0NUWVBFIHN2ZyBQVUJMSUMgIi0vL1czQy8vRFREIFNWRyAxLjEvL0VOIi"
     "AiaHR0cDovL3d3dy53My5vcmcvR3JhcGhpY3MvU1ZHLzEuMS9EVEQvc3ZnMTEuZHRkIj4KDTwhLS0gVXBsb2FkZW"
@@ -258,6 +261,14 @@ def calculate_rating(stash, scene):
     if not enabled:
         return
     by_prefix = {tag_prefix(c): c for c in enabled}
+    # Backward-compat: also accept the legacy unsuffixed name. Hook keeps
+    # rating scenes correctly while users haven't yet clicked Save in the
+    # panel to migrate their tags.
+    if TAG_SUFFIX:
+        for c in enabled:
+            legacy = c["name"]
+            if legacy not in by_prefix:
+                by_prefix[legacy] = c
     hits_by_group = {g["id"]: [] for g in groups}
     tags = [tag["name"] for tag in (scene.get("tags") or [])]
     for tag in tags:
