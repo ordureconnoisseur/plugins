@@ -1,16 +1,18 @@
 # Advanced Scene Rating
 
-A Stash plugin that adds a multi-category rating system for scenes. Instead of a single star rating, you rate scenes across configurable criteria — the plugin then calculates an overall score and sets the Stash rating automatically.
+A Stash plugin that adds a multi-category rating system for scenes. Rate each scene across several criteria (Production Quality, Chemistry, etc.), optionally bucket them into weighted groups, and Stash's overall scene rating is calculated and updated automatically.
+
+Everything is configured through a dedicated settings panel — no plugin tasks, no manual tag creation. Rename criteria, add custom ones, tweak weights, and add/remove groups all in one place.
 
 ## Credits
 
-Inspired by the [Advanced Rating System](https://discourse.stashapp.cc/t/advanced-rating-system/3096) plugin on the Stash community forums, which introduced the concept of using tags for multi-category ratings. This plugin builds on that idea with a full interactive UI modal and configurable categories.
+Inspired by the [Advanced Rating System](https://discourse.stashapp.cc/t/advanced-rating-system/3096) plugin on the Stash community forums, which introduced the concept of using tags for multi-category ratings.
 
 ## Requirements
 
 - [Stash](https://stashapp.cc) v0.27+
 - Python 3.x
-- [stashapp-tools](https://github.com/stg-annon/stashapp-tools): `pip install stashapp-tools`
+- [stashapp-tools](https://github.com/stg-annon/stashapp-tools) (bundled in `vendor/`; auto-installed via pip when available)
 
 ## Installation
 
@@ -20,21 +22,21 @@ Inspired by the [Advanced Rating System](https://discourse.stashapp.cc/t/advance
    ```
    https://ordureconnoisseur.github.io/plugins/main/index.yml
    ```
-2. Find **Advanced Scene Rating** in the plugin browser and click **Install**
-3. Run the **Create Tags** task
+2. Find **Advanced Scene Rating** in the plugin browser and click **Install**.
+3. Open **Settings → Plugins → Advanced Scene Rating** and click **Save** in the panel — this persists the default config and creates the rating tags for you.
 
 ### Option 2 — Manual
 
-1. Download this repository (Code → Download ZIP) and extract it
+1. Download this repository (Code → Download ZIP) and extract it.
 2. Place the extracted folder inside a category subfolder of your Stash plugins directory:
    - **Linux/Mac:** `~/.stash/plugins/Utilities/Advanced Scene Rating/`
    - **Windows:** `%USERPROFILE%\.stash\plugins\Utilities\Advanced Scene Rating\`
 
    > The plugin must be **two levels deep** inside the plugins directory — `plugins/Category/Plugin/`. Placing it directly under `plugins/` will cause it not to appear in Stash.
 
-3. In Stash, go to **Settings → Plugins** and click **Reload Plugins**
-4. Enable **Advanced Scene Rating**
-5. Run the **Create Tags** task to generate the rating tag hierarchy
+3. In Stash, go to **Settings → Plugins** and click **Reload Plugins**.
+4. Enable **Advanced Scene Rating**.
+5. Open the plugin's settings panel and click **Save** to seed config + create tags.
 
 ## Usage
 
@@ -42,39 +44,84 @@ Click the **★+** button on any scene's page to open the rating modal.
 
 ![Rating Modal](screenshot-modal.png)
 
-Rate each category using the 1–5 star selectors. Hover over the ⓘ icon next to a category name to see a description of what it rates. When you close the modal the overall scene rating is calculated and set automatically.
+Rate each category using the 1–5 star selectors. Hover over the ⓘ icon next to a category name to see its description. As you click stars, the corresponding category tag (`Production Quality: 4`, etc.) is applied to the scene and the overall Stash rating recalculates automatically via the `Scene.Update.Post` hook.
 
 ![Scene Page](screenshot-scene-page.png)
 
-The rating is visible directly on the scene page alongside the category tags that were assigned. The overall rating is the average of all rated categories mapped to Stash's 0–100 scale.
-
 ## Configuration
 
-Go to **Settings → Plugins → Advanced Scene Rating** to configure:
+Open **Settings → Plugins → Advanced Scene Rating** to access the settings panel. The panel replaces Stash's native settings UI (which can't render dropdowns or reliably persist non-boolean values) with a fully interactive React component.
 
-![Settings](screenshot-settings.png)
+### General
 
-| Setting | Description |
+- **Rating Star Precision** — auto-matched from Stash's own rating-system setting. `FULL = 20`, `HALF = 10`, `QUARTER = 5`, `TENTH = 1`, `DECIMAL = 1`. The display tracks Stash's setting live, no refresh needed.
+- **Allow Destructive Actions** — gates the orange "Remove orphaned tags" and red "Delete all rating tags" buttons. Off by default.
+
+### Groups
+
+Criteria are bucketed into groups, and the final rating is a weighted mean of each group's average.
+
+- **Name** — display label. Renaming a group doesn't touch any tags (tags are per-criterion, not per-group).
+- **Weight** — how much this group counts in the final score relative to others.
+- **Reorder / Delete** — at least one group must exist. Deleting a group reassigns its criteria to another group.
+
+The default config has a single **Overall** group, which reduces the math to a flat weighted average across all enabled criteria (the original plugin's behavior). Add more groups if you want to balance buckets — e.g. "Technical" vs. "Performers" with their own weights.
+
+### Criteria
+
+Each criterion is a rateable category that produces a tag prefix `<Name>` with children `<Name>: 0` … `<Name>: 5`.
+
+| Field | Meaning |
 |---|---|
-| Disable: Production Quality | Remove Production Quality from rating |
-| Disable: Chemistry | Remove Chemistry from rating |
-| Disable: Performance | Remove Performance from rating |
-| Disable: Aesthetics | Remove Aesthetics from rating |
-| Disable: Creativity | Remove Creativity from rating |
-| Rating Star Precision | Match to your Stash rating precision: `20` = Full, `10` = Half, `5` = Quarter, `1` = Tenth (default: `10`) |
-| Minimum Required Tags | How many categories must be rated before a score is calculated (default: `5`) |
-| Allow Destructive Actions | Must be enabled before the Remove Tags task will run (default: `false`) |
+| Toggle | Enabled / disabled. Disabled criteria are ignored by the rating math and hidden from the modal. |
+| Name | Display name. Used as the tag prefix. |
+| Group | Which group this criterion contributes to. Populated from the configured group list. |
+| Weight | How much this criterion counts within its group. |
+| ✎ | Edit the description shown as a tooltip in the rating modal. Clear it to hide the tooltip; **Reset to default** restores the bundled wording (only available for the five default criteria). |
+| ↑ ↓ | Reorder. |
+| × | Remove the criterion from this configuration. Tags stay on disk — use **Remove orphaned tags** to clean up. |
 
-All categories are active by default — check a box to disable that category.
+**+ Add criterion** appends a new custom criterion with a generated slug id.
 
-After changing precision, run **Process All Scenes** to retroactively recalculate existing ratings.
+### Actions
 
-## Tasks
-
-- **Process All Scenes** — Recalculates ratings for every scene based on their existing tags
-- **Create Tags** — Creates the rating tag hierarchy under an "Advanced Rating System" parent tag
-- **Remove Tags** — Deletes all rating tags (requires Allow Destructive Actions to be enabled)
+- **Save** — persists configuration AND automatically creates any missing tags for new criteria AND renames tags for any criterion you renamed. One click handles every workflow.
+- **Recalculate all scenes** — walks every scene in Stash and updates its `rating100` based on the current configuration. Useful after changing weights or group settings.
+- **Reset to defaults** — restores the bundled single group + five criteria.
+- **Remove orphaned tags** — scans Stash for criterion tags whose criterion was renamed or removed and deletes them with their `0–5` children. Requires Allow Destructive Actions.
+- **Delete all rating tags** — destroys the parent tag plus every configured criterion's tags. Requires Allow Destructive Actions.
 
 ## How It Works
 
-Each category gets a tag in the format `Category: N` (e.g. `Performance: 4`). When a scene is updated, the hook reads those tags, averages the scores, and sets the Stash rating. Tags are organised in a hierarchy: `Advanced Rating System > Category > Category: N`.
+Each criterion produces a tag prefix like `Production Quality`, with six child tags `Production Quality: 0` through `Production Quality: 5` organised under a single `Advanced Rating System` parent tag.
+
+When a scene is updated, the `Scene.Update.Post` hook fires the Python script. It:
+
+1. Reads the plugin's configuration from Stash's plugin-config store.
+2. Builds the criteria/groups model.
+3. Scans the scene's tags for any matching `<prefix>: <0–5>`.
+4. Computes a weighted average per group, then a weighted mean across groups.
+5. Snaps the result to Stash's configured rating precision and updates `rating100`.
+
+### Rating Calculation
+
+For each group `g` with at least one matching tag:
+
+```
+group_avg(g) = Σ(score × criterion_weight) / Σ(criterion_weight)
+```
+
+Final rating:
+
+```
+final_avg = Σ(group_avg(g) × group_weight(g)) / Σ(group_weight(g))   over groups with hits
+rating100 = round(final_avg × 20, snapped to precision)
+```
+
+- One group → flat weighted average across all enabled criteria (the default).
+- Multiple groups with weight → weighted mean of their averages.
+- Groups with no tag matches are skipped; if no groups have any hits, the rating is not updated.
+
+## License
+
+AGPL v3. See `LICENSE`.
