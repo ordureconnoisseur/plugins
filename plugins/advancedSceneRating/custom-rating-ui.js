@@ -4,7 +4,7 @@
 
 (function () {
     const PLUGIN_ID = "advancedSceneRating";
-    const TAG_SUFFIX = "";
+    const TAG_SUFFIX = " ★";
     const CATEGORY_PATTERN = /^(.+?)\s*:\s*([0-5])$/;
     let pollTimer = null;
 
@@ -288,6 +288,12 @@
             });
             criteria.forEach(c => {
                 const prefix = tagPrefix(c);
+                // Pre-migration scenes may still be tagged with the legacy
+                // unsuffixed name; treat it as equivalent for display purposes.
+                const legacyPrefix = c.name;
+                if (TAG_SUFFIX && currentScores[legacyPrefix.trim()] !== undefined && currentScores[prefix.trim()] === undefined) {
+                    currentScores[prefix.trim()] = currentScores[legacyPrefix.trim()];
+                }
                 const row = document.createElement('div'); row.className = 'rating-row';
                 const label = document.createElement('span'); label.className = 'rating-label';
                 const labelText = document.createElement('span'); labelText.innerText = prefix; label.appendChild(labelText);
@@ -445,6 +451,12 @@
         if (!enabled.length) return null;
         const byPrefix = {};
         enabled.forEach(c => { byPrefix[tagPrefix(c)] = c; });
+        // Backward-compat with pre-v2.3.1 unsuffixed tag names.
+        if (TAG_SUFFIX) {
+            enabled.forEach(c => {
+                if (byPrefix[c.name] === undefined) byPrefix[c.name] = c;
+            });
+        }
         const hitsByGroup = {};
         groups.forEach(g => { hitsByGroup[g.id] = []; });
         for (const tag of sceneTags) {
@@ -743,6 +755,21 @@
                         if (renamedCount) renameSummary = " Renamed " + renamedCount + " tag group(s).";
                     }
 
+                    // Legacy migration: rename pre-v2.3.1 unsuffixed tags in
+                    // place. Idempotent — renameRatingTags is a no-op for
+                    // criteria that don't have a legacy tag to migrate.
+                    let migratedCount = 0;
+                    if (TAG_SUFFIX) {
+                        for (const c of criteria) {
+                            const legacyName = c.name;
+                            const newName = tagPrefix(c);
+                            if (legacyName === newName) continue;
+                            const result = await renameRatingTags(legacyName, newName);
+                            if (result.renamedAny) migratedCount++;
+                        }
+                    }
+                    const migrateSummary = migratedCount ? " Migrated " + migratedCount + " legacy tag group(s)." : "";
+
                     const created = await createMissingTags(criteria);
                     const createPieces = [];
                     if (created.createdParent) createPieces.push("parent tag");
@@ -750,7 +777,7 @@
                     if (created.createdLevels) createPieces.push(created.createdLevels + " level tag(s)");
                     const createSummary = createPieces.length ? " Created " + createPieces.join(", ") + "." : "";
 
-                    setSavingState({ saving: false, message: "Saved." + renameSummary + createSummary, kind: "success" });
+                    setSavingState({ saving: false, message: "Saved." + renameSummary + migrateSummary + createSummary, kind: "success" });
                 } catch (e) {
                     setSavingState({ saving: false, message: "Save failed: " + (e && e.message ? e.message : e), kind: "error" });
                 }

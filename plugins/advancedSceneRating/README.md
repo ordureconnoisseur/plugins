@@ -44,7 +44,7 @@ Click the **★+** button on any scene's page to open the rating modal.
 
 ![Rating Modal](screenshot-modal.png)
 
-Rate each category using the 1–5 star selectors. Hover over the ⓘ icon next to a category name to see its description. As you click stars, the corresponding category tag (`Production Quality: 4`, etc.) is applied to the scene and the overall Stash rating recalculates automatically via the `Scene.Update.Post` hook.
+Rate each category using the 1–5 star selectors. Hover over the ⓘ icon next to a category name to see its description. As you click stars, the corresponding category tag (`Production Quality ★: 4`, etc.) is applied to the scene and the overall Stash rating recalculates automatically via the `Scene.Update.Post` hook.
 
 ![Scene Page](screenshot-scene-page.png)
 
@@ -74,7 +74,7 @@ Each criterion is a rateable category that produces a tag prefix `<Name>` with c
 | Field | Meaning |
 |---|---|
 | Toggle | Enabled / disabled. Disabled criteria are ignored by the rating math and hidden from the modal. |
-| Name | Display name. Used as the tag prefix. |
+| Name | Display name. Used as the tag prefix (a `★` is automatically appended in the tag name). |
 | Group | Which group this criterion contributes to. Populated from the configured group list. |
 | Weight | How much this criterion counts within its group. |
 | ✎ | Edit the description shown as a tooltip in the rating modal. Clear it to hide the tooltip; **Reset to default** restores the bundled wording (only available for the five default criteria). |
@@ -93,7 +93,11 @@ Each criterion is a rateable category that produces a tag prefix `<Name>` with c
 
 ## How It Works
 
-Each criterion produces a tag prefix like `Production Quality`, with six child tags `Production Quality: 0` through `Production Quality: 5` organised under a single `Advanced Rating System` parent tag.
+Each criterion produces a tag prefix like `Production Quality ★`, with six child tags `Production Quality ★: 0` through `Production Quality ★: 5` organised under a single `Advanced Rating System` parent tag. The `★` suffix is added automatically so the rating tags stand out in tag listings.
+
+### Upgrading from v2.0.x
+
+Pre-v2.3 versions of this plugin used unsuffixed tag names (`Production Quality: 4`). On first **Save** in the v2.3.1+ panel, the plugin automatically renames any existing legacy tags in place — your scene ratings are preserved. Until you click Save, the hook also accepts the legacy names so live recalculation keeps working.
 
 When a scene is updated, the `Scene.Update.Post` hook fires the Python script. It:
 
