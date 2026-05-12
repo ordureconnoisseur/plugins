@@ -454,15 +454,29 @@
 
         function renderBreakdown(container, b) {
             container.innerHTML = '';
-            const heading = document.createElement('div');
-            heading.className = 'adv-rating-breakdown-heading';
-            heading.innerText = 'Score breakdown';
+            const open = localStorage.getItem('asrBreakdownOpen') === '1';
+            const heading = document.createElement('button');
+            heading.type = 'button';
+            heading.className = 'adv-rating-breakdown-heading' + (open ? ' open' : '');
+            heading.innerHTML = `<span class="adv-rating-breakdown-caret">▶</span>Score breakdown`;
             container.appendChild(heading);
+
+            const body = document.createElement('div');
+            body.className = 'adv-rating-breakdown-body' + (open ? ' open' : '');
+            container.appendChild(body);
+
+            heading.addEventListener('click', () => {
+                const nowOpen = !heading.classList.contains('open');
+                heading.classList.toggle('open', nowOpen);
+                body.classList.toggle('open', nowOpen);
+                localStorage.setItem('asrBreakdownOpen', nowOpen ? '1' : '0');
+            });
+
             if (b.totalRated === 0) {
                 const empty = document.createElement('div');
                 empty.className = 'adv-rating-breakdown-empty';
                 empty.innerText = 'Rate at least one criterion to see the calculation.';
-                container.appendChild(empty);
+                body.appendChild(empty);
                 return;
             }
             b.groupRows.forEach(row => {
@@ -498,7 +512,7 @@
                         groupBlock.appendChild(note);
                     }
                 }
-                container.appendChild(groupBlock);
+                body.appendChild(groupBlock);
             });
             const finalBlock = document.createElement('div');
             finalBlock.className = 'adv-rating-breakdown-final';
@@ -508,7 +522,7 @@
             } else {
                 finalBlock.innerText = 'No contributing groups — rating not updated.';
             }
-            container.appendChild(finalBlock);
+            body.appendChild(finalBlock);
         }
 
         render();
