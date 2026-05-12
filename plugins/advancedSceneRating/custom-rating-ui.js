@@ -164,9 +164,10 @@
        ───────────────────────────────────────────────────────────────── */
     function tryInject(sceneId) {
         if (document.querySelector('#adv-rating-trigger')) return true;
-        const ratingStars = document.querySelector('.scene-toolbar .rating-stars');
-        if (ratingStars) {
-            injectTrigger(ratingStars, sceneId);
+        // .rating-stars is stars-mode; .rating-number is decimal-mode.
+        const anchor = document.querySelector('.scene-toolbar .rating-stars, .scene-toolbar .rating-number');
+        if (anchor) {
+            injectTrigger(anchor, sceneId);
             return true;
         }
         return false;
@@ -210,6 +211,62 @@
         const config = await getPluginConfig();
         const groups = groupsFromConfig(config);
         return criteriaFromConfig(config, groups).filter(c => c.enabled);
+    }
+
+    async function getRatingModel() {
+        const config = await getPluginConfig();
+        const groups = groupsFromConfig(config);
+        const criteria = criteriaFromConfig(config, groups).filter(c => c.enabled);
+        return { groups, criteria };
+    }
+
+    function computeBreakdown(sceneTags, groups, criteria, ratingPrecision) {
+        const byPrefix = {};
+        criteria.forEach(c => { byPrefix[tagPrefix(c)] = c; });
+        // Legacy fallback: also accept unsuffixed tag names.
+        if (TAG_SUFFIX) {
+            criteria.forEach(c => { if (byPrefix[c.name] === undefined) byPrefix[c.name] = c; });
+        }
+        const scoresByCriterion = {};
+        for (const tag of sceneTags) {
+            const m = (tag.name || "").match(CATEGORY_PATTERN);
+            if (!m) continue;
+            const c = byPrefix[m[1].trim()];
+            if (!c) continue;
+            scoresByCriterion[c.id] = parseInt(m[2], 10);
+        }
+        const groupRows = groups.map(g => {
+            const groupCriteria = criteria.filter(c => c.group === g.id);
+            const ratedCriteria = groupCriteria.filter(c => scoresByCriterion[c.id] !== undefined);
+            const totalWeight = ratedCriteria.reduce((n, c) => n + (parseFloat(c.weight) || 0), 0);
+            const weightedSum = ratedCriteria.reduce((n, c) => n + (scoresByCriterion[c.id] || 0) * (parseFloat(c.weight) || 0), 0);
+            const avg = totalWeight > 0 ? weightedSum / totalWeight : null;
+            return {
+                group: g,
+                criteriaInGroup: groupCriteria,
+                rated: ratedCriteria,
+                unrated: groupCriteria.filter(c => scoresByCriterion[c.id] === undefined),
+                totalWeight, weightedSum, avg, scoresByCriterion,
+            };
+        });
+        const contributingGroups = groupRows.filter(r => r.avg !== null && (parseFloat(r.group.weight) || 0) > 0);
+        const totalGroupWeight = contributingGroups.reduce((n, r) => n + (parseFloat(r.group.weight) || 0), 0);
+        const finalAvg = totalGroupWeight > 0
+            ? contributingGroups.reduce((n, r) => n + r.avg * (parseFloat(r.group.weight) || 0), 0) / totalGroupWeight
+            : null;
+        let rating100 = null;
+        if (finalAvg !== null) {
+            const precision = Math.max(1, parseInt(ratingPrecision, 10) || 10);
+            rating100 = Math.round(Math.round(finalAvg * 20 / precision) * precision);
+            rating100 = Math.max(precision, Math.min(100, rating100));
+        }
+        const totalCriteria = criteria.length;
+        const totalRated = Object.keys(scoresByCriterion).length;
+        return {
+            groupRows, contributingGroups, totalGroupWeight, finalAvg, rating100,
+            totalCriteria, totalRated, totalUnrated: totalCriteria - totalRated,
+            scoresByCriterion,
+        };
     }
 
     async function getSceneTags(sceneId) {
@@ -256,6 +313,32 @@
         triggerBtn.addEventListener('click', (e) => {
             e.preventDefault(); e.stopPropagation(); openModal(sceneId);
         });
+        annotateUnratedCount(triggerBtn, sceneId);
+    }
+
+    async function annotateUnratedCount(triggerBtn, sceneId) {
+        try {
+            const [{ groups, criteria }, sceneTags] = await Promise.all([
+                getRatingModel(),
+                getSceneTags(sceneId),
+            ]);
+            if (!triggerBtn.isConnected) return;
+            const breakdown = computeBreakdown(sceneTags, groups, criteria, 10);
+            if (breakdown.totalRated === 0 || breakdown.totalUnrated === 0) {
+                triggerBtn.title = breakdown.totalRated === 0
+                    ? "Open Advanced Scene Ratings — no criteria rated yet"
+                    : "Open Advanced Scene Ratings — all criteria rated";
+                return;
+            }
+            triggerBtn.classList.add('adv-rating-btn--incomplete');
+            triggerBtn.title = `Open Advanced Scene Ratings — ${breakdown.totalUnrated} of ${breakdown.totalCriteria} criteria still unrated`;
+            const badge = document.createElement('span');
+            badge.className = 'adv-rating-btn-badge';
+            badge.innerText = breakdown.totalUnrated;
+            triggerBtn.appendChild(badge);
+        } catch (e) {
+            console.warn("[advancedSceneRating] annotate failed", e);
+        }
     }
 
     async function openModal(sceneId) {
@@ -266,8 +349,15 @@
         const modalContent = document.createElement('div');
         modalContent.className = 'adv-rating-modal-content';
         modalContent.innerHTML = `
-            <div class="adv-rating-header"><h3>Advanced Ratings</h3><span class="adv-rating-close">&times;</span></div>
-            <div class="ratings-list">Loading...</div>
+            <div class="adv-rating-header">
+                <div>
+                    <h3>Advanced Ratings</h3>
+                    <div class="adv-rating-subhead"></div>
+                </div>
+                <span class="adv-rating-close">&times;</span>
+            </div>
+            <div class="ratings-list">Loading…</div>
+            <div class="adv-rating-breakdown"></div>
         `;
         modalOverlay.appendChild(modalContent);
         document.body.appendChild(modalOverlay);
@@ -275,69 +365,152 @@
         modalContent.querySelector('.adv-rating-close').addEventListener('click', handleClose);
         modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) handleClose(); });
 
-        const criteria = await getEnabledCriteria();
+        const { groups, criteria } = await getRatingModel();
+        const precision = (await getStashRatingInfo()).precision;
         let sceneTags = await getSceneTags(sceneId);
 
         function render() {
             const listContainer = modalContent.querySelector('.ratings-list');
+            const subhead = modalContent.querySelector('.adv-rating-subhead');
+            const breakdownEl = modalContent.querySelector('.adv-rating-breakdown');
             listContainer.innerHTML = '';
-            const currentScores = {};
-            sceneTags.forEach(tag => {
-                const match = tag.name.match(CATEGORY_PATTERN);
-                if (match) currentScores[match[1].trim()] = parseInt(match[2], 10);
-            });
-            criteria.forEach(c => {
-                const prefix = tagPrefix(c);
-                // Pre-migration scenes may still be tagged with the legacy
-                // unsuffixed name; treat it as equivalent for display purposes.
-                const legacyPrefix = c.name;
-                if (TAG_SUFFIX && currentScores[legacyPrefix.trim()] !== undefined && currentScores[prefix.trim()] === undefined) {
-                    currentScores[prefix.trim()] = currentScores[legacyPrefix.trim()];
+
+            const breakdown = computeBreakdown(sceneTags, groups, criteria, precision);
+            const currentScores = breakdown.scoresByCriterion;
+
+            subhead.innerHTML = '';
+            const summary = document.createElement('span');
+            summary.className = 'adv-rating-summary';
+            summary.innerText = `${breakdown.totalCriteria} criteria · ${breakdown.totalRated} rated`;
+            if (breakdown.totalUnrated > 0) {
+                summary.innerHTML += ` · <span class="adv-rating-unrated-pill">${breakdown.totalUnrated} unrated</span>`;
+            }
+            subhead.appendChild(summary);
+
+            groups.forEach(g => {
+                const groupCriteria = criteria.filter(c => c.group === g.id);
+                if (!groupCriteria.length) return;
+                // Single-group default → skip the header so the modal looks clean.
+                if (groups.length > 1) {
+                    const groupHeader = document.createElement('div');
+                    groupHeader.className = 'adv-rating-group-header';
+                    groupHeader.innerText = g.name;
+                    listContainer.appendChild(groupHeader);
                 }
-                const row = document.createElement('div'); row.className = 'rating-row';
-                const label = document.createElement('span'); label.className = 'rating-label';
-                const labelText = document.createElement('span'); labelText.innerText = prefix; label.appendChild(labelText);
-                const desc = c.description;
-                if (desc) {
-                    const infoIcon = document.createElement('span'); infoIcon.className = 'rating-info-icon'; infoIcon.innerHTML = 'ⓘ';
-                    const tooltip = document.createElement('div'); tooltip.className = 'rating-tooltip'; tooltip.innerText = desc;
-                    infoIcon.appendChild(tooltip); label.appendChild(infoIcon);
-                }
-                const starsDiv = document.createElement('div'); starsDiv.className = 'rating-stars-modal';
-                const score = currentScores[prefix.trim()] !== undefined ? currentScores[prefix.trim()] : null;
-                for (let i = 1; i <= 5; i++) {
-                    const star = document.createElement('span'); star.className = 'rating-star';
-                    star.innerHTML = (score !== null && i <= score) ? '★' : '☆';
-                    star.addEventListener('mouseenter', () => {
-                        starsDiv.querySelectorAll('.rating-star').forEach((s, idx) => {
-                            s.classList.toggle('hovered', idx < i);
+                groupCriteria.forEach(c => {
+                    const prefix = tagPrefix(c);
+                    const score = currentScores[c.id] !== undefined ? currentScores[c.id] : null;
+                    const row = document.createElement('div');
+                    row.className = 'rating-row' + (score === null ? ' rating-unrated' : '');
+                    const label = document.createElement('span'); label.className = 'rating-label';
+                    const labelText = document.createElement('span'); labelText.innerText = c.name; label.appendChild(labelText);
+                    if (score === null) {
+                        const pill = document.createElement('span'); pill.className = 'adv-rating-unrated-pill'; pill.innerText = 'unrated';
+                        label.appendChild(pill);
+                    }
+                    const desc = c.description;
+                    if (desc) {
+                        const infoIcon = document.createElement('span'); infoIcon.className = 'rating-info-icon'; infoIcon.innerHTML = 'ⓘ';
+                        const tooltip = document.createElement('div'); tooltip.className = 'rating-tooltip'; tooltip.innerText = desc;
+                        infoIcon.appendChild(tooltip); label.appendChild(infoIcon);
+                    }
+                    const starsDiv = document.createElement('div'); starsDiv.className = 'rating-stars-modal';
+                    for (let i = 1; i <= 5; i++) {
+                        const star = document.createElement('span'); star.className = 'rating-star';
+                        star.innerHTML = (score !== null && i <= score) ? '★' : '☆';
+                        star.addEventListener('mouseenter', () => {
+                            starsDiv.querySelectorAll('.rating-star').forEach((s, idx) => {
+                                s.classList.toggle('hovered', idx < i);
+                            });
                         });
-                    });
-                    star.addEventListener('mouseleave', () => {
-                        starsDiv.querySelectorAll('.rating-star').forEach(s => s.classList.remove('hovered'));
-                    });
-                    star.addEventListener('click', async () => {
+                        star.addEventListener('mouseleave', () => {
+                            starsDiv.querySelectorAll('.rating-star').forEach(s => s.classList.remove('hovered'));
+                        });
+                        star.addEventListener('click', async () => {
+                            listContainer.style.opacity = '0.5';
+                            if (await updateSceneTag(sceneId, sceneTags, prefix, i)) {
+                                sceneTags = await getSceneTags(sceneId); render();
+                            }
+                            listContainer.style.opacity = '1';
+                        });
+                        starsDiv.appendChild(star);
+                    }
+                    const clearBtn = document.createElement('span'); clearBtn.className = 'rating-clear'; clearBtn.innerHTML = '×';
+                    clearBtn.title = 'Remove Category Rating';
+                    clearBtn.addEventListener('click', async () => {
                         listContainer.style.opacity = '0.5';
-                        if (await updateSceneTag(sceneId, sceneTags, prefix, i)) {
+                        if (await updateSceneTag(sceneId, sceneTags, prefix, null)) {
                             sceneTags = await getSceneTags(sceneId); render();
                         }
                         listContainer.style.opacity = '1';
                     });
-                    starsDiv.appendChild(star);
-                }
-                const clearBtn = document.createElement('span'); clearBtn.className = 'rating-clear'; clearBtn.innerHTML = '×';
-                clearBtn.title = 'Remove Category Rating';
-                clearBtn.addEventListener('click', async () => {
-                    listContainer.style.opacity = '0.5';
-                    if (await updateSceneTag(sceneId, sceneTags, prefix, null)) {
-                        sceneTags = await getSceneTags(sceneId); render();
-                    }
-                    listContainer.style.opacity = '1';
+                    starsDiv.appendChild(clearBtn);
+                    row.appendChild(label); row.appendChild(starsDiv); listContainer.appendChild(row);
                 });
-                starsDiv.appendChild(clearBtn);
-                row.appendChild(label); row.appendChild(starsDiv); listContainer.appendChild(row);
             });
+
+            renderBreakdown(breakdownEl, breakdown);
         }
+
+        function renderBreakdown(container, b) {
+            container.innerHTML = '';
+            const heading = document.createElement('div');
+            heading.className = 'adv-rating-breakdown-heading';
+            heading.innerText = 'Score breakdown';
+            container.appendChild(heading);
+            if (b.totalRated === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'adv-rating-breakdown-empty';
+                empty.innerText = 'Rate at least one criterion to see the calculation.';
+                container.appendChild(empty);
+                return;
+            }
+            b.groupRows.forEach(row => {
+                if (!row.criteriaInGroup.length) return;
+                const groupBlock = document.createElement('div');
+                groupBlock.className = 'adv-rating-breakdown-group';
+                const head = document.createElement('div');
+                head.className = 'adv-rating-breakdown-group-head';
+                const name = document.createElement('span');
+                name.className = 'adv-rating-breakdown-name';
+                name.innerText = row.group.name;
+                head.appendChild(name);
+                const weightBadge = document.createElement('span');
+                weightBadge.className = 'adv-rating-breakdown-weight';
+                weightBadge.innerText = 'group weight: ' + row.group.weight;
+                head.appendChild(weightBadge);
+                groupBlock.appendChild(head);
+                if (row.rated.length === 0) {
+                    const noScore = document.createElement('div');
+                    noScore.className = 'adv-rating-breakdown-empty';
+                    noScore.innerText = 'No rated criteria in this group — skipped.';
+                    groupBlock.appendChild(noScore);
+                } else {
+                    const terms = row.rated.map(c => `${row.scoresByCriterion[c.id]}×${c.weight}`);
+                    const formula = document.createElement('div');
+                    formula.className = 'adv-rating-breakdown-formula';
+                    formula.innerHTML = `(${terms.join(' + ')}) ÷ ${row.totalWeight} = <b>${row.avg.toFixed(2)}</b>`;
+                    groupBlock.appendChild(formula);
+                    if (row.unrated.length) {
+                        const note = document.createElement('div');
+                        note.className = 'adv-rating-breakdown-note';
+                        note.innerText = `${row.unrated.length} unrated: ${row.unrated.map(c => c.name).join(', ')}`;
+                        groupBlock.appendChild(note);
+                    }
+                }
+                container.appendChild(groupBlock);
+            });
+            const finalBlock = document.createElement('div');
+            finalBlock.className = 'adv-rating-breakdown-final';
+            if (b.contributingGroups.length && b.finalAvg !== null) {
+                const finalTerms = b.contributingGroups.map(r => `${r.avg.toFixed(2)}×${r.group.weight}`);
+                finalBlock.innerHTML = `<b>Final:</b> (${finalTerms.join(' + ')}) ÷ ${b.totalGroupWeight} = <b>${b.finalAvg.toFixed(2)}</b>/5 → <b>${b.rating100}</b>/100`;
+            } else {
+                finalBlock.innerText = 'No contributing groups — rating not updated.';
+            }
+            container.appendChild(finalBlock);
+        }
+
         render();
     }
 
