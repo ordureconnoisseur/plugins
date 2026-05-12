@@ -324,14 +324,17 @@
             ]);
             if (!triggerBtn.isConnected) return;
             const breakdown = computeBreakdown(sceneTags, groups, criteria, 10);
-            if (breakdown.totalRated === 0 || breakdown.totalUnrated === 0) {
-                triggerBtn.title = breakdown.totalRated === 0
-                    ? "Open Advanced Scene Ratings — no criteria rated yet"
-                    : "Open Advanced Scene Ratings — all criteria rated";
+            if (breakdown.totalUnrated === 0) {
+                triggerBtn.title = "Open Advanced Scene Ratings — all criteria rated";
                 return;
             }
             triggerBtn.classList.add('adv-rating-btn--incomplete');
-            triggerBtn.title = `Open Advanced Scene Ratings — ${breakdown.totalUnrated} of ${breakdown.totalCriteria} criteria still unrated`;
+            if (breakdown.totalRated > 0) {
+                triggerBtn.classList.add('adv-rating-btn--partial');
+                triggerBtn.title = `Open Advanced Scene Ratings — ${breakdown.totalUnrated} of ${breakdown.totalCriteria} criteria still unrated`;
+            } else {
+                triggerBtn.title = `Open Advanced Scene Ratings — ${breakdown.totalCriteria} criteria to rate`;
+            }
             const badge = document.createElement('span');
             badge.className = 'adv-rating-btn-badge';
             badge.innerText = breakdown.totalUnrated;
