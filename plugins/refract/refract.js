@@ -1254,6 +1254,8 @@
                 safeRun(initFloatingPager);
                 safeRun(disableTableOverflowable);
                 safeRun(markFilledStars);
+                safeRun(initRefractTagEditor);
+                safeRun(enhanceDuplicateChecker);
             } finally {
                 observer.observe(document.body, { childList: true, subtree: true });
             }
@@ -2056,6 +2058,8 @@
                 nextTick(fixSceneTaggerDetails);
                 nextTick(initImageCardLightbox);
                 nextTick(unstickyGalleryToolbar);
+                nextTick(initRefractTagEditor);
+                nextTick(enhanceDuplicateChecker);
             });
         }
 
@@ -2080,6 +2084,8 @@
         initTabScrollChevrons();
         initFloatingPager();
         disableTableOverflowable();
+        initRefractTagEditor();
+        enhanceDuplicateChecker();
         watchForReinjection();
         syncRoute();
     }
@@ -2164,6 +2170,1206 @@
     /* Initial fixSceneTaggerDetails pass — subsequent passes run via the
        consolidated mutation watcher at the end of this file. */
     fixSceneTaggerDetails();
+
+    /* ── Performer Tagger: relocate batch buttons into header ──────────
+       The PerformerTagger page renders three action buttons (Batch Add,
+       Batch Update, Search All) in their own .ml-auto.mb-3 row above
+       the performer grid. We move them into the .tagger-container-header
+       so they share the row with the Source select + gear icon. */
+    function relocateTaggerBatchButtons(root) {
+        var r = root || document;
+        r.querySelectorAll(".tagger-container-header").forEach(function (header) {
+            if (header.dataset.refractBatchMoved === "1") { return; }
+            /* Find the sibling .card that contains .PerformerTagger and
+               the batch-button row. */
+            var sibling = header.nextElementSibling;
+            while (sibling && !(sibling.classList && sibling.classList.contains("card"))) {
+                sibling = sibling.nextElementSibling;
+            }
+            if (!sibling || !sibling.querySelector(":scope > .PerformerTagger")) { return; }
+            var batchRow = sibling.querySelector(":scope > .ml-auto.mb-3");
+            if (!batchRow) { return; }
+            /* Place inside the right-side flex column (which wraps the
+               gear button), before the gear, so the batch buttons and
+               gear group together on the right edge of the header. */
+            var headerRow = header.querySelector(":scope > .d-flex.justify-content-between");
+            if (!headerRow) { return; }
+            var rightCol = headerRow.lastElementChild;
+            rightCol.insertBefore(batchRow, rightCol.firstElementChild);
+            header.dataset.refractBatchMoved = "1";
+        });
+    }
+    relocateTaggerBatchButtons();
+
+    /* PerformerTagger search results — inject a close X button so the
+       user can dismiss the result overlay without picking a match.
+       The close handler HIDES via class rather than removing the
+       element, because removing a React-managed element corrupts
+       its virtual DOM tracking and breaks subsequent re-renders.
+       Clicking Search again removes the hide class so new results
+       can show through. */
+    function injectTaggerSearchClose(root) {
+        var r = root || document;
+        r.querySelectorAll(".PerformerTagger-performer-search:not([data-refract-close])").forEach(function (results) {
+            results.dataset.refractClose = "1";
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "refract-search-close";
+            btn.setAttribute("aria-label", "Close search results");
+            btn.title = "Close";
+            /* Chevron-up SVG icon */
+            btn.innerHTML =
+                '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+                'stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+                '<polyline points="18 15 12 9 6 15"/></svg>';
+            btn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                results.classList.add("refract-search-hidden");
+            });
+            results.appendChild(btn);
+        });
+    }
+    injectTaggerSearchClose();
+
+    /* Global capture-phase listener: when the user clicks the
+       "Search" button inside a PerformerTagger card, un-hide any
+       previously-dismissed search results in that same card so
+       Stash's incoming React update can render them again. */
+    document.addEventListener("click", function (e) {
+        var btn = e.target.closest && e.target.closest(".PerformerTagger-performer .PerformerTagger-details .input-group .btn-primary");
+        if (!btn) { return; }
+        var card = btn.closest(".PerformerTagger-performer");
+        if (!card) { return; }
+        card.querySelectorAll(".PerformerTagger-performer-search.refract-search-hidden")
+            .forEach(function (el) { el.classList.remove("refract-search-hidden"); });
+    }, true);
+
+    /* ── Scene Duplicate Checker: comparison-card layout ────────────
+       Stash renders /scenes/duplicate-checker as a 10-column Bootstrap
+       table that forces vertical scanning across rows to compare two
+       copies of the same scene. We hide the table (CSS, gated on the
+       route body class) and inject per-group glass panels with side-
+       by-side scene cards. The original <tr>s and their checkboxes /
+       merge / delete buttons stay live in the DOM; our custom UI fires
+       .click() on them so React state and Stash's existing Edit /
+       Delete / Merge / bulk-select flows continue to work.
+
+       React mutates the underlying inputs' `checked` *property* (not
+       the attribute) so neither a `change` event nor a MutationObserver
+       picks up state changes coming from Stash's bulk-select dropdown.
+       A 250ms poll syncs our card's visual checked state to the
+       underlying input — cheap, robust, scoped to the route. */
+
+    var refractDupSync = [];
+    /* null = pre-action default (largest-file heuristic); otherwise one of
+       'largestFile' | 'largestRes' | 'oldest' | 'youngest' | 'none'. Tracked
+       by listening for clicks on Stash's Select-Options dropdown items
+       (we read the visible label since the React state isn't exposed). */
+    var refractDupStrategy = null;
+
+    function refractParseBytes(text) {
+        var m = (text || "").match(/([\d.]+)\s*([KMGT])i?B/i);
+        if (!m) { return 0; }
+        var u = m[2].toUpperCase();
+        var mult = { K: 1024, M: 1048576, G: 1073741824, T: 1099511627776 }[u] || 1;
+        return parseFloat(m[1]) * mult;
+    }
+
+    function refractParseResolution(text) {
+        var m = (text || "").match(/(\d+)\s*x\s*(\d+)/);
+        return m ? parseInt(m[1], 10) * parseInt(m[2], 10) : 0;
+    }
+
+    function refractFormatBytes(bytes) {
+        if (!bytes) { return "0 B"; }
+        var units = ["B", "KB", "MB", "GB", "TB"];
+        var i = 0;
+        var n = bytes;
+        while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+        return (n < 10 ? n.toFixed(1) : Math.round(n).toString()) + " " + units[i];
+    }
+
+    function refractParseDupRow(tr) {
+        var cells = tr.querySelectorAll(":scope > td");
+        if (cells.length < 10) { return null; }
+        var titleLink = cells[2].querySelector("a");
+        var pathEl = cells[2].querySelector(".scene-path");
+        var actionButtons = cells[9].querySelectorAll(".edit-button");
+        var filesizeText = (cells[5].textContent || "").trim();
+        var resolutionText = (cells[6].textContent || "").trim();
+        var spriteImg = cells[1].querySelector("img");
+        return {
+            row: tr,
+            checkInput: cells[0].querySelector("input[type=checkbox]"),
+            spriteSrc: spriteImg ? spriteImg.getAttribute("src") || "" : "",
+            title: titleLink ? (titleLink.textContent || "").trim() : "",
+            href: titleLink ? titleLink.getAttribute("href") : "",
+            path: pathEl ? (pathEl.textContent || "").trim() : "",
+            duration: (cells[4].textContent || "").trim(),
+            filesize: filesizeText,
+            bytes: refractParseBytes(filesizeText),
+            resolution: resolutionText,
+            resolutionPixels: refractParseResolution(resolutionText),
+            bitrate: (cells[7].textContent || "").trim(),
+            codec: (cells[8].textContent || "").trim(),
+            deleteBtn: actionButtons[0] || null,
+            mergeBtn: actionButtons[1] || null
+        };
+    }
+
+    function refractAnalyzeDupGroup(scenes) {
+        var totalBytes = 0;
+        var largest = scenes[0];
+        var highestRes = scenes[0];
+        var codecs = {};
+        var codecCount = 0;
+        scenes.forEach(function (s) {
+            totalBytes += s.bytes || 0;
+            if ((s.bytes || 0) > (largest.bytes || 0)) { largest = s; }
+            if ((s.resolutionPixels || 0) > (highestRes.resolutionPixels || 0)) { highestRes = s; }
+            if (s.codec && !codecs[s.codec]) { codecs[s.codec] = true; codecCount++; }
+        });
+        return {
+            totalBytes: totalBytes,
+            largest: largest,
+            highestRes: highestRes,
+            codecMismatch: codecCount > 1
+        };
+    }
+
+    function refractMakeSpecPill(iconChar, text, isWinner, isWarn) {
+        var pill = document.createElement("span");
+        pill.className = "refract-dup-spec" +
+            (isWinner ? " refract-dup-spec--winner" : "") +
+            (isWarn ? " refract-dup-spec--warn" : "");
+        pill.innerHTML =
+            '<span class="refract-dup-spec__icon" aria-hidden="true">' + iconChar + '</span>' +
+            '<span class="refract-dup-spec__text">' + escapeHtml(text || "—") + '</span>';
+        return pill;
+    }
+
+    function refractBuildDupCard(scene, stats) {
+        var isLargest = scene === stats.largest;
+        var isHighestRes = scene === stats.highestRes;
+
+        var card = document.createElement("div");
+        card.className = "refract-dup-card";
+        /* Stash refs so refractApplyDupSuggestions() can recompute the
+           chip + suggested class whenever the user picks a different
+           strategy from Stash's Select Options dropdown. */
+        card._refractScene = scene;
+        card._refractStats = stats;
+
+        var spriteLink = document.createElement("a");
+        spriteLink.className = "refract-dup-card__sprite";
+        spriteLink.href = scene.href || "#";
+        spriteLink.target = "_blank";
+        spriteLink.rel = "noopener";
+        var img = document.createElement("img");
+        img.src = scene.spriteSrc || "";
+        img.alt = "";
+        img.loading = "lazy";
+        spriteLink.appendChild(img);
+        /* Pure-CSS hover preview — sibling <span> with a 2x sprite that
+           fades in on :hover. Avoids touching Stash's React HoverPopover
+           (moving React-managed nodes corrupts virtual DOM tracking). */
+        var pop = document.createElement("span");
+        pop.className = "refract-dup-card__sprite-pop";
+        pop.innerHTML = '<img src="' + escapeHtml(scene.spriteSrc || "") + '" alt="" loading="lazy">';
+        spriteLink.appendChild(pop);
+        card.appendChild(spriteLink);
+
+        var meta = document.createElement("div");
+        meta.className = "refract-dup-card__meta";
+        var titleA = document.createElement("a");
+        titleA.className = "refract-dup-card__title";
+        titleA.href = scene.href || "#";
+        titleA.target = "_blank";
+        titleA.rel = "noopener";
+        titleA.textContent = scene.title || "(untitled)";
+        titleA.title = scene.title || "";
+        meta.appendChild(titleA);
+        var pathDiv = document.createElement("div");
+        pathDiv.className = "refract-dup-card__path";
+        pathDiv.textContent = scene.path || "";
+        pathDiv.title = scene.path || "";
+        meta.appendChild(pathDiv);
+        card.appendChild(meta);
+
+        var specs = document.createElement("div");
+        specs.className = "refract-dup-card__specs";
+        specs.appendChild(refractMakeSpecPill("⏱", scene.duration, false, false));
+        specs.appendChild(refractMakeSpecPill("⛁", scene.filesize, isLargest, false));
+        specs.appendChild(refractMakeSpecPill("⊞", scene.resolution, isHighestRes, false));
+        specs.appendChild(refractMakeSpecPill("⇡", scene.bitrate, false, false));
+        specs.appendChild(refractMakeSpecPill("◊", scene.codec, false, stats.codecMismatch));
+        card.appendChild(specs);
+
+        var actions = document.createElement("div");
+        actions.className = "refract-dup-card__actions";
+
+        var checkLabel = document.createElement("label");
+        checkLabel.className = "refract-dup-card__check";
+        var cardInput = document.createElement("input");
+        cardInput.type = "checkbox";
+        if (scene.checkInput) { cardInput.checked = scene.checkInput.checked; }
+        checkLabel.appendChild(cardInput);
+        var checkText = document.createElement("span");
+        checkText.textContent = "Mark to delete";
+        checkLabel.appendChild(checkText);
+        cardInput.addEventListener("change", function () {
+            if (scene.checkInput && scene.checkInput.checked !== cardInput.checked) {
+                scene.checkInput.click();
+            }
+            card.classList.toggle("refract-dup-card--checked", cardInput.checked);
+        });
+        if (scene.checkInput && scene.checkInput.checked) {
+            card.classList.add("refract-dup-card--checked");
+        }
+        refractDupSync.push({ input: scene.checkInput, card: card, cardInput: cardInput });
+        actions.appendChild(checkLabel);
+
+        var mergeBtn = document.createElement("button");
+        mergeBtn.type = "button";
+        mergeBtn.className = "refract-dup-card__merge";
+        mergeBtn.textContent = "Merge";
+        if (scene.mergeBtn) {
+            mergeBtn.addEventListener("click", function () { scene.mergeBtn.click(); });
+        } else {
+            mergeBtn.disabled = true;
+        }
+        actions.appendChild(mergeBtn);
+
+        var deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "refract-dup-card__delete";
+        deleteBtn.textContent = "Delete";
+        if (scene.deleteBtn) {
+            deleteBtn.addEventListener("click", function () { scene.deleteBtn.click(); });
+        } else {
+            deleteBtn.disabled = true;
+        }
+        actions.appendChild(deleteBtn);
+
+        card.appendChild(actions);
+        return card;
+    }
+
+    function refractBuildDupPanel(group, groupIndex) {
+        var scenes = group.map(refractParseDupRow).filter(Boolean);
+        if (!scenes.length) { return null; }
+        var stats = refractAnalyzeDupGroup(scenes);
+
+        var panel = document.createElement("div");
+        panel.className = "refract-dup-panel";
+
+        var header = document.createElement("div");
+        header.className = "refract-dup-panel__header";
+        var reclaim = stats.totalBytes - (stats.largest.bytes || 0);
+        var headerHTML =
+            '<span class="refract-dup-panel__num">Group ' + (groupIndex + 1) + '</span>' +
+            '<span class="refract-dup-panel__count">' + scenes.length + ' scenes</span>' +
+            '<span class="refract-dup-panel__size">' + escapeHtml(refractFormatBytes(stats.totalBytes)) + ' total</span>';
+        if (reclaim > 0) {
+            headerHTML += '<span class="refract-dup-panel__reclaim">Delete suggested → reclaim ' + escapeHtml(refractFormatBytes(reclaim)) + '</span>';
+        }
+        if (stats.codecMismatch) {
+            headerHTML += '<span class="refract-dup-panel__warn">⚠ codec mismatch</span>';
+        }
+        header.innerHTML = headerHTML;
+        panel.appendChild(header);
+
+        var grid = document.createElement("div");
+        grid.className = "refract-dup-panel__grid";
+        scenes.forEach(function (s) {
+            var c = refractBuildDupCard(s, stats);
+            if (c) { grid.appendChild(c); }
+        });
+        panel.appendChild(grid);
+
+        return panel;
+    }
+
+    function refractStartDupSyncTimer() {
+        if (window.__refractDupSyncTimer) { return; }
+        window.__refractDupSyncTimer = setInterval(function () {
+            if (!document.body || !document.body.classList.contains("stash-route-sceneduplicatechecker")) {
+                clearInterval(window.__refractDupSyncTimer);
+                window.__refractDupSyncTimer = null;
+                refractDupSync.length = 0;
+                return;
+            }
+            var anyChanged = false;
+            for (var i = refractDupSync.length - 1; i >= 0; i--) {
+                var e = refractDupSync[i];
+                if (!e.card || !e.input || !document.contains(e.card) || !document.contains(e.input)) {
+                    refractDupSync.splice(i, 1);
+                    continue;
+                }
+                var nowChecked = !!e.input.checked;
+                if (e.cardInput.checked !== nowChecked) {
+                    e.cardInput.checked = nowChecked;
+                }
+                if (e.card.classList.contains("refract-dup-card--checked") !== nowChecked) {
+                    e.card.classList.toggle("refract-dup-card--checked", nowChecked);
+                    anyChanged = true;
+                }
+            }
+            /* When checked-state changes from outside (e.g. Stash's bulk
+               Select Options dropdown), and the active strategy is oldest /
+               youngest (which we can't compute from the DOM), recompute
+               chip placement from the new checked set. */
+            if (anyChanged && (refractDupStrategy === "oldest" || refractDupStrategy === "youngest")) {
+                refractApplyDupSuggestions();
+            }
+        }, 250);
+    }
+
+    function refractApplyDupSuggestions() {
+        var suggestedCount = 0;
+        document.querySelectorAll(".refract-dup-card").forEach(function (card) {
+            var scene = card._refractScene;
+            var stats = card._refractStats;
+            if (!scene || !stats) { return; }
+
+            var isLargest = scene === stats.largest;
+            var isHighestRes = scene === stats.highestRes;
+            var isChecked = !!(scene.checkInput && scene.checkInput.checked);
+
+            var suggested = false;
+            var chipText = "Suggested";
+
+            switch (refractDupStrategy) {
+                case "none":
+                    suggested = false;
+                    break;
+                case "largestRes":
+                    suggested = !isHighestRes;
+                    chipText = "Suggested · lower res";
+                    break;
+                case "oldest":
+                    /* mod_time isn't rendered in the table — we can't compute
+                       it ourselves. Mirror whatever Stash just checked. */
+                    suggested = isChecked;
+                    chipText = "Suggested · oldest";
+                    break;
+                case "youngest":
+                    suggested = isChecked;
+                    chipText = "Suggested · youngest";
+                    break;
+                case "largestFile":
+                default: /* null — pre-action default heuristic */
+                    suggested = !isLargest;
+                    chipText = "Suggested · smaller file";
+                    break;
+            }
+
+            card.classList.toggle("refract-dup-card--suggested", suggested);
+            if (suggested) { suggestedCount++; }
+
+            var chip = card.querySelector(":scope > .refract-dup-card__sprite > .refract-dup-card__chip");
+            if (suggested) {
+                if (!chip) {
+                    chip = document.createElement("span");
+                    chip.className = "refract-dup-card__chip";
+                    var sprite = card.querySelector(".refract-dup-card__sprite");
+                    if (sprite) { sprite.appendChild(chip); }
+                }
+                if (chip && chip.textContent !== chipText) { chip.textContent = chipText; }
+            } else if (chip && chip.parentNode) {
+                chip.parentNode.removeChild(chip);
+            }
+        });
+
+        /* Make sure the action pill exists next to the dropdown, then
+           sync its label + disabled state. */
+        var btn = refractEnsureDupToolbarButton();
+        var countEl = document.querySelector("[data-refract-suggested-count]");
+        if (countEl) { countEl.textContent = String(suggestedCount); }
+        if (btn) {
+            btn.disabled = suggestedCount === 0;
+            btn.classList.toggle("refract-dup-toolbar-select--empty", suggestedCount === 0);
+        }
+
+        /* Rewrite Stash's "Select Options…" toggle to show just the
+           current strategy. React may re-render and reset this text;
+           the next applyDupSuggestions / enhance cycle fixes it. */
+        var label;
+        switch (refractDupStrategy) {
+            case "largestRes": label = "Lower res"; break;
+            case "oldest": label = "Oldest"; break;
+            case "youngest": label = "Youngest"; break;
+            case "none": label = "None"; break;
+            case "largestFile":
+            default: label = "Smaller file"; break;
+        }
+        var toggle = document.querySelector("#scene-duplicate-checker .dropdown-toggle, .duplicate-checker .dropdown-toggle");
+        if (toggle && toggle.textContent.trim() !== label) {
+            toggle.textContent = label;
+        }
+    }
+
+    /* Intercept Stash's Select Options dropdown so the strategies repurpose
+       as a *filter for the Suggested chip* instead of immediately checking
+       boxes. "Select None" is allowed through (it still clears checked
+       state natively, which is what users expect). For the four positive
+       strategies we stopImmediatePropagation so React's onClick handler
+       never sees the event — the boxes don't auto-check. A separate
+       "Select N suggested" button in the summary lets the user commit
+       the recommendation when they're ready. */
+    document.addEventListener("click", function (e) {
+        if (!document.body || !document.body.classList.contains("stash-route-sceneduplicatechecker")) { return; }
+        var item = e.target.closest && e.target.closest(".duplicate-checker .dropdown-item, #scene-duplicate-checker .dropdown-item");
+        if (!item) { return; }
+        var t = (item.textContent || "").toLowerCase();
+
+        if (t.indexOf("none") >= 0) {
+            /* Allow native behavior: Stash will uncheck everything; our
+               poll will sync card --checked states; strategy → none. */
+            refractDupStrategy = "none";
+            setTimeout(refractApplyDupSuggestions, 50);
+            return;
+        }
+
+        if (t.indexOf("resolution") >= 0) { refractDupStrategy = "largestRes"; }
+        else if (t.indexOf("largest") >= 0) { refractDupStrategy = "largestFile"; }
+        else if (t.indexOf("oldest") >= 0) { refractDupStrategy = "oldest"; }
+        else if (t.indexOf("youngest") >= 0) { refractDupStrategy = "youngest"; }
+        else { return; /* unknown dropdown item */ }
+
+        /* For oldest/youngest we still need the boxes to be checked
+           (we can't compute file age from the DOM). Native behavior is
+           cheaper than a separate query, so let it through but mark
+           strategy. For largestFile/largestRes we can compute ourselves,
+           so block native and just update chips. */
+        if (refractDupStrategy === "oldest" || refractDupStrategy === "youngest") {
+            /* Let native fire — sync poll will reflect checked state and
+               trigger refractApplyDupSuggestions to flag the right cards. */
+            setTimeout(refractApplyDupSuggestions, 50);
+            return;
+        }
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        /* Close the open dropdown menu manually since we ate the click that
+           Bootstrap would have used to dismiss it. Re-toggling the button
+           is the safe path (React-managed state). */
+        var toggleBtn = item.closest(".dropdown") && item.closest(".dropdown").querySelector(".dropdown-toggle");
+        if (toggleBtn) { setTimeout(function () { toggleBtn.click(); }, 0); }
+
+        refractApplyDupSuggestions();
+    }, true);
+
+    /* Walks every currently-suggested card and clicks its hidden Stash
+       checkbox to commit the recommendation (Stash's React state updates,
+       global delete button then operates on the lot). */
+    function refractDupCommitSuggested() {
+        document.querySelectorAll(".refract-dup-card--suggested").forEach(function (card) {
+            var scene = card._refractScene;
+            if (scene && scene.checkInput && !scene.checkInput.checked) {
+                scene.checkInput.click();
+            }
+        });
+    }
+
+    /* Inject our "Select N" action pill next to Stash's now-relabeled
+       dropdown toggle. React may strip extra children when it re-renders
+       this region; the function is idempotent and is called on every
+       enhanceDuplicateChecker + applyDupSuggestions cycle. */
+    function refractEnsureDupToolbarButton() {
+        if (!document.body || !document.body.classList.contains("stash-route-sceneduplicatechecker")) { return null; }
+        var dropdown = document.querySelector("#scene-duplicate-checker .dropdown, .duplicate-checker .dropdown");
+        if (!dropdown) { return null; }
+        var host = dropdown.parentNode;
+        if (!host) { return null; }
+        var existing = host.querySelector(":scope > .refract-dup-toolbar-select");
+        if (existing) { return existing; }
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "refract-dup-toolbar-select";
+        btn.innerHTML = 'Select <b data-refract-suggested-count>0</b>';
+        btn.addEventListener("click", function (e) {
+            e.preventDefault();
+            refractDupCommitSuggested();
+        });
+        /* Place immediately after the dropdown so they read as a pair. */
+        if (dropdown.nextSibling) {
+            host.insertBefore(btn, dropdown.nextSibling);
+        } else {
+            host.appendChild(btn);
+        }
+        return btn;
+    }
+
+    function enhanceDuplicateChecker() {
+        if (!document.body || !document.body.classList.contains("stash-route-sceneduplicatechecker")) {
+            return;
+        }
+        var card = document.querySelector("#scene-duplicate-checker");
+        if (!card) { return; }
+        /* Operate on the inner <div class="duplicate-checker"> — the outer
+           Card's className is rewritten by React on every re-render, which
+           would strip a class flag here. The inner div's className is set
+           statically once by the React component, so we can stash our
+           enhanced marker as a data-attribute on it (React doesn't touch
+           data-* attributes it doesn't own). */
+        var dc = card.querySelector(".duplicate-checker") || card;
+        var table = dc.querySelector(".duplicate-checker-table");
+        if (!table) { return; }
+        var tbody = table.tBodies && table.tBodies[0];
+        if (!tbody) { return; }
+
+        /* Label both pagination rows so CSS can hide the top one and
+           pin the bottom one to the viewport. Data attribute survives
+           React re-renders. Idempotent — safe to call on every cycle. */
+        var pagers = dc.querySelectorAll(":scope > .d-flex.mt-2.mb-2");
+        pagers.forEach(function (p, i) {
+            p.setAttribute("data-refract-pager", i === pagers.length - 1 ? "bottom" : "top");
+        });
+
+        /* Trim Stash's verbose "N sets of duplicates found." h6 down to
+           "N duplicates". React may re-render and reset this; the next
+           mutation cycle calls back here and fixes it. */
+        var pagerH6 = document.querySelector('[data-refract-pager="bottom"] > h6');
+        if (pagerH6) {
+            var numMatch = (pagerH6.textContent || "").match(/[\d,]+/);
+            if (numMatch) {
+                var want = '<b>' + numMatch[0] + '</b> duplicates';
+                if (pagerH6.innerHTML.trim() !== want) {
+                    pagerH6.innerHTML = want;
+                }
+            }
+        }
+
+        /* Signature: row count + first row's title href. Cheap fingerprint
+           for "did the dataset change?". Skips rebuild when React updates
+           something orthogonal (e.g. a checked toggle that doesn't move rows). */
+        var firstA = tbody.querySelector("tr a[href]");
+        var sig = tbody.querySelectorAll(":scope > tr").length + ":" + (firstA ? firstA.getAttribute("href") : "");
+        if (tbody.dataset.refractDupSig === sig) { return; }
+        tbody.dataset.refractDupSig = sig;
+        refractDupSync.length = 0;
+
+        var groups = [];
+        var current = null;
+        tbody.querySelectorAll(":scope > tr").forEach(function (tr) {
+            if (tr.classList.contains("separator")) {
+                current = null;
+                return;
+            }
+            if (tr.classList.contains("duplicate-group") || !current) {
+                current = [];
+                groups.push(current);
+            }
+            current.push(tr);
+        });
+
+        var prior = dc.querySelector(":scope > .refract-dup-panels");
+        if (prior) { prior.parentNode.removeChild(prior); }
+
+        var panels = document.createElement("div");
+        panels.className = "refract-dup-panels";
+
+        if (!groups.length) {
+            var empty = document.createElement("div");
+            empty.className = "refract-dup-empty";
+            empty.innerHTML =
+                '<div class="refract-dup-empty__icon" aria-hidden="true">✓</div>' +
+                '<div class="refract-dup-empty__title">No duplicates found</div>' +
+                '<div class="refract-dup-empty__hint">Try lowering search accuracy below Exact, or run the phash generation task on more scenes.</div>';
+            panels.appendChild(empty);
+        } else {
+            var totalBytes = 0;
+            var reclaimable = 0;
+            groups.forEach(function (g) {
+                var ss = g.map(refractParseDupRow).filter(Boolean);
+                if (!ss.length) { return; }
+                var st = refractAnalyzeDupGroup(ss);
+                totalBytes += st.totalBytes;
+                reclaimable += st.totalBytes - (st.largest.bytes || 0);
+            });
+            var summary = document.createElement("div");
+            summary.className = "refract-dup-summary";
+            summary.innerHTML =
+                '<span class="refract-dup-summary__stat"><b>' + groups.length + '</b> sets</span>' +
+                '<span class="refract-dup-summary__stat"><b>' + escapeHtml(refractFormatBytes(totalBytes)) + '</b> across duplicates</span>' +
+                '<span class="refract-dup-summary__reclaim">Reclaim up to <b>' + escapeHtml(refractFormatBytes(reclaimable)) + '</b> by deleting suggested</span>';
+            panels.appendChild(summary);
+
+            groups.forEach(function (g, gi) {
+                var p = refractBuildDupPanel(g, gi);
+                if (p) { panels.appendChild(p); }
+            });
+        }
+
+        /* Insert panels right before the table (or its .table-responsive
+           wrapper, which Bootstrap adds at narrow widths) so they take
+           the table's visual slot. CSS then hides the original. */
+        var tableSlot = table.closest(".table-responsive") || table;
+        if (tableSlot.parentNode) {
+            tableSlot.parentNode.insertBefore(panels, tableSlot);
+        } else {
+            dc.appendChild(panels);
+        }
+        dc.setAttribute("data-refract-dup-enhanced", "1");
+        refractApplyDupSuggestions();
+        refractStartDupSyncTimer();
+    }
+
+    /* ── Performer Edit Tags Tab — native hierarchical taxonomy editor ────
+       Injects an "Edit Tags" tab into #performer-tabs. When clicked, hides
+       the native .tab-content via a body class and renders our own pane:
+         • GraphQL fetch of the full tag taxonomy + this performer's tags
+         • Hierarchy: top-level tags with children → Group;
+           their children that themselves have children → Subgroup;
+           remaining leaf tags → toggleable buttons
+         • Leaves without an intermediate subgroup are grouped under
+           a "General" pseudo-section. Tags with no parents and no
+           children fall under an "Ungrouped" trailing section.
+         • Click a leaf to toggle on/off. aria-pressed drives the
+           selected style. Group/subgroup chevrons collapse sections.
+         • Search filter — auto-expands groups containing matches.
+         • Save → performerUpdate mutation; Discard reverts to
+           original. No plugin dependency. */
+
+    var refractTagEditorState = {
+        performerId: null,
+        loaded: false,
+        loading: false,
+        saving: false,
+        searchQuery: "",
+        originalTagIds: [],
+        selectedTagIds: new Set(),
+        allTags: [],
+        tagsById: new Map(),
+        rootGroups: [],
+        openGroups: new Set(),
+        openSubgroups: new Set(),
+        focusSearch: false,
+    };
+
+    function refractGetPerformerId() {
+        var m = (window.location.pathname || "").match(/^\/performers\/(\d+)(?:\/|$|\?|#)/);
+        return m ? m[1] : null;
+    }
+
+    function refractIsTagEditorActive() {
+        return document.body.classList.contains("refract-tag-editor-active");
+    }
+
+    function refractFindPerformerTabsNav() {
+        var wrap = document.querySelector(".performer-tabs");
+        if (!wrap) return null;
+        return wrap.querySelector(":scope > nav.nav-tabs, :scope nav.nav-tabs[role='tablist']");
+    }
+
+    function refractActivateTagEditor() {
+        document.body.classList.add("refract-tag-editor-active");
+        var nav = refractFindPerformerTabsNav();
+        if (nav) {
+            nav.querySelectorAll(".nav-link").forEach(function (a) {
+                a.classList.toggle("active", a.classList.contains("refract-tag-editor-tab"));
+                if (!a.classList.contains("refract-tag-editor-tab")) {
+                    a.setAttribute("aria-selected", "false");
+                }
+            });
+            var ours = nav.querySelector(".refract-tag-editor-tab");
+            if (ours) { ours.setAttribute("aria-selected", "true"); }
+        }
+        var pid = refractGetPerformerId();
+        if (pid) { refractLoadTagEditorData(pid); }
+        refractRenderTagEditor();
+    }
+
+    function refractDeactivateTagEditor() {
+        if (!document.body.classList.contains("refract-tag-editor-active")) return;
+        document.body.classList.remove("refract-tag-editor-active");
+        var nav = refractFindPerformerTabsNav();
+        if (nav) {
+            var ours = nav.querySelector(".refract-tag-editor-tab");
+            if (ours) {
+                ours.classList.remove("active");
+                ours.setAttribute("aria-selected", "false");
+            }
+        }
+    }
+
+    function initRefractTagEditor() {
+        var pid = refractGetPerformerId();
+        if (!pid) {
+            refractDeactivateTagEditor();
+            return;
+        }
+        var nav = refractFindPerformerTabsNav();
+        if (!nav) return;
+        var wrap = nav.closest(".performer-tabs");
+        if (!wrap) return;
+
+        /* Reset state when navigating to a different performer. */
+        if (refractTagEditorState.performerId !== pid) {
+            refractTagEditorState.performerId = pid;
+            refractTagEditorState.loaded = false;
+            refractTagEditorState.selectedTagIds = new Set();
+            refractTagEditorState.originalTagIds = [];
+            refractTagEditorState.searchQuery = "";
+            refractTagEditorState.openGroups = new Set();
+            refractTagEditorState.openSubgroups = new Set();
+        }
+
+        if (!nav.querySelector(".refract-tag-editor-tab")) {
+            var a = document.createElement("a");
+            a.className = "nav-item nav-link refract-tag-editor-tab";
+            a.setAttribute("role", "tab");
+            a.setAttribute("href", "#");
+            a.setAttribute("aria-selected", refractIsTagEditorActive() ? "true" : "false");
+            if (refractIsTagEditorActive()) { a.classList.add("active"); }
+            a.textContent = "Edit Tags";
+            nav.appendChild(a);
+            a.addEventListener("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                refractActivateTagEditor();
+            });
+        } else if (refractIsTagEditorActive()) {
+            var existing = nav.querySelector(".refract-tag-editor-tab");
+            if (existing && !existing.classList.contains("active")) {
+                existing.classList.add("active");
+                existing.setAttribute("aria-selected", "true");
+            }
+        }
+
+        /* Inject the pane INSIDE .tab-content (where the React-managed
+           .tab-pane siblings live) so the editor inherits the column
+           width and grid positioning of the rest of the performer tabs.
+           Appending to .performer-tabs directly landed the pane in a
+           different grid cell. */
+        var tabContent = wrap.querySelector(":scope > .tab-content")
+            || wrap.querySelector(".tab-content");
+        if (!tabContent) return;
+        var pane = tabContent.querySelector(":scope > .refract-tag-editor-pane");
+        if (!pane) {
+            pane = document.createElement("div");
+            pane.className = "refract-tag-editor-pane tab-pane";
+            pane.setAttribute("role", "tabpanel");
+            pane.innerHTML = '<div class="refract-tag-editor"></div>';
+            tabContent.appendChild(pane);
+            refractWireTagEditorEvents(pane);
+            if (refractIsTagEditorActive()) { refractRenderTagEditor(); }
+        }
+    }
+
+    function refractWireTagEditorEvents(pane) {
+        pane.addEventListener("input", function (e) {
+            var t = e.target;
+            if (t && t.classList && t.classList.contains("refract-tag-editor__search-input")) {
+                refractTagEditorState.searchQuery = t.value;
+                refractTagEditorState.focusSearch = true;
+                refractRenderTagEditor();
+            }
+        });
+        pane.addEventListener("click", function (e) {
+            /* Tag button toggle */
+            var tagBtn = e.target.closest(".refract-tag-editor__tag");
+            if (tagBtn) {
+                var id = tagBtn.getAttribute("data-tag-id");
+                if (id) {
+                    var s = refractTagEditorState.selectedTagIds;
+                    if (s.has(id)) { s.delete(id); } else { s.add(id); }
+                    refractRenderTagEditor();
+                }
+                return;
+            }
+            /* Subgroup header click — anywhere on the header toggles
+               the section (excluding the static "General"/"Tags"
+               root pseudo-headers). */
+            var sgHeader = e.target.closest(".refract-tag-editor__subgroup-header");
+            if (sgHeader && !sgHeader.classList.contains("refract-tag-editor__subgroup-header--static")) {
+                var sgSection = sgHeader.closest(".refract-tag-editor__subgroup");
+                var sgId = sgSection && sgSection.getAttribute("data-subgroup-id");
+                if (sgId) {
+                    var os = refractTagEditorState.openSubgroups;
+                    if (os.has(sgId)) { os.delete(sgId); } else { os.add(sgId); }
+                    refractRenderTagEditor();
+                }
+                return;
+            }
+            /* Group header click — anywhere on the header toggles. */
+            var gHeader = e.target.closest(".refract-tag-editor__group-header");
+            if (gHeader) {
+                var gSection = gHeader.closest(".refract-tag-editor__group");
+                var gId = gSection && gSection.getAttribute("data-group-id");
+                if (gId) {
+                    var og = refractTagEditorState.openGroups;
+                    if (og.has(gId)) { og.delete(gId); } else { og.add(gId); }
+                    refractRenderTagEditor();
+                }
+                return;
+            }
+            /* Save / Discard */
+            if (e.target.closest(".refract-tag-editor__save")) {
+                refractSaveTagEditor();
+                return;
+            }
+            if (e.target.closest(".refract-tag-editor__discard")) {
+                refractTagEditorState.selectedTagIds = new Set(
+                    refractTagEditorState.originalTagIds.map(String)
+                );
+                refractRenderTagEditor();
+                return;
+            }
+        });
+    }
+
+    function refractLoadTagEditorData(pid) {
+        if (refractTagEditorState.loaded || refractTagEditorState.loading) return;
+        refractTagEditorState.loading = true;
+        refractRenderTagEditor();
+        var perfQ =
+            'query FindPerformerForTagEditor($id: ID!) {' +
+            '  findPerformer(id: $id) { id tags { id name } }' +
+            '}';
+        var tagsQ =
+            'query FindAllTagsForTagEditor {' +
+            '  findTags(filter: { per_page: -1, sort: "name", direction: ASC }) {' +
+            '    tags { id name sort_name parents { id name } children { id } }' +
+            '  }' +
+            '}';
+        Promise.all([
+            gqlWithVars(perfQ, { id: pid }),
+            gql(tagsQ),
+        ]).then(function (results) {
+            var pdata = results[0] && results[0].data && results[0].data.findPerformer;
+            var tdata = results[1] && results[1].data && results[1].data.findTags;
+            if (!pdata || !tdata) throw new Error("Bad GraphQL response");
+            var ids = (pdata.tags || []).map(function (t) { return String(t.id); });
+            refractTagEditorState.originalTagIds = ids.slice();
+            refractTagEditorState.selectedTagIds = new Set(ids);
+            refractTagEditorState.allTags = (tdata.tags || []).map(function (t) {
+                return {
+                    id: String(t.id),
+                    name: t.name || "",
+                    sort_name: t.sort_name || t.name || "",
+                    parents: (t.parents || []).map(function (p) {
+                        return { id: String(p.id), name: p.name || "" };
+                    }),
+                    childrenIds: (t.children || []).map(function (c) { return String(c.id); }),
+                };
+            });
+            refractTagEditorState.tagsById = new Map(
+                refractTagEditorState.allTags.map(function (t) { return [t.id, t]; })
+            );
+            refractBuildTagHierarchy();
+            refractTagEditorState.loaded = true;
+            refractTagEditorState.loading = false;
+            refractRenderTagEditor();
+        }).catch(function () {
+            refractTagEditorState.loading = false;
+            refractRenderTagEditor();
+        });
+    }
+
+    function refractBuildTagHierarchy() {
+        var s = refractTagEditorState;
+        var byId = s.tagsById;
+        var rootGroups = [];
+        var ungrouped = [];
+
+        /* Reverse-map: parent_id -> [child tag ids] from each tag's parents[] */
+        var childrenByParent = new Map();
+        s.allTags.forEach(function (t) {
+            t.parents.forEach(function (p) {
+                if (!childrenByParent.has(p.id)) childrenByParent.set(p.id, []);
+                childrenByParent.get(p.id).push(t.id);
+            });
+        });
+
+        s.allTags.forEach(function (t) {
+            if (t.parents.length !== 0) return;
+            var childIds = childrenByParent.get(t.id) || [];
+            if (childIds.length === 0) {
+                ungrouped.push(t);
+                return;
+            }
+            var subgroups = [];
+            var generalLeaves = [];
+            childIds.forEach(function (cid) {
+                var c = byId.get(cid);
+                if (!c) return;
+                var subChildIds = childrenByParent.get(c.id) || [];
+                if (subChildIds.length > 0) {
+                    var leaves = subChildIds
+                        .map(function (lid) { return byId.get(lid); })
+                        .filter(Boolean)
+                        .sort(function (a, b) { return a.sort_name.localeCompare(b.sort_name); });
+                    subgroups.push({
+                        id: c.id,
+                        name: c.name,
+                        sort_name: c.sort_name,
+                        leaves: leaves,
+                    });
+                } else {
+                    generalLeaves.push(c);
+                }
+            });
+            subgroups.sort(function (a, b) { return a.sort_name.localeCompare(b.sort_name); });
+            if (generalLeaves.length > 0) {
+                generalLeaves.sort(function (a, b) { return a.sort_name.localeCompare(b.sort_name); });
+                subgroups.unshift({
+                    id: null,
+                    name: "General",
+                    sort_name: "",
+                    isRoot: true,
+                    leaves: generalLeaves,
+                });
+            }
+            rootGroups.push({
+                id: t.id,
+                name: t.name,
+                sort_name: t.sort_name,
+                subgroups: subgroups,
+            });
+        });
+
+        rootGroups.sort(function (a, b) { return a.sort_name.localeCompare(b.sort_name); });
+
+        if (ungrouped.length > 0) {
+            ungrouped.sort(function (a, b) { return a.sort_name.localeCompare(b.sort_name); });
+            rootGroups.push({
+                id: "__ungrouped__",
+                name: "Ungrouped",
+                sort_name: "￿",
+                subgroups: [{
+                    id: null,
+                    name: "Tags",
+                    isRoot: true,
+                    leaves: ungrouped,
+                }],
+            });
+        }
+
+        s.rootGroups = rootGroups;
+    }
+
+    function refractSaveTagEditor() {
+        var pid = refractTagEditorState.performerId;
+        if (!pid || refractTagEditorState.saving) return;
+        refractTagEditorState.saving = true;
+        refractRenderTagEditor();
+        var mut =
+            'mutation UpdatePerformerTags($input: PerformerUpdateInput!) {' +
+            '  performerUpdate(input: $input) { id tags { id } }' +
+            '}';
+        gqlWithVars(mut, {
+            input: { id: pid, tag_ids: Array.from(refractTagEditorState.selectedTagIds) }
+        }).then(function (res) {
+            if (res && res.errors && res.errors.length) {
+                throw new Error(res.errors[0].message);
+            }
+            refractTagEditorState.originalTagIds = Array.from(refractTagEditorState.selectedTagIds);
+            refractTagEditorState.saving = false;
+            refractRenderTagEditor();
+        }).catch(function () {
+            refractTagEditorState.saving = false;
+            refractRenderTagEditor();
+        });
+    }
+
+    function refractIsTagEditorDirty() {
+        var orig = refractTagEditorState.originalTagIds.map(String).sort().join(",");
+        var sel = Array.from(refractTagEditorState.selectedTagIds).map(String).sort().join(",");
+        return orig !== sel;
+    }
+
+    function refractCountSelectedInSubgroup(sub) {
+        var sel = refractTagEditorState.selectedTagIds;
+        var n = 0;
+        for (var i = 0; i < sub.leaves.length; i++) {
+            if (sel.has(sub.leaves[i].id)) n++;
+        }
+        return n;
+    }
+
+    function refractCountSelectedInGroup(group) {
+        var n = 0;
+        for (var i = 0; i < group.subgroups.length; i++) {
+            n += refractCountSelectedInSubgroup(group.subgroups[i]);
+        }
+        return n;
+    }
+
+    function refractRenderTagEditor() {
+        var root = document.querySelector(".refract-tag-editor-pane .refract-tag-editor");
+        if (!root) return;
+        var s = refractTagEditorState;
+
+        if (s.loading && !s.loaded) {
+            root.innerHTML = '<div class="refract-tag-editor__status">Loading tag library…</div>';
+            return;
+        }
+        if (!s.loaded && !s.loading) {
+            root.innerHTML = '<div class="refract-tag-editor__status">Select the tab to load tags.</div>';
+            return;
+        }
+
+        var dirty = refractIsTagEditorDirty();
+        var q = (s.searchQuery || "").trim().toLowerCase();
+        var totalSelected = s.selectedTagIds.size;
+
+        function leafMatches(t) { return !q || t.name.toLowerCase().indexOf(q) !== -1; }
+
+        var groupsHtml = s.rootGroups.map(function (group) {
+            var subgroupsHtml = group.subgroups.map(function (sub) {
+                var visibleLeaves = sub.leaves.filter(leafMatches);
+                if (q && visibleLeaves.length === 0) return null;
+                var subgroupOpen = sub.isRoot || !!q || (sub.id && s.openSubgroups.has(sub.id));
+                var subSelected = refractCountSelectedInSubgroup(sub);
+                var leavesHtml = visibleLeaves.map(function (t) {
+                    var sel = s.selectedTagIds.has(t.id);
+                    return '<button type="button" class="refract-tag-editor__tag' +
+                        (sel ? ' is-selected' : '') + '" ' +
+                        'data-tag-id="' + escapeHtml(t.id) + '" ' +
+                        'aria-pressed="' + (sel ? 'true' : 'false') + '" ' +
+                        'title="' + escapeHtml(t.name) + '">' +
+                        '<span class="refract-tag-editor__tag-label">' + escapeHtml(t.name) + '</span>' +
+                        '</button>';
+                }).join("");
+                var headerHtml;
+                if (sub.isRoot) {
+                    headerHtml =
+                        '<div class="refract-tag-editor__subgroup-header refract-tag-editor__subgroup-header--static">' +
+                            '<span class="refract-tag-editor__subgroup-title">' + escapeHtml(sub.name) + '</span>' +
+                        '</div>';
+                } else {
+                    headerHtml =
+                        '<div class="refract-tag-editor__subgroup-header">' +
+                            '<div class="refract-tag-editor__subgroup-header-main">' +
+                                '<span class="refract-tag-editor__subgroup-title">' + escapeHtml(sub.name) + '</span>' +
+                                '<span class="refract-tag-editor__subgroup-meta">' +
+                                    '<span class="refract-tag-editor__subgroup-total">' + sub.leaves.length + '</span>' +
+                                    '<span class="refract-tag-editor__subgroup-selected">' +
+                                        (subSelected > 0 ? (subSelected + ' selected') : '') +
+                                    '</span>' +
+                                '</span>' +
+                            '</div>' +
+                            '<button type="button" class="refract-tag-editor__subgroup-toggle" aria-label="Toggle">' +
+                                '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" ' +
+                                'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+                                '<polyline points="6 9 12 15 18 9"/></svg>' +
+                            '</button>' +
+                        '</div>';
+                }
+                return '<section class="refract-tag-editor__subgroup' +
+                    (subgroupOpen ? ' is-open' : '') +
+                    (sub.isRoot ? ' refract-tag-editor__subgroup--root' : '') + '"' +
+                    (sub.id ? ' data-subgroup-id="' + escapeHtml(sub.id) + '"' : '') + '>' +
+                    headerHtml +
+                    '<div class="refract-tag-editor__subgroup-body">' +
+                        '<div class="refract-tag-editor__leaf-wrap">' + leavesHtml + '</div>' +
+                    '</div>' +
+                    '</section>';
+            }).filter(Boolean).join("");
+
+            if (q && !subgroupsHtml) return null;
+
+            var groupOpen = !!q || s.openGroups.has(group.id);
+            var groupSelected = refractCountSelectedInGroup(group);
+            var groupTotal = group.subgroups.reduce(function (sum, sub) {
+                return sum + sub.leaves.length;
+            }, 0);
+
+            return '<section class="refract-tag-editor__group' + (groupOpen ? ' is-open' : '') + '" ' +
+                'data-group-id="' + escapeHtml(group.id) + '">' +
+                '<div class="refract-tag-editor__group-header">' +
+                    '<div class="refract-tag-editor__group-header-main">' +
+                        '<span class="refract-tag-editor__group-title">' + escapeHtml(group.name) + '</span>' +
+                        '<span class="refract-tag-editor__group-meta">' +
+                            '<span class="refract-tag-editor__group-total">' + groupTotal + '</span>' +
+                            '<span class="refract-tag-editor__group-selected">' +
+                                (groupSelected > 0 ? (groupSelected + ' selected') : '') +
+                            '</span>' +
+                        '</span>' +
+                    '</div>' +
+                    '<button type="button" class="refract-tag-editor__group-toggle" aria-label="Toggle">' +
+                        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
+                        'stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+                        '<polyline points="6 9 12 15 18 9"/></svg>' +
+                    '</button>' +
+                '</div>' +
+                '<div class="refract-tag-editor__group-body">' +
+                    '<div class="refract-tag-editor__subgroup-grid">' + subgroupsHtml + '</div>' +
+                '</div>' +
+                '</section>';
+        }).filter(Boolean).join("");
+
+        if (!groupsHtml) {
+            groupsHtml = '<div class="refract-tag-editor__status">' +
+                (q ? 'No tags match "' + escapeHtml(s.searchQuery) + '".' : 'No tags found.') +
+                '</div>';
+        }
+
+        root.innerHTML =
+            '<header class="refract-tag-editor__header">' +
+                '<div class="refract-tag-editor__title-wrap">' +
+                    '<h6 class="refract-tag-editor__title">Tags</h6>' +
+                    '<span class="refract-tag-editor__summary">' +
+                        s.rootGroups.length + ' groups · ' + totalSelected + ' selected' +
+                    '</span>' +
+                '</div>' +
+                '<div class="refract-tag-editor__actions">' +
+                    '<button type="button" class="refract-tag-editor__discard"' +
+                        (dirty ? '' : ' disabled') + '>Discard</button>' +
+                    '<button type="button" class="refract-tag-editor__save btn btn-primary"' +
+                        (dirty && !s.saving ? '' : ' disabled') + '>' +
+                        (s.saving ? 'Saving…' : 'Save') +
+                    '</button>' +
+                '</div>' +
+            '</header>' +
+            '<div class="refract-tag-editor__search">' +
+                '<svg class="refract-tag-editor__search-icon" viewBox="0 0 24 24" width="14" height="14" ' +
+                'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+                'stroke-linejoin="round" aria-hidden="true">' +
+                '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+                '<input type="text" class="refract-tag-editor__search-input" placeholder="Search tags…" ' +
+                'value="' + escapeHtml(s.searchQuery || "") + '" autocomplete="off" />' +
+            '</div>' +
+            '<div class="refract-tag-editor__groups">' + groupsHtml + '</div>';
+
+        if (s.focusSearch) {
+            var input = root.querySelector(".refract-tag-editor__search-input");
+            if (input) {
+                input.focus();
+                try { input.setSelectionRange(input.value.length, input.value.length); } catch (_) {}
+            }
+            s.focusSearch = false;
+        }
+    }
+
+    /* When user clicks a native performer tab, deactivate ours. Native
+       tab <a> elements carry ids like performer-tabs-tab-scenes. */
+    document.addEventListener("click", function (e) {
+        if (!e.target.closest) return;
+        var a = e.target.closest('[id^="performer-tabs-tab-"]:not(.refract-tag-editor-tab)');
+        if (!a) return;
+        refractDeactivateTagEditor();
+    }, true);
+
+    /* Suppress the auto-scroll that happens when a performer tab is
+       activated: React-Bootstrap/Stash scrolls the new pane into view,
+       which yanks the tab strip itself off the top of the viewport.
+       We snapshot the scroll position synchronously on click and
+       restore it for two frames afterwards (one frame is often too
+       early — the focus-induced scroll fires on the next layout). */
+    document.addEventListener("click", function (e) {
+        if (!e.target.closest) return;
+        var tab = e.target.closest(".performer-tabs .nav-tabs .nav-link");
+        if (!tab) return;
+        var x = window.scrollX, y = window.scrollY;
+        requestAnimationFrame(function () {
+            window.scrollTo(x, y);
+            requestAnimationFrame(function () { window.scrollTo(x, y); });
+        });
+    }, true);
 
     /* ── Scene player center overlay ─────────────────────────────────────
        Inject back-10 / play-pause / forward-10 buttons centered over the
@@ -3010,6 +4216,32 @@
         });
     }
 
+    /* Relocate the Stash "Attempt to fix?" link that sits as a SIBLING
+       of an invalid `.date-input-group`. Move it INSIDE the group so
+       it can render as a small "Fix" pill on the right of the error
+       message row (CSS handles the visual). Idempotent via class. */
+    function relocateDateFixLinks() {
+        document.querySelectorAll(".date-input-group:has(input.is-invalid)").forEach(function (group) {
+            if (group.querySelector(":scope > .refract-date-fix-btn")) { return; }
+            var sibling = group.nextElementSibling;
+            if (!sibling) { return; }
+            var link = sibling.matches && sibling.matches("a")
+                ? sibling
+                : (sibling.querySelector ? sibling.querySelector("a") : null);
+            if (!link) { return; }
+            var text = (link.textContent || "").trim().toLowerCase();
+            if (text.indexOf("attempt") !== 0 && text.indexOf("fix") === -1) { return; }
+            link.classList.add("refract-date-fix-btn");
+            link.textContent = "Fix";
+            link.setAttribute("title", "Attempt to fix the date format");
+            /* Hide the now-empty wrapper div if it had only this anchor. */
+            if (sibling !== link) {
+                sibling.style.display = "none";
+            }
+            group.appendChild(link);
+        });
+    }
+
     function injectStudioName() {
         var anchors = document.querySelectorAll(".scene-header-container h1.studio-logo > a");
         for (var i = 0; i < anchors.length; i++) {
@@ -3168,8 +4400,11 @@
             if (document.querySelector(".Lightbox")) { return; }
             try { tagViewAllLinks(); } catch (e) {}
             try { cleanupOrphanGsTriggers(); } catch (e) {}
+            try { relocateDateFixLinks(); } catch (e) {}
             try { injectStudioName(); } catch (e) {}
             try { fixSceneTaggerDetails(); } catch (e) {}
+            try { relocateTaggerBatchButtons(); } catch (e) {}
+            try { injectTaggerSearchClose(); } catch (e) {}
             try { applyScenePlayerFixes(); } catch (e) {}
             try { injectPluginToggles(); } catch (e) {}
             try { makePluginSettingsCollapsible(); } catch (e) {}
