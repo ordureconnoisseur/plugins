@@ -31,6 +31,67 @@
 .adv-rating-btn--partial .adv-rating-btn-badge { background: #ffc107; }
 .adv-rating-btn:hover .adv-rating-btn-badge { background: #000; color: #ffc107; }
 
+/* The trigger renders the `+` as an SVG icon (see custom-rating-ui.js)
+   so it centres precisely in the pill and inherits the button colour
+   via stroke=currentColor. Size + centre it here so the button works
+   correctly with any theme (the raw SVG has no width/height attrs). */
+.adv-rating-btn-plus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    margin-left: 2px;
+}
+.adv-rating-btn-plus svg {
+    width: 11px;
+    height: 11px;
+    display: block;
+}
+
+/* Favourite Button — sits right of the ★+ rating trigger. Mirrors the
+   rating button's geometry (24px height, 1.05× hover scale) so the
+   two buttons read as a pair. Empty state is a muted red outline
+   heart; "on" state fills the heart red with a soft glow halo. */
+.adv-favourite-btn {
+    background: rgba(244, 67, 54, 0.08);
+    border: 1px solid rgba(244, 67, 54, 0.55);
+    color: rgba(244, 67, 54, 0.75);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    transition: all 0.2s;
+    height: 24px;
+    width: 28px;
+}
+.adv-favourite-btn svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+.adv-favourite-btn:hover {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: #f44336;
+    color: #f44336;
+    transform: scale(1.05);
+}
+.adv-favourite-btn--on {
+    background: #f44336;
+    border-color: #f44336;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(244, 67, 54, 0.45);
+}
+.adv-favourite-btn--on:hover {
+    background: #e53935;
+    border-color: #e53935;
+    color: #fff;
+    box-shadow: 0 0 14px rgba(244, 67, 54, 0.6);
+}
+
 /* Floating Action Button (Fallback) */
 .adv-rating-fab {
     position: fixed;
