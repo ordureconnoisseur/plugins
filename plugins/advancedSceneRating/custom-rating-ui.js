@@ -306,7 +306,20 @@
     function injectTrigger(ratingStars, sceneId) {
         const triggerBtn = document.createElement('button');
         triggerBtn.id = 'adv-rating-trigger';
-        triggerBtn.innerHTML = '<span style="color:#ffc107;">★</span>+';
+        // Wrap both glyphs in spans so themes (e.g. Refract) can
+        // target the ★ and + individually. The + is rendered as an
+        // SVG icon (stroke = currentColor) rather than a text glyph
+        // so it centres precisely in the pill and inherits the button
+        // colour without the baseline-alignment offset that text "+"
+        // suffers from.
+        triggerBtn.innerHTML =
+            '<span class="adv-rating-btn-star" style="color:#ffc107;">★</span>' +
+            '<span class="adv-rating-btn-plus">' +
+                "<svg viewBox='0 0 24 24' fill='none' aria-hidden='true'>" +
+                "<path d='M6 12H18M12 6V18' stroke='currentColor' " +
+                    "stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/>" +
+                "</svg>" +
+            '</span>';
         triggerBtn.title = "Open Advanced Scene Ratings";
         triggerBtn.className = 'adv-rating-btn';
         ratingStars.insertAdjacentElement('afterend', triggerBtn);
@@ -314,6 +327,87 @@
             e.preventDefault(); e.stopPropagation(); openModal(sceneId);
         });
         annotateUnratedCount(triggerBtn, sceneId);
+        injectFavouriteBtn(triggerBtn, sceneId);
+    }
+
+    /* ── Favourite button ─────────────────────────────────────────────
+       Stash has no built-in "favourite" for scenes (only for performers).
+       This injects a heart toggle next to the ★+ rating trigger that
+       adds/removes a standalone "Favourite ★" tag on the current scene.
+       The tag is auto-created with ignore_auto_tag:true on first use,
+       so users get filter / smart-list support for free without
+       running any plugin task. */
+    function injectFavouriteBtn(anchorBtn, sceneId) {
+        const btn = document.createElement('button');
+        btn.id = 'adv-favourite-trigger';
+        btn.className = 'adv-favourite-btn';
+        btn.type = 'button';
+        // Filled SVG drawn with currentColor — CSS toggles the colour
+        // via the `--on` modifier when the scene is favourited.
+        btn.innerHTML = "<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>" +
+            "<path d='M12 21s-7.5-4.5-10-9.5C.5 7 3.5 3 7.5 3c2 0 3.4 1 4.5 2.5C13.1 4 14.5 3 16.5 3 20.5 3 23.5 7 22 11.5 19.5 16.5 12 21 12 21z'/>" +
+            "</svg>";
+        btn.title = "Loading…";
+        anchorBtn.insertAdjacentElement('afterend', btn);
+
+        // Initial state pull. Reuses the same getSceneTags helper as
+        // the modal so we don't double-fetch.
+        getSceneTags(sceneId).then(function (tags) {
+            if (!btn.isConnected) return;
+            applyFavouriteState(btn, isSceneFavourite(tags));
+        }).catch(function (e) {
+            console.warn("[advancedSceneRating] favourite init failed", e);
+        });
+
+        btn.addEventListener('click', async function (e) {
+            e.preventDefault(); e.stopPropagation();
+            if (btn.dataset.busy === "1") return;
+            btn.dataset.busy = "1";
+            try {
+                const tags = await getSceneTags(sceneId);
+                const currentlyOn = isSceneFavourite(tags);
+                await setSceneFavourite(sceneId, tags, !currentlyOn);
+                applyFavouriteState(btn, !currentlyOn);
+            } catch (err) {
+                console.error("[advancedSceneRating] favourite toggle failed", err);
+                alert("Failed to toggle favourite: " + err.message);
+            } finally {
+                btn.dataset.busy = "0";
+            }
+        });
+    }
+
+    const FAVOURITE_TAG_NAME = "Favourite ★";
+
+    function isSceneFavourite(sceneTags) {
+        return (sceneTags || []).some(function (t) { return t.name === FAVOURITE_TAG_NAME; });
+    }
+
+    function applyFavouriteState(btn, on) {
+        btn.classList.toggle('adv-favourite-btn--on', on);
+        btn.title = on ? "Remove favourite" : "Mark as favourite";
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+
+    async function setSceneFavourite(sceneId, sceneTags, on) {
+        const existingIds = (sceneTags || []).map(function (t) { return t.id; });
+        if (on) {
+            // findOrCreateTag is defined later in this same module — it
+            // auto-creates the tag with ignore_auto_tag:true on first use.
+            const { id: favId } = await findOrCreateTag(FAVOURITE_TAG_NAME, null);
+            if (existingIds.indexOf(favId) !== -1) return; // already on
+            const newTagIds = existingIds.concat([favId]);
+            await gqlClient(
+                "mutation SceneUpdate($input: SceneUpdateInput!) { sceneUpdate(input: $input) { id } }",
+                { input: { id: sceneId, tag_ids: newTagIds } });
+        } else {
+            const favTag = (sceneTags || []).find(function (t) { return t.name === FAVOURITE_TAG_NAME; });
+            if (!favTag) return; // already off
+            const newTagIds = existingIds.filter(function (id) { return id !== favTag.id; });
+            await gqlClient(
+                "mutation SceneUpdate($input: SceneUpdateInput!) { sceneUpdate(input: $input) { id } }",
+                { input: { id: sceneId, tag_ids: newTagIds } });
+        }
     }
 
     async function annotateUnratedCount(triggerBtn, sceneId) {
