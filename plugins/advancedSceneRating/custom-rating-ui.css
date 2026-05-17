@@ -403,3 +403,83 @@
     }
     .apr-settings .apr-group-usage { padding: 0; }
 }
+
+/* ── Scene-card favourite button ──────────────────────────────────
+   Pinned to the top-right of every scene-card thumbnail. Designed to
+   look + behave exactly like Stash's native performer-card favourite
+   heart: transparent surface, plain heart icon, white when not
+   favourited, pink when favourited. Hidden when not favourited unless
+   the card is hovered; persistently visible when favourited.
+
+   Themes can re-skin this freely — e.g. Refract wraps it in a glass-
+   square overlay to match its scene-card grid language. The overrides
+   below are deliberately low-specificity (single class) so themes
+   beat them with a `body.<themeName>` prefix.
+   ───────────────────────────────────────────────────────────────── */
+/* No background / border / shadow on ANY state — the base
+   .adv-favourite-btn carries a red-tinted toolbar-pill background,
+   the --on selector adds a solid red fill + box-shadow, and both
+   :hover variants add their own background. Explicitly stripping
+   bg/border/box-shadow from every card-variant state keeps the
+   button as a naked heart on the thumbnail, matching native Stash. */
+.adv-favourite-card-btn,
+.adv-favourite-card-btn:hover,
+.adv-favourite-card-btn.adv-favourite-btn--on,
+.adv-favourite-card-btn.adv-favourite-btn--on:hover {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+.adv-favourite-card-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+    opacity: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, opacity 0.18s, transform 0.15s;
+}
+.adv-favourite-card-btn svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    /* Dark drop so the white heart stays legible against bright
+       thumbnails. Disappears naturally on the pink favourited state. */
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+/* Native-style visibility: appear on card hover when unfavourited,
+   stay visible permanently when favourited. */
+.scene-card:hover .adv-favourite-card-btn,
+.adv-favourite-card-btn.adv-favourite-btn--on {
+    opacity: 1;
+}
+.adv-favourite-card-btn:hover {
+    color: #fff;
+    transform: scale(1.1);
+}
+.adv-favourite-card-btn.adv-favourite-btn--on {
+    color: #ff66cc;
+}
+.adv-favourite-card-btn.adv-favourite-btn--on:hover {
+    color: #ff99dd;
+}
+
+/* When stash-multiview's picking mode is active, its .mv-add-btn takes
+   the top:8px/right:8px slot. Shift the favourite button left by the
+   add-button width + an 8px gap so the two sit side by side instead
+   of overlapping. Pure CSS — when multiview isn't installed,
+   body.mv-picking-mode never appears and the favourite stays in the
+   default top-right position. */
+body.mv-picking-mode .adv-favourite-card-btn {
+    right: 44px;
+}

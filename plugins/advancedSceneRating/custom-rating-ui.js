@@ -410,6 +410,125 @@
         }
     }
 
+    /* ── Scene-card favourite buttons ────────────────────────────────
+       Mirrors the scene-detail favourite toggle onto every scene-card
+       thumbnail in the grid (scenes list, performer / studio / tag
+       pages — anywhere .scene-card is rendered). State stays in sync
+       with the scene-detail button because both write to the same
+       "Favourite ★" tag.
+
+       The "is this favourited?" check is batched: a single GraphQL
+       query returns every scene currently tagged Favourite, which we
+       cache as a Set<sceneId>. Per-card init becomes a Set lookup — no
+       N+1 per-card queries on page load. The set is re-pulled on
+       navigation so toggles made elsewhere (scene detail) are reflected
+       when the user returns to a list page.
+       ─────────────────────────────────────────────────────────────── */
+    let favouriteIdsCache = null; /* Set<string> of favourited scene IDs */
+    let cardSyncTimer = null;
+    let cardObserver = null;
+
+    async function refreshFavouriteSet() {
+        try {
+            const tagId = await getTagIdByName(FAVOURITE_TAG_NAME);
+            if (!tagId) {
+                /* Tag hasn't been created yet (no scene has ever been
+                   favourited). All cards default to "off". */
+                favouriteIdsCache = new Set();
+                return favouriteIdsCache;
+            }
+            const res = await gqlClient(
+                `query FindFavouriteScenes($filter: SceneFilterType) {
+                    findScenes(scene_filter: $filter, filter: {per_page: -1}) {
+                        scenes { id }
+                    }
+                }`,
+                { filter: { tags: { value: [tagId], modifier: "INCLUDES_ALL" } } }
+            );
+            const scenes = (res.data && res.data.findScenes && res.data.findScenes.scenes) || [];
+            favouriteIdsCache = new Set(scenes.map(function (s) { return s.id; }));
+        } catch (e) {
+            console.warn("[advancedSceneRating] could not load favourite list", e);
+            if (!favouriteIdsCache) favouriteIdsCache = new Set();
+        }
+        return favouriteIdsCache;
+    }
+
+    function extractSceneIdFromCard(card) {
+        const link = card.querySelector("a[href*='/scenes/']");
+        if (!link) return null;
+        const m = (link.getAttribute("href") || "").match(/\/scenes\/(\d+)/);
+        return m ? m[1] : null;
+    }
+
+    function injectCardFavouriteBtn(card) {
+        if (card.querySelector(":scope > .adv-favourite-card-btn")) return;
+        const sceneId = extractSceneIdFromCard(card);
+        if (!sceneId) return;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'adv-favourite-btn adv-favourite-card-btn';
+        btn.dataset.sceneId = sceneId;
+        btn.innerHTML = "<svg viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>" +
+            "<path d='M12 21s-7.5-4.5-10-9.5C.5 7 3.5 3 7.5 3c2 0 3.4 1 4.5 2.5C13.1 4 14.5 3 16.5 3 20.5 3 23.5 7 22 11.5 19.5 16.5 12 21 12 21z'/>" +
+            "</svg>";
+        btn.title = "Mark as favourite";
+        btn.setAttribute('aria-pressed', 'false');
+        const isOn = favouriteIdsCache && favouriteIdsCache.has(sceneId);
+        if (isOn) applyFavouriteState(btn, true);
+        card.appendChild(btn);
+        btn.addEventListener('click', async function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (btn.dataset.busy === "1") return;
+            btn.dataset.busy = "1";
+            try {
+                const tags = await getSceneTags(sceneId);
+                const currentlyOn = isSceneFavourite(tags);
+                await setSceneFavourite(sceneId, tags, !currentlyOn);
+                applyFavouriteState(btn, !currentlyOn);
+                if (favouriteIdsCache) {
+                    if (!currentlyOn) favouriteIdsCache.add(sceneId);
+                    else favouriteIdsCache.delete(sceneId);
+                }
+            } catch (err) {
+                console.error("[advancedSceneRating] card favourite toggle failed", err);
+                alert("Failed to toggle favourite: " + err.message);
+            } finally {
+                btn.dataset.busy = "0";
+            }
+        });
+    }
+
+    function syncCardFavouriteButtons() {
+        document.querySelectorAll('.scene-card').forEach(injectCardFavouriteBtn);
+    }
+
+    function scheduleCardSync() {
+        /* Debounce — React re-renders fire many mutations in quick
+           succession. injectCardFavouriteBtn is idempotent (skips cards
+           that already have a button) so re-running is cheap, but we
+           still avoid hammering the DOM every microtask. */
+        if (cardSyncTimer) return;
+        cardSyncTimer = setTimeout(function () {
+            cardSyncTimer = null;
+            syncCardFavouriteButtons();
+        }, 80);
+    }
+
+    function initCardFavouriteButtons() {
+        if (cardObserver) return;
+        refreshFavouriteSet().finally(syncCardFavouriteButtons);
+        cardObserver = new MutationObserver(scheduleCardSync);
+        cardObserver.observe(document.body, { childList: true, subtree: true });
+        /* Re-pull the favourite set when navigating — keeps card state
+           in sync with toggles made on the scene-detail page elsewhere. */
+        PluginApi.Event.addEventListener('stash:location', function () {
+            refreshFavouriteSet().finally(syncCardFavouriteButtons);
+        });
+    }
+    initCardFavouriteButtons();
+
     async function annotateUnratedCount(triggerBtn, sceneId) {
         try {
             const [{ groups, criteria }, sceneTags] = await Promise.all([
