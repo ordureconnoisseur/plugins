@@ -8,7 +8,11 @@
     const PROGRESS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
     const PROGRESS_SAVE_INTERVAL_MS = 5000;
     const PROGRESS_MIN_SAVE = 5;
-    const STALL_TIMEOUT_MS = 8000;
+    // 8s was too aggressive under load: on a contended transcoder the
+    // recovery reload added more work to the already-slow server, making
+    // the next stall more likely. 25s gives ffmpeg time to catch up on
+    // multi-cell grids before we resort to re-sourcing.
+    const STALL_TIMEOUT_MS = 25000;
     const MAX_RECOVERIES = 3;
 
     // ── SVGs ──────────────────────────────────────────────────────────────────
@@ -89,43 +93,108 @@
     }
 
     // Per-scene playback position so reloads resume where the user left off.
-    // TTL-pruned so the map doesn't grow unbounded across many viewing sessions.
-    function loadProgressMap() {
+    // In-memory cache backed by localStorage. The previous implementation
+    // re-parsed and re-serialized the entire JSON blob on every read/write,
+    // which on a 16-cell grid meant ~3 sync localStorage writes/sec plus a
+    // full parse for each cell at render — a real main-thread tax. We load
+    // once, mutate in memory, and coalesce writes on a 5s timer (with an
+    // immediate flush on pagehide/visibility loss for durability).
+    let progressMap = null;
+    let progressMapDirty = false;
+    let progressFlushTimer = null;
+    const PROGRESS_FLUSH_DEBOUNCE_MS = 5000;
+
+    function ensureProgressMap() {
+        if (progressMap !== null) return progressMap;
         try {
-            const map = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
+            progressMap = JSON.parse(localStorage.getItem(PROGRESS_KEY) || '{}');
             const now = Date.now();
-            let pruned = false;
-            for (const k of Object.keys(map)) {
-                if (!map[k] || now - (map[k].u || 0) > PROGRESS_MAX_AGE_MS) {
-                    delete map[k];
-                    pruned = true;
+            for (const k of Object.keys(progressMap)) {
+                if (!progressMap[k] || now - (progressMap[k].u || 0) > PROGRESS_MAX_AGE_MS) {
+                    delete progressMap[k];
+                    progressMapDirty = true;
                 }
             }
-            if (pruned) localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
-            return map;
-        } catch { return {}; }
+            if (progressMapDirty) flushProgressMap();
+        } catch {
+            progressMap = {};
+        }
+        return progressMap;
+    }
+
+    function flushProgressMap() {
+        if (!progressMapDirty || progressMap === null) return;
+        try {
+            localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressMap));
+            progressMapDirty = false;
+        } catch {}
+    }
+
+    function scheduleProgressFlush() {
+        if (progressFlushTimer) return;
+        progressFlushTimer = setTimeout(() => {
+            progressFlushTimer = null;
+            flushProgressMap();
+        }, PROGRESS_FLUSH_DEBOUNCE_MS);
     }
 
     function getResumeTime(id) {
-        return loadProgressMap()[String(id)]?.t || 0;
+        return ensureProgressMap()[String(id)]?.t || 0;
     }
 
     function saveResumeTime(id, t) {
         if (!(t >= PROGRESS_MIN_SAVE)) return;
-        try {
-            const map = loadProgressMap();
-            map[String(id)] = { t, u: Date.now() };
-            localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
-        } catch {}
+        const map = ensureProgressMap();
+        map[String(id)] = { t, u: Date.now() };
+        progressMapDirty = true;
+        scheduleProgressFlush();
     }
 
     function clearResumeTime(id) {
-        try {
-            const map = loadProgressMap();
-            if (delete map[String(id)]) {
-                localStorage.setItem(PROGRESS_KEY, JSON.stringify(map));
+        const map = ensureProgressMap();
+        if (delete map[String(id)]) {
+            progressMapDirty = true;
+            scheduleProgressFlush();
+        }
+    }
+
+    // Single rAF tick drives every cell's seekbar fill. Replaces per-video
+    // `timeupdate` handlers, which under a 16-cell grid fire hundreds of
+    // events/sec — each doing a regex + style write — and contend with the
+    // decoder for main-thread time. Browsers throttle rAF when the tab is
+    // hidden so no extra logic is needed there.
+    let progressRafId = null;
+    const lastSeekFillPct = new WeakMap();
+    function tickProgress() {
+        const cells = document.querySelectorAll('.mv-cell');
+        for (const cell of cells) {
+            const id = cell.dataset.sceneId;
+            if (!id) continue;
+            if (activeSeek && activeSeek.id === id) continue;
+            const video = cell.querySelector('video');
+            const fill = cell.querySelector('.mv-seekbar-fill');
+            if (!video || !fill) continue;
+            const duration = scenes[id]?.duration || (isFinite(video.duration) ? video.duration : null);
+            if (!duration) continue;
+            const src = video.getAttribute('src') || '';
+            let current = video.currentTime;
+            if (src.indexOf('start=') !== -1 && /[?&]start=/.test(src)) {
+                current += (seekBases.get(id) || 0);
             }
-        } catch {}
+            const pct = current / duration * 100;
+            const last = lastSeekFillPct.get(fill);
+            if (last === undefined || Math.abs(last - pct) > 0.05) {
+                // scaleX is composited-only; width is layout-invalidating.
+                // On a 16-cell grid this turns per-frame seekbar updates
+                // from "force layout for each cell" into "compositor only".
+                fill.style.transform = 'scaleX(' + (pct / 100) + ')';
+                lastSeekFillPct.set(fill, pct);
+            }
+        }
+        progressRafId = requestAnimationFrame(tickProgress);
+    }
+    function startProgressLoop() {
+        if (progressRafId == null) progressRafId = requestAnimationFrame(tickProgress);
     }
 
     function flushAllProgress() {
@@ -139,6 +208,7 @@
             if (src.match(/[?&]start=/)) t += (seekBases.get(id) || 0);
             saveResumeTime(id, t);
         });
+        flushProgressMap();
     }
 
     // Mirrors Stash's translateJSON (ui/v2.5/src/models/list-filter/filter.ts):
@@ -443,14 +513,19 @@
 
     function seekToStart(id, video) {
         const src = video.getAttribute('src');
-        const isTranscode = src && (src.includes('.webm') || src.includes('.mp4'));
         const wasPlaying = !video.paused;
-        if (isTranscode) {
+        const hasOffset = src && /[?&]start=/.test(src);
+        // Only reload src when there's a `?start=X` offset baked in — that's
+        // the only case where seeking to wall-clock 0 requires a new transcode
+        // segment. For a bare URL (typical fresh playback / end-of-scene
+        // loop), `currentTime = 0` works on both direct and transcode streams
+        // and avoids a full ffmpeg restart every loop.
+        if (hasOffset) {
             const baseSrc = src.split(/[?&]start=/)[0];
             seekBases.set(id, 0);
             video.src = baseSrc;
         } else {
-            video.currentTime = 0;
+            try { video.currentTime = 0; } catch {}
         }
         if (wasPlaying || video.autoplay) video.play();
     }
@@ -510,7 +585,7 @@
         // Reflect in the seekbar immediately so the user sees feedback
         // before the (possibly slow) transcode reload completes.
         const fill = document.querySelector(`.mv-cell[data-scene-id="${id}"] .mv-seekbar-fill`);
-        if (fill) fill.style.width = (target / duration * 100) + '%';
+        if (fill) fill.style.transform = 'scaleX(' + (target / duration) + ')';
     }
 
     // ── Stream selection ──────────────────────────────────────────────────────
@@ -732,39 +807,59 @@
 
     // ── GraphQL ───────────────────────────────────────────────────────────────
 
-    async function fetchSceneMeta(id) {
+    function storeSceneMeta(id, scene) {
+        let title = scene.title;
+        if (!title) {
+            const path = scene.files?.[0]?.path;
+            title = path ? path.split(/[\\/]/).pop().replace(/\.[^.]+$/, '') : String(id);
+        }
+        scenes[id] = {
+            id,
+            title,
+            oCount: scene.o_counter ?? 0,
+            duration: scene.files?.[0]?.duration ?? null,
+            streams: parseStreams(scene.sceneStreams)
+        };
+    }
+
+    // Batched scene-meta fetch. Stash's findScenes accepts a scene_ids
+    // list, so 16 cells = 1 GraphQL round trip instead of 16. Order of
+    // the response array isn't guaranteed; we key by id.
+    async function loadSceneMeta(ids) {
+        const toFetch = ids.filter(id => typeof id === 'string' && !scenes[id]);
+        if (!toFetch.length) return;
         try {
             const res = await fetch('/graphql', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    query: `query FindScene($id: ID!) {
-                        findScene(id: $id) {
-                            title
-                            o_counter
-                            files { path duration }
-                            sceneStreams { url mime_type label }
+                    query: `query BatchSceneMeta($ids: [Int!], $filter: FindFilterType) {
+                        findScenes(scene_ids: $ids, filter: $filter) {
+                            scenes {
+                                id
+                                title
+                                o_counter
+                                files { path duration }
+                                sceneStreams { url mime_type label }
+                            }
                         }
                     }`,
-                    variables: { id: String(id) }
+                    variables: { ids: toFetch.map(Number), filter: { per_page: -1 } }
                 })
             });
             const data = await res.json();
-            const scene = data?.data?.findScene;
-            if (!scene) return;
-            let title = scene.title;
-            if (!title) {
-                const path = scene.files?.[0]?.path;
-                title = path ? path.split(/[\\/]/).pop().replace(/\.[^.]+$/, '') : String(id);
+            const list = data?.data?.findScenes?.scenes || [];
+            const byId = new Map(list.map(s => [String(s.id), s]));
+            for (const id of toFetch) {
+                const scene = byId.get(id);
+                if (scene) storeSceneMeta(id, scene);
+                else if (!scenes[id]) scenes[id] = { id, title: String(id), streams: {} };
             }
-            scenes[id] = { id, title, oCount: scene.o_counter ?? 0, duration: scene.files?.[0]?.duration ?? null, streams: parseStreams(scene.sceneStreams) };
         } catch {
-            if (!scenes[id]) scenes[id] = { id, title: String(id), streams: {} };
+            for (const id of toFetch) {
+                if (!scenes[id]) scenes[id] = { id, title: String(id), streams: {} };
+            }
         }
-    }
-
-    async function loadSceneMeta(ids) {
-        await Promise.all(ids.filter(id => typeof id === 'string' && !scenes[id]).map(fetchSceneMeta));
     }
 
     async function incrementO(id) {
@@ -1066,12 +1161,17 @@
         const rect = activeSeek.seekbar.getBoundingClientRect();
         const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         activeSeek.ratio = ratio;
-        activeSeek.fill.style.width = (ratio * 100) + '%';
+        activeSeek.fill.style.transform = 'scaleX(' + ratio + ')';
     }
 
     function commitSeek() {
         if (!activeSeek || activeSeek.ratio == null) return;
         const { video, id, ratio } = activeSeek;
+        // A single click fires both mousedown and mouseup, each of which
+        // calls commitSeek — without this guard the transcoder gets two
+        // back-to-back src reassignments at the same offset for one click.
+        if (activeSeek.lastCommittedRatio === ratio) return;
+        activeSeek.lastCommittedRatio = ratio;
         const duration = scenes[id]?.duration || (isFinite(video.duration) ? video.duration : null);
         if (!duration) return;
 
@@ -1147,10 +1247,21 @@
         // Correct layout immediately if videos already have dimensions (re-render case)
         detectAndApplyOrientation();
 
+        // Snapshot of existing cells so add/cleanup avoid N querySelector + N
+        // queue.includes() calls. Newly created cells in this render get
+        // inserted at lower indices than the current iterator position, so
+        // the refCell forward-search never needs to see them.
+        const existing = new Map();
+        for (const cell of grid.children) {
+            const id = cell.dataset.sceneId;
+            if (id) existing.set(id, cell);
+        }
+        const queueSet = new Set(queue);
+
         // Add new cells at their correct queue position (before removal to avoid layout flash)
         queue.forEach((id, idx) => {
             if (typeof id !== 'string') return;
-            if (grid.querySelector(`.mv-cell[data-scene-id="${id}"]`)) return;
+            if (existing.has(id)) return;
 
             const cell = document.createElement('div');
             const isFilterBacked = filterBackedCells.has(id);
@@ -1256,27 +1367,25 @@
             // (cell.querySelector('.mv-loading')?.remove()), which also
             // covers dynamically-added spinners from seeking/recovery.
 
-            // Final fallback: videoWidth/videoHeight are guaranteed non-zero during playback
-            const checkDims = () => {
-                if (video.videoWidth > 0) {
-                    video.removeEventListener('timeupdate', checkDims);
+            // Single timeupdate handler covers both jobs: an orientation
+            // re-check that runs until videoWidth is known (then disables
+            // itself) and a throttled progress save for non-filter cells.
+            let dimsReady = false;
+            let lastProgressSave = 0;
+            video.addEventListener('timeupdate', () => {
+                if (!dimsReady && video.videoWidth > 0) {
+                    dimsReady = true;
                     detectAndApplyOrientation();
                 }
-            };
-            video.addEventListener('timeupdate', checkDims);
-
-            if (!isFilterBacked) {
-                let lastProgressSave = 0;
-                video.addEventListener('timeupdate', () => {
-                    const now = performance.now();
-                    if (now - lastProgressSave < PROGRESS_SAVE_INTERVAL_MS) return;
-                    lastProgressSave = now;
-                    const src = video.getAttribute('src') || '';
-                    let t = video.currentTime;
-                    if (src.match(/[?&]start=/)) t += (seekBases.get(id) || 0);
-                    saveResumeTime(id, t);
-                });
-            }
+                if (isFilterBacked) return;
+                const now = performance.now();
+                if (now - lastProgressSave < PROGRESS_SAVE_INTERVAL_MS) return;
+                lastProgressSave = now;
+                const src = video.getAttribute('src') || '';
+                let t = video.currentTime;
+                if (src.match(/[?&]start=/)) t += (seekBases.get(id) || 0);
+                saveResumeTime(id, t);
+            });
 
             const overlay = document.createElement('div');
             overlay.className = 'mv-cell-overlay';
@@ -1427,13 +1536,8 @@
                 if (currentSrc && currentSrc.match(/[?&]start=/)) {
                     current += (seekBases.get(id) || 0);
                 }
-                if (duration) seekFill.style.width = (current / duration * 100) + '%';
+                if (duration) seekFill.style.transform = 'scaleX(' + (current / duration) + ')';
             };
-
-            video.addEventListener('timeupdate', () => {
-                if (video.seeking) return;
-                updateProgress();
-            });
 
             video.addEventListener('seeking', () => {
                 if (!cell.querySelector('.mv-loading')) {
@@ -1483,23 +1587,22 @@
             for (let i = idx + 1; i < queue.length; i++) {
                 const nextId = queue[i];
                 if (typeof nextId !== 'string') continue;
-                const next = grid.querySelector(`.mv-cell[data-scene-id="${nextId}"]`);
+                const next = existing.get(nextId);
                 if (next) { refCell = next; break; }
             }
             grid.insertBefore(cell, refCell);
         });
 
         // Remove cells no longer in queue
-        grid.querySelectorAll('.mv-cell').forEach(cell => {
-            if (!queue.includes(cell.dataset.sceneId)) {
-                const v = cell.querySelector('video');
-                if (v) {
-                    teardownPlayTracking(v);
-                    v._mvCleanup?.();
-                }
-                cell.remove();
+        for (const [id, cell] of existing) {
+            if (queueSet.has(id)) continue;
+            const v = cell.querySelector('video');
+            if (v) {
+                teardownPlayTracking(v);
+                v._mvCleanup?.();
             }
-        });
+            cell.remove();
+        }
     }
 
     function applyQualityToAllCells() {
@@ -1684,6 +1787,7 @@
 
         await loadSceneMeta(queue);
         render();
+        startProgressLoop();
     }
 
     document.addEventListener('DOMContentLoaded', init);
