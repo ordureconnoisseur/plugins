@@ -3,6 +3,7 @@
 
     const STORAGE_KEY = 'stash-multiview-queue';
     const ROULETTE_COUNT_KEY = 'stash-multiview-roulette-count';
+    const ROULETTE_MODE_KEY = 'stash-multiview-roulette-mode'; // 'replace' | 'add'
     const SETTINGS_KEY = 'stash-multiview-settings';
 
     // Stall recovery tuning. A stalled transcode is re-sourced from the
@@ -11,20 +12,35 @@
     //  - STALL_TIMEOUT_MS: how long a `waiting` may persist before we act.
     //  - RECOVERY_COOLDOWN_MS: minimum gap between two recoveries on one
     //    cell, so rapid waiting/error bursts collapse into one attempt.
-    //  - MAX_RECOVERIES: hard cap; once hit we stop (filter cells advance).
-    //  - SUSTAINED_PLAY_MS: the budget only resets after this much
-    //    *continuous* playback — a stream that plays for a frame then dies
-    //    can no longer reset the counter and loop forever.
+    //  - MAX_RECOVERIES: hard cap; once hit we give up (filter cells advance).
+    //  - SUSTAINED_PLAY_MS: budget is forgiven ONE recovery at a time only
+    //    after this much *uninterrupted* playback (a stall cancels the window).
+    //    Kept above STALL_TIMEOUT_MS so a stream must play substantially longer
+    //    than it takes to detect a stall before earning budget back — a tight
+    //    stall loop therefore walks up to the cap instead of looping forever.
     const STALL_TIMEOUT_MS = 12000;
     const RECOVERY_COOLDOWN_MS = 6000;
     const MAX_RECOVERIES = 3;
-    const SUSTAINED_PLAY_MS = 10000;
+    const SUSTAINED_PLAY_MS = 20000;
     const SEEKING_SPINNER_DELAY_MS = 350;
+    // When a render adds several cells at once (initial load, roulette roll),
+    // ramp their stream starts apart by this much per cell instead of firing
+    // all N transcode requests at the same instant — a simultaneous burst
+    // saturates a slow link / the shared transcoder and makes every cell stall.
+    const STREAM_STAGGER_MS = 200;
+    // Hide the hover overlay/controls and the cursor after the pointer sits
+    // still this long, like a video player. Any movement restores them.
+    const IDLE_HIDE_MS = 2500;
 
     const PROGRESS_KEY = 'stash-multiview-progress';
     const PROGRESS_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
     const PROGRESS_SAVE_INTERVAL_MS = 5000;
     const PROGRESS_MIN_SAVE = 5;
+    // If a saved position is within this many seconds of the end (or past it —
+    // e.g. the scene was re-encoded shorter since), don't resume: a ?start=
+    // past EOF triggers an immediate error/recovery storm, and resuming into
+    // the last few seconds is pointless. Start fresh instead.
+    const PROGRESS_END_MARGIN = 10;
 
     // �"?�"? SVGs �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
@@ -48,6 +64,42 @@
     let openPopupId = null;
     const seekBases = new Map(); // id ��' seconds already consumed before current src load
     const filterBackedCells = new Map(); // resolved sceneId ��' original filter item
+
+    // ── Stream URL + playhead helpers ──────────────────────────────────────
+    // A transcoded stream URL carries a container extension; a direct stream
+    // (/scene/ID/stream) does not. This decides whether seeking must go through
+    // ?start= (transcode, where currentTime seeking is unreliable) or can use
+    // video.currentTime directly (direct stream).
+    function isTranscodeUrl(src) {
+        return !!src && (src.includes('.webm') || src.includes('.mp4'));
+    }
+    // The stream URL with any ?start=/&start= offset stripped off.
+    function stripStart(src) {
+        return (src || '').split(/[?&]start=/)[0];
+    }
+    // Append a start offset to a base URL, choosing ? or & as needed.
+    function withStart(baseSrc, t) {
+        return baseSrc + (baseSrc.includes('?') ? '&' : '?') + 'start=' + t;
+    }
+    // Effective scene playhead: currentTime plus the offset already consumed
+    // before the current transcode src (?start=), tracked in seekBases.
+    function effectivePlayhead(video, id) {
+        const src = video.getAttribute('src') || '';
+        let t = video.currentTime;
+        if (src.match(/[?&]start=/)) t += (seekBases.get(id) || 0);
+        return t;
+    }
+    // The buffering spinner overlay, idempotent per cell.
+    function showSpinner(cell) {
+        if (!cell || cell.querySelector('.mv-loading')) return;
+        const s = document.createElement('div');
+        s.className = 'mv-loading';
+        s.innerHTML = '<div class="mv-spinner"></div>';
+        cell.appendChild(s);
+    }
+    function hideSpinner(cell) {
+        cell?.querySelector('.mv-loading')?.remove();
+    }
 
     // �"?�"? Web Audio �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
@@ -405,12 +457,10 @@
 
     function seekToStart(id, video) {
         const src = video.getAttribute('src');
-        const isTranscode = src && (src.includes('.webm') || src.includes('.mp4'));
         const wasPlaying = !video.paused;
-        if (isTranscode) {
-            const baseSrc = src.split(/[?&]start=/)[0];
+        if (isTranscodeUrl(src)) {
             seekBases.set(id, 0);
-            video.src = baseSrc;
+            video.src = stripStart(src);
         } else {
             video.currentTime = 0;
         }
@@ -444,26 +494,13 @@
         if (!duration) return;
 
         const currentSrc = video.getAttribute('src');
-        let effective = video.currentTime;
-        if (currentSrc && currentSrc.match(/[?&]start=/)) {
-            effective += (seekBases.get(id) || 0);
-        }
-        const target = Math.max(0, Math.min(duration - 0.5, effective + delta));
+        const target = Math.max(0, Math.min(duration - 0.5, effectivePlayhead(video, id) + delta));
 
-        const isTranscode = currentSrc && (currentSrc.includes('.webm') || currentSrc.includes('.mp4'));
-        if (isTranscode) {
-            const baseSrc = currentSrc.split(/[?&]start=/)[0];
-            const sep = baseSrc.includes('?') ? '&' : '?';
+        if (isTranscodeUrl(currentSrc)) {
             seekBases.set(id, target);
             const wasPlaying = !video.paused;
-            const cell = document.querySelector(`.mv-cell[data-scene-id="${id}"]`);
-            if (cell && !cell.querySelector('.mv-loading')) {
-                const s = document.createElement('div');
-                s.className = 'mv-loading';
-                s.innerHTML = '<div class="mv-spinner"></div>';
-                cell.appendChild(s);
-            }
-            video.src = baseSrc + sep + 'start=' + target;
+            showSpinner(document.querySelector(`.mv-cell[data-scene-id="${id}"]`));
+            video.src = withStart(stripStart(currentSrc), target);
             if (wasPlaying || video.autoplay) video.play().catch(() => {});
         } else {
             video.currentTime = target;
@@ -885,7 +922,10 @@
 
     function clearResumeTime(id) {
         const map = ensureProgressMap();
-        if (delete map[String(id)]) progressMapDirty = true;
+        const key = String(id);
+        // `delete` returns true even for an absent key, so check presence to
+        // avoid marking the map dirty (and re-writing localStorage) for no-ops.
+        if (key in map) { delete map[key]; progressMapDirty = true; }
     }
 
     // Snapshot every non-filter cell's effective playhead into the map.
@@ -895,10 +935,7 @@
             if (!id || filterBackedCells.has(id)) return;
             const video = cell.querySelector('video');
             if (!video) return;
-            const src = video.getAttribute('src') || '';
-            let t = video.currentTime;
-            if (src.match(/[?&]start=/)) t += (seekBases.get(id) || 0);
-            setResumeTime(id, t);
+            setResumeTime(id, effectivePlayhead(video, id));
         });
     }
 
@@ -1120,24 +1157,11 @@
         const targetTime = ratio * duration;
         const currentSrc = video.getAttribute('src');
 
-        // Check if it's a transcoded stream
-        const isTranscode = currentSrc && (currentSrc.includes('.webm') || currentSrc.includes('.mp4'));
-
-        if (isTranscode) {
-            const baseSrc = currentSrc.split(/[?&]start=/)[0];
-            const sep = baseSrc.includes('?') ? '&' : '?';
+        if (isTranscodeUrl(currentSrc)) {
             seekBases.set(id, targetTime);
             const wasPlaying = !video.paused;
-            
-            const cell = document.querySelector(`.mv-cell[data-scene-id="${id}"]`);
-            if (cell && !cell.querySelector('.mv-loading')) {
-                const s = document.createElement('div');
-                s.className = 'mv-loading';
-                s.innerHTML = '<div class="mv-spinner"></div>';
-                cell.appendChild(s);
-            }
-            
-            video.src = baseSrc + sep + 'start=' + targetTime;
+            showSpinner(document.querySelector(`.mv-cell[data-scene-id="${id}"]`));
+            video.src = withStart(stripStart(currentSrc), targetTime);
             if (wasPlaying || video.autoplay) video.play().catch(() => {});
         } else {
             video.currentTime = targetTime;
@@ -1196,15 +1220,17 @@
         const existing = new Map();
         for (const cell of grid.children) {
             const cid = cell.dataset.sceneId;
-            if (cid) existing.set(cid, cell);
+            if (cid && !existing.has(cid)) existing.set(cid, cell); // canonical = first cell per id
         }
         const queueSet = new Set(queue);
 
         // Add new cells at their correct queue position (before removal to avoid layout flash)
+        let newCellOrdinal = 0; // counts only cells created this pass, for stream stagger
         queue.forEach((id, idx) => {
             if (typeof id !== 'string') return;
             if (existing.has(id)) return;
 
+            const staggerSlot = newCellOrdinal++;
             const cell = document.createElement('div');
             const isFilterBacked = filterBackedCells.has(id);
             cell.className = 'mv-cell' + (isFilterBacked ? ' mv-cell--filter' : '');
@@ -1213,24 +1239,49 @@
 
             const video = document.createElement('video');
             const baseSrc = pickStream(id);
-            const resumeTime = isFilterBacked ? 0 : getResumeTime(id);
-            const isTranscodeSrc = baseSrc.includes('.webm') || baseSrc.includes('.mp4');
-            if (resumeTime > 0 && isTranscodeSrc) {
-                // Transcode resume is reliable via ?start=; currentTime seeking
-                // on a live transcode is not.
-                const sep = baseSrc.includes('?') ? '&' : '?';
-                seekBases.set(id, resumeTime);
-                video.src = baseSrc + sep + 'start=' + resumeTime;
-            } else {
-                video.src = baseSrc;
-                if (resumeTime > 0) {
-                    video.addEventListener('loadedmetadata', () => {
-                        try { video.currentTime = resumeTime; } catch {}
-                    }, { once: true });
-                }
+            let resumeTime = isFilterBacked ? 0 : getResumeTime(id);
+            const dur = scenes[id]?.duration;
+            if (resumeTime > 0 && dur && resumeTime > dur - PROGRESS_END_MARGIN) {
+                // Stale/at-or-past-end offset (scene re-encoded shorter, or saved
+                // right at the end). Start fresh rather than ?start= past EOF.
+                resumeTime = 0;
+                clearResumeTime(id);
             }
+            const isTranscodeSrc = isTranscodeUrl(baseSrc);
+            // A transcode resumed via ?start= only contains [resumeTime, end], so
+            // native loop would replay just that tail forever. Start it unlooped
+            // and re-seat to the full scene when the first partial pass ends.
+            const resumedTranscode = resumeTime > 0 && isTranscodeSrc && !isFilterBacked;
+            // Assigning src kicks off the load/transcode. Deferred + staggered
+            // (invoked from the staggered start below) so a full grid doesn't
+            // fire every transcode request at the same instant.
+            const applyInitialSrc = () => {
+                if (resumeTime > 0 && isTranscodeSrc) {
+                    // Transcode resume is reliable via ?start=; currentTime seeking
+                    // on a live transcode is not.
+                    seekBases.set(id, resumeTime);
+                    video.src = withStart(baseSrc, resumeTime);
+                } else {
+                    video.src = baseSrc;
+                    if (resumeTime > 0) {
+                        video.addEventListener('loadedmetadata', () => {
+                            try { video.currentTime = resumeTime; } catch {}
+                        }, { once: true });
+                    }
+                }
+            };
             video.autoplay = true;
-            video.loop = !isFilterBacked;
+            video.loop = !isFilterBacked && !resumedTranscode;
+            if (resumedTranscode) {
+                // First (partial) pass done — reload from the start so subsequent
+                // loops play the whole scene, then hand back to native loop.
+                video.addEventListener('ended', () => {
+                    seekBases.set(id, 0);
+                    video.src = baseSrc;
+                    video.loop = true;
+                    video.play().catch(() => {});
+                }, { once: true });
+            }
             video.muted = !unmutedIds.has(id);
             video.playsInline = true;
             video.disablePictureInPicture = true;
@@ -1241,40 +1292,57 @@
 
             // ── Stall recovery (loop-proof) ──────────────────────────────
             // Re-source a stalled/errored stream from the effective playhead,
-            // but bounded: cooldown between attempts, a hard cap, and a budget
-            // that only resets after sustained playback. This is the fix for
-            // the rapid-flashing-spinner crash on transcoder underrun, without
-            // the unbounded recovery loop that froze the grid previously.
+            // bounded so a flaky/dead stream can't hammer the shared transcoder
+            // or strobe the grid:
+            //  - cooldown between attempts (a pending attempt is deferred, not
+            //    dropped, so a dead stream that emits no further events still
+            //    gets retried);
+            //  - MAX_RECOVERIES budget that is FORGIVEN one at a time only after
+            //    an *uninterrupted* healthy window — a stall before the window
+            //    completes forfeits the forgiveness, so a tight stall loop walks
+            //    the budget up to the cap instead of resetting it every cycle;
+            //  - once the budget is exhausted we give up (gaveUp): filter cells
+            //    advance to another scene, fixed cells stop, and no further
+            //    event re-enters recovery.
             let stallWatchdog = null;
             let recoveryCount = 0;
             let lastRecoveryAt = 0;
             let sustainedPlayTimer = null;
             let cellTornDown = false;
+            let gaveUp = false;
             const clearStallWatchdog = () => {
                 if (stallWatchdog) { clearTimeout(stallWatchdog); stallWatchdog = null; }
             };
             const recoverVideo = () => {
-                if (cellTornDown) return;
+                if (cellTornDown || gaveUp) return;
                 clearStallWatchdog();
                 const now = performance.now();
-                if (now - lastRecoveryAt < RECOVERY_COOLDOWN_MS) return;
+                const sinceLast = now - lastRecoveryAt;
+                if (lastRecoveryAt > 0 && sinceLast < RECOVERY_COOLDOWN_MS) {
+                    // Still cooling down. Don't drop this attempt — a dead
+                    // stream often emits no further `waiting`/`error`, so we
+                    // must re-arm the retry ourselves once the cooldown elapses.
+                    stallWatchdog = setTimeout(recoverVideo, RECOVERY_COOLDOWN_MS - sinceLast);
+                    return;
+                }
                 if (recoveryCount >= MAX_RECOVERIES) {
-                    // Give up — stop hammering the transcoder. Filter cells
-                    // can move on to a different scene; fixed cells just stop.
+                    // Out of budget. Stop hammering the transcoder and don't
+                    // re-enter on subsequent events. Filter cells advance to a
+                    // different scene (a fresh cell with a fresh budget); fixed
+                    // cells just stop on the last frame.
+                    gaveUp = true;
                     if (isFilterBacked) advanceFilterCell(id);
                     return;
                 }
                 recoveryCount++;
                 lastRecoveryAt = now;
                 const currentSrc = video.getAttribute('src') || '';
-                let t = video.currentTime;
-                if (currentSrc.match(/[?&]start=/)) t += (seekBases.get(id) || 0);
-                const isTranscode = currentSrc.includes('.webm') || currentSrc.includes('.mp4');
-                if (isTranscode) {
-                    const reSrc = currentSrc.split(/[?&]start=/)[0];
-                    const sep = reSrc.includes('?') ? '&' : '?';
+                let t = effectivePlayhead(video, id);
+                const dur = scenes[id]?.duration || (isFinite(video.duration) ? video.duration : null);
+                if (dur && t > dur - 0.5) t = Math.max(0, dur - 0.5); // never re-source past EOF
+                if (isTranscodeUrl(currentSrc)) {
                     seekBases.set(id, t);
-                    video.src = reSrc + sep + 'start=' + t;
+                    video.src = withStart(stripStart(currentSrc), t);
                 } else {
                     video.load();
                     video.addEventListener('loadedmetadata', () => {
@@ -1284,21 +1352,34 @@
                 video.play().catch(() => {});
             };
             video.addEventListener('waiting', () => {
+                if (gaveUp) return;
                 clearStallWatchdog();
+                // A stall forfeits the in-progress healthy window so a tight
+                // stall loop can never earn budget back (see `playing`).
+                clearTimeout(sustainedPlayTimer);
                 stallWatchdog = setTimeout(recoverVideo, STALL_TIMEOUT_MS);
             });
             video.addEventListener('playing', () => {
                 clearStallWatchdog();
-                // Reset the recovery budget only after the stream proves it can
-                // play continuously — a brief blip no longer refills the budget.
+                // Forgive ONE past recovery per uninterrupted healthy window, so
+                // a stream that recovers and then plays well isn't stuck near the
+                // cap — but `waiting` cancels this timer, so a stream that keeps
+                // stalling before the window completes never refills its budget.
                 clearTimeout(sustainedPlayTimer);
-                sustainedPlayTimer = setTimeout(() => { recoveryCount = 0; }, SUSTAINED_PLAY_MS);
+                sustainedPlayTimer = setTimeout(() => {
+                    recoveryCount = Math.max(0, recoveryCount - 1);
+                }, SUSTAINED_PLAY_MS);
             });
             video.addEventListener('error', recoverVideo);
             video._mvCleanup = () => {
                 cellTornDown = true;
                 clearStallWatchdog();
                 clearTimeout(sustainedPlayTimer);
+                clearTimeout(seekingSpinnerTimer); // declared below in the same cell scope; only ever called on a later render's teardown
+                // Cancel any queued wheel-seek so it can't fire applyWheelSeek on
+                // this now-detached video and resurrect a seekBases entry.
+                const pw = wheelPending.get(id);
+                if (pw) { clearTimeout(pw.timeout); wheelPending.delete(id); }
                 try { video.pause(); video.removeAttribute('src'); video.load(); } catch {}
             };
 
@@ -1470,12 +1551,7 @@
             const updateProgress = () => {
                 if (activeSeek && activeSeek.id === id) return;
                 const duration = scenes[id]?.duration || (isFinite(video.duration) ? video.duration : null);
-                const currentSrc = video.getAttribute('src');
-                let current = video.currentTime;
-                if (currentSrc && currentSrc.match(/[?&]start=/)) {
-                    current += (seekBases.get(id) || 0);
-                }
-                if (duration) seekFill.style.transform = 'scaleX(' + (current / duration) + ')';
+                if (duration) seekFill.style.transform = 'scaleX(' + (effectivePlayhead(video, id) / duration) + ')';
             };
 
             video.addEventListener('timeupdate', () => {
@@ -1490,24 +1566,17 @@
             let seekingSpinnerTimer = null;
             video.addEventListener('seeking', () => {
                 clearTimeout(seekingSpinnerTimer);
-                seekingSpinnerTimer = setTimeout(() => {
-                    if (!cell.querySelector('.mv-loading')) {
-                        const s = document.createElement('div');
-                        s.className = 'mv-loading';
-                        s.innerHTML = '<div class="mv-spinner"></div>';
-                        cell.appendChild(s);
-                    }
-                }, SEEKING_SPINNER_DELAY_MS);
+                seekingSpinnerTimer = setTimeout(() => showSpinner(cell), SEEKING_SPINNER_DELAY_MS);
             });
 
             video.addEventListener('seeked', () => {
                 clearTimeout(seekingSpinnerTimer);
-                cell.querySelector('.mv-loading')?.remove();
+                hideSpinner(cell);
                 updateProgress();
             });
 
             video.addEventListener('canplay', () => {
-                cell.querySelector('.mv-loading')?.remove();
+                hideSpinner(cell);
             });
 
             seekbar.addEventListener('mousedown', e => {
@@ -1544,11 +1613,28 @@
                 if (next) { refCell = next; break; }
             }
             grid.insertBefore(cell, refCell);
+            // Register the new cell so a duplicate of this id later in the same
+            // queue (two filter slots resolving to the same scene, etc.) is
+            // skipped instead of spawning a second cell with the same id.
+            existing.set(id, cell);
+
+            // Start the stream, staggered. The cell is in the DOM and fully
+            // wired by now; if it's torn down during its delay (queue changed),
+            // _mvCleanup sets cellTornDown and we skip starting a dead stream.
+            const startDelay = staggerSlot * STREAM_STAGGER_MS;
+            if (startDelay > 0) {
+                setTimeout(() => { if (!cellTornDown) applyInitialSrc(); }, startDelay);
+            } else {
+                applyInitialSrc();
+            }
         });
 
-        // Remove cells no longer in queue
-        for (const [id, cell] of existing) {
-            if (queueSet.has(id)) continue;
+        // Remove cells no longer in queue. Walk the real DOM (not the id-keyed
+        // `existing` map) so any stray duplicate-id cell is also torn down and
+        // can't leak its <video>/watchdog. Keep only the canonical cell per id.
+        for (const cell of Array.from(grid.children)) {
+            const cid = cell.dataset.sceneId;
+            if (cid && queueSet.has(cid) && existing.get(cid) === cell) continue;
             const v = cell.querySelector('video');
             if (v) {
                 teardownPlayTracking(v);
@@ -1566,27 +1652,19 @@
 
             const optimalSrc = pickStream(id);
             const currentSrc = video.getAttribute('src') || '';
-            const baseSrc = currentSrc.split(/[?&]start=/)[0];
+            const baseSrc = stripStart(currentSrc);
 
             if (!baseSrc || baseSrc === optimalSrc) return;
 
-            let currentTime = video.currentTime;
-            if (currentSrc.match(/[?&]start=/)) currentTime += (seekBases.get(id) || 0);
-
+            const currentTime = effectivePlayhead(video, id);
             const wasPlaying = !video.paused;
-            const isTranscode = optimalSrc.includes('.webm') || optimalSrc.includes('.mp4');
+            const isTranscode = isTranscodeUrl(optimalSrc);
 
-            if (!cell.querySelector('.mv-loading')) {
-                const s = document.createElement('div');
-                s.className = 'mv-loading';
-                s.innerHTML = '<div class="mv-spinner"></div>';
-                cell.appendChild(s);
-            }
+            showSpinner(cell);
 
             if (isTranscode && currentTime > 0) {
-                const sep = optimalSrc.includes('?') ? '&' : '?';
                 seekBases.set(id, currentTime);
-                video.src = optimalSrc + sep + 'start=' + currentTime;
+                video.src = withStart(optimalSrc, currentTime);
             } else {
                 seekBases.set(id, 0);
                 video.src = optimalSrc;
@@ -1612,26 +1690,47 @@
 
     // �"?�"? Roulette �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
-    async function loadRoulette(count) {
+    // mode 'replace' (default): the roll overwrites the whole grid with `count`
+    // random scenes. mode 'add': append up to `count` random scenes to the
+    // current grid (filter cards and all), capped at 16 and skipping scenes
+    // already on screen — lets you mix a random roll alongside curated slots.
+    async function loadRoulette(count, mode = 'replace') {
         try {
+            const adding = mode === 'add';
+            const want = adding ? Math.min(count, 16 - queue.length) : count;
+            if (want <= 0) return;
+            // In add mode fetch a buffer so we can drop scenes already on the grid.
+            const perPage = adding ? want + queue.length : want;
             const res = await fetch('/graphql', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    query: `query { findScenes(filter: { per_page: ${count}, sort: "random" }) { scenes { id } } }`
+                    query: `query { findScenes(filter: { per_page: ${perPage}, sort: "random" }) { scenes { id } } }`
                 })
             });
             const data = await res.json();
-            const ids = (data?.data?.findScenes?.scenes || []).map(s => String(s.id));
-            if (!ids.length) return;
-            // Save as filter slots so reopening the player loads fresh random scenes
-            const rouletteSlots = Array.from({ length: ids.length }, () => ({ type: 'filter', filter: {} }));
-            saveQueue(rouletteSlots);
-            // In-memory: use already-fetched IDs, registered as filter-backed for auto-advance
-            filterBackedCells.clear();
+            let ids = (data?.data?.findScenes?.scenes || []).map(s => String(s.id));
             const rouletteFilter = { type: 'filter', filter: {} };
-            ids.forEach(id => filterBackedCells.set(id, rouletteFilter));
-            queue = ids;
+
+            if (adding) {
+                const have = new Set(queue);
+                ids = ids.filter(id => !have.has(id)).slice(0, want);
+                if (!ids.length) return;
+                ids.forEach(id => filterBackedCells.set(id, rouletteFilter));
+                queue = [...queue, ...ids];
+                // Append matching empty-filter slots so a reload reproduces them.
+                const saved = getQueue();
+                ids.forEach(() => saved.push({ type: 'filter', filter: {} }));
+                saveQueue(saved);
+            } else {
+                ids = ids.slice(0, want);
+                if (!ids.length) return;
+                // Save as filter slots so reopening the player loads fresh randoms.
+                saveQueue(ids.map(() => ({ type: 'filter', filter: {} })));
+                filterBackedCells.clear();
+                ids.forEach(id => filterBackedCells.set(id, rouletteFilter));
+                queue = ids;
+            }
             await loadSceneMeta(ids);
             render();
         } catch {}
@@ -1671,6 +1770,14 @@
 
         sliderRow.append(countDisplay, slider);
 
+        // Replace / Add mode toggle.
+        let rollMode = localStorage.getItem(ROULETTE_MODE_KEY) === 'add' ? 'add' : 'replace';
+        const modeRow = document.createElement('div');
+        modeRow.className = 'mv-menu-mode';
+        const hint = document.createElement('div');
+        hint.className = 'mv-menu-hint';
+        const modeBtns = {};
+
         const rollBtn = document.createElement('button');
         rollBtn.className = 'mv-menu-roll-btn';
         rollBtn.textContent = 'Roll';
@@ -1678,10 +1785,42 @@
             const count = parseInt(slider.value);
             localStorage.setItem(ROULETTE_COUNT_KEY, count);
             closeMenuPanel();
-            loadRoulette(count);
+            loadRoulette(count, rollMode);
         });
 
-        rouletteSection.append(heading, sliderRow, rollBtn);
+        const applyMode = m => {
+            rollMode = m;
+            localStorage.setItem(ROULETTE_MODE_KEY, m);
+            modeBtns.replace.classList.toggle('active', m === 'replace');
+            modeBtns.add.classList.toggle('active', m === 'add');
+            if (m === 'add') {
+                // Cap the slider at the number of free slots — you can only add
+                // as many as there's room for (16 total).
+                const spare = Math.max(0, 16 - queue.length);
+                slider.max = Math.max(1, spare);
+                slider.disabled = rollBtn.disabled = spare <= 0;
+                if (parseInt(slider.value) > spare) slider.value = String(Math.max(1, spare));
+                hint.textContent = spare <= 0
+                    ? 'Grid is full (16). Remove a scene to add more.'
+                    : `Adds random scenes — ${spare} slot${spare === 1 ? '' : 's'} free.`;
+            } else {
+                slider.max = 16;
+                slider.disabled = rollBtn.disabled = false;
+                hint.textContent = 'Replaces every slot, including filter cards.';
+            }
+            countDisplay.textContent = slider.value;
+        };
+        [['replace', 'Replace'], ['add', 'Add']].forEach(([m, label]) => {
+            const b = document.createElement('button');
+            b.className = 'mv-menu-mode-btn';
+            b.textContent = label;
+            b.addEventListener('click', () => applyMode(m));
+            modeBtns[m] = b;
+            modeRow.appendChild(b);
+        });
+        applyMode(rollMode);
+
+        rouletteSection.append(heading, sliderRow, modeRow, hint, rollBtn);
         panel.appendChild(rouletteSection);
         document.body.appendChild(panel);
 
@@ -1699,6 +1838,15 @@
         if (!e.target.closest('#mv-menu-panel') && !e.target.closest('#mv-roulette-btn')) {
             closeMenuPanel();
         }
+    }
+
+    // �"?�"? Idle auto-hide �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
+
+    let idleHideTimer = null;
+    function markPointerActive() {
+        document.body.classList.remove('mv-idle');
+        clearTimeout(idleHideTimer);
+        idleHideTimer = setTimeout(() => document.body.classList.add('mv-idle'), IDLE_HIDE_MS);
     }
 
     // �"?�"? Init �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
@@ -1730,6 +1878,12 @@
 
         document.addEventListener('mousemove', updateSeekFill);
         document.addEventListener('mouseup', () => { commitSeek(); activeSeek = null; });
+
+        // Idle auto-hide: any pointer/keyboard activity keeps the chrome up and
+        // re-arms the hide timer; stillness hides it after IDLE_HIDE_MS.
+        ['mousemove', 'mousedown', 'wheel', 'keydown'].forEach(ev =>
+            document.addEventListener(ev, markPointerActive, { passive: true }));
+        markPointerActive();
 
         // Close popup when clicking anywhere outside a popup or its trigger button
         document.addEventListener('mousedown', e => {
