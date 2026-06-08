@@ -641,33 +641,21 @@
     }
     applyLiteModeClass(isLiteModeEnabled());
 
-    /* Scroll-perf — toggle body.refract-scrolling on scroll bursts so
-       css/17_scroll_perf.css can strip backdrop-filter while the user
-       is actively scrolling. Each blur surface re-rasterizes per frame
-       during scroll (biggest remaining cost on Chromium D3D11); blur
-       returns once they stop. Capture listener catches scroll events
-       from inner scrollable containers too, not just window scroll. */
-    (function initScrollPerf() {
-        var scrollTimer = null;
-        var isScrolling = false;
-        function onScroll() {
-            if (!isScrolling) {
-                isScrolling = true;
-                if (document.body) {
-                    document.body.classList.add("refract-scrolling");
-                }
-            }
-            if (scrollTimer) { clearTimeout(scrollTimer); }
-            scrollTimer = setTimeout(function () {
-                isScrolling = false;
-                scrollTimer = null;
-                if (document.body) {
-                    document.body.classList.remove("refract-scrolling");
-                }
-            }, 150);
-        }
-        window.addEventListener("scroll", onScroll, { passive: true, capture: true });
-    })();
+    /* Engine flag — true for Blink/Chromium (Chrome/Edge/Opera/Brave), false
+       for Gecko (Firefox) and WebKit (Safari). backdrop-filter raster behaves
+       very differently across these, so a couple of perf mitigations branch on
+       it. Detect by the "Chrome/" UA token (absent in Firefox and Safari). */
+    var IS_CHROMIUM = /Chrome\//.test(navigator.userAgent || "");
+
+    /* scroll-perf REMOVED in v1.13.17. It toggled body.refract-scrolling on
+       scroll bursts so 17_scroll_perf.css could strip backdrop-filter during
+       scroll. On Chromium D3D11, flipping backdrop-filter on every element
+       mass-rebuilt hundreds of GPU compositing layers, FREEZING the home page
+       for seconds on scroll. It was already gated off for Gecko/WebKit (only
+       caused a pop-in flash there, no raster win) and its Chromium benefit was
+       marginal at best — net-negative. Static blur scrolls acceptably; the
+       toggle cost far more than it saved. (The body.refract-scrolling CSS rules
+       were removed from 17_scroll_perf.css in the same change.) */
 
     /* Light mode — orthogonal to accents. Toggles a white/paper base
        via the `refract-light` body class; CSS rules in css/14_light.css
@@ -2086,6 +2074,14 @@
         if (card._stashTilt) { return; }
         /* Lite mode: skip the 3D-tilt + glare entirely. */
         if (document.body.classList.contains("refract-lite")) { return; }
+        /* Home-page slick carousel cards: skip the tilt entirely. The per-
+           mousemove perspective/scale transform forced backdrop-filter +
+           glow-shadow re-raster every frame against a blur-dense home page,
+           dropping hover to ~2fps on Chrome. CSS in 03_cards.css also
+           flattens their :hover (no scale/glow). The effect stays on the
+           real list/grid views. Not marked _stashTilt — the closest() check
+           is cheap and keeps SPA re-binds correct. */
+        if (card.closest && card.closest(".slick-slider")) { return; }
         card._stashTilt = true;
 
         /* Skip the glare overlay on image-cards — it paints above Stash's
@@ -2179,23 +2175,17 @@
 
     function initCardTilts() {
         if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) { return; }
-        /* Lazy-bind via IntersectionObserver: tilt listeners + glare overlay
-           are created only when a card crosses within ~200px of the viewport,
-           then we unobserve. On a home page with ~80 cards across multiple
-           recommendation rows that drops the synchronous boot-phase bind
-           cost from ~80 cards to ~20 (cards never reached are never bound).
-           The _stashTilt idempotence guard inside cardTiltBind keeps the
-           SPA-rebind path safe. */
-        var io = new IntersectionObserver(function (entries) {
-            entries.forEach(function (e) {
-                if (e.isIntersecting) {
-                    cardTiltBind(e.target);
-                    io.unobserve(e.target);
-                }
-            });
-        }, { rootMargin: "200px" });
+        /* Bind tilt listeners + glare overlay up front at boot / SPA-rebind.
+           v1.13.13 lazy-bound these via IntersectionObserver (bind only when a
+           card neared the viewport) to shave boot cost ~80→~20 cards, but that
+           appended the .stash-tilt-glare overlay div mid-scroll as cards came
+           into view — a DOM mutation during scroll that flashed a visible
+           pop-in (worst on Firefox during fast scroll). Binding all present
+           cards directly costs only a few listeners + one tiny div each, and
+           the _stashTilt idempotence guard in cardTiltBind keeps repeat
+           (SPA-rebind) calls cheap. */
         document.querySelectorAll(".grid-card, .scene-card, .performer-card, .wall-item").forEach(function (card) {
-            if (!card._stashTilt) { io.observe(card); }
+            cardTiltBind(card);
         });
     }
 
@@ -3488,8 +3478,31 @@
 
             updateBar();
 
+            /* Off-Chromium only: drop in-card glass blur while the row is mid-
+               slide. Slick moves via a transform: translate3d() transition on
+               .slick-track (not native scroll). On Gecko/WebKit, re-rastering
+               the blurred card pills every frame as the track translates janks
+               the slide. We tag the slider .refract-slick-animating for the
+               transition window; the scoped `*` strip in 17_scroll_perf.css
+               kills blur within just this one carousel subtree (toggled once
+               per slide, not per frame), and it restores on settle, masked by
+               the slide motion. Chromium composites this smoothly already, so
+               the class is never added there. */
+            var animTimer = null;
+            function markAnimating() {
+                if (IS_CHROMIUM) { return; }
+                slider.classList.add("refract-slick-animating");
+                clearTimeout(animTimer);
+                animTimer = setTimeout(function () {
+                    slider.classList.remove("refract-slick-animating");
+                }, 560); /* slick default speed 500ms + settle margin */
+            }
+
             /* Watch for slick moving by observing class changes on slides */
-            var slideObserver = new MutationObserver(updateBar);
+            var slideObserver = new MutationObserver(function () {
+                updateBar();
+                markAnimating();
+            });
             var track = slider.querySelector(".slick-track");
             if (track) {
                 slideObserver.observe(track, { attributes: true, subtree: true, attributeFilter: ["class"] });
