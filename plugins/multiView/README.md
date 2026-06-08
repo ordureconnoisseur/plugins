@@ -72,6 +72,8 @@ The queue is shared across tabs — changes on one tab are immediately reflected
 | Control | Action |
 |---|---|
 | Click a cell | Play / pause that scene |
+| Middle-click a cell | Mute / unmute that scene |
+| Scroll wheel over a cell | Skip ±5 seconds (enable **Scroll-Wheel Seek** in Settings first) |
 | Seekbar (bottom of cell) | Scrub to any position |
 | Volume button | Open per-cell volume slider |
 | Mute All (top bar) | Mute / unmute all scenes simultaneously |
@@ -100,11 +102,17 @@ Click the **focus button** in the top bar (or press **F**) to toggle Focus Mode.
 
 Press **F** (or click the focus button) again to return to the normal grid.
 
-### Keyboard Shortcuts
+### Shortcuts
 
-| Key | Action |
-|---|---|
-| `Space` | Play / pause all |
-| `P` | Play / pause all |
-| `M` | Mute / unmute all |
-| `F` | Toggle Focus Mode |
+Every shortcut is **rebindable to a keyboard key _or_ a mouse button**. Open **Settings**, expand the collapsible **Shortcuts** section, click the binding next to an action, then press the key or mouse button you want (middle, right, back, and forward buttons are supported). Backspace clears a binding, Esc cancels.
+
+| Action | Default | Notes |
+|---|---|---|
+| Mute / Unmute (hovered) | Middle Click | Acts on the scene under the cursor |
+| Play / Pause (hovered) | _unbound_ | Acts on the scene under the cursor |
+| O counter (hovered) | _unbound_ | Acts on the scene under the cursor |
+| Toggle Focus Mode | `F` | |
+| Toggle Full Screen | _unbound_ | |
+| Open Roulette | _unbound_ | |
+
+The grid-wide **Mute All**, **Pause All**, and **O All** actions live as buttons in the top bar.

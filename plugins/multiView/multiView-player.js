@@ -567,12 +567,86 @@
 
     const DEFAULT_QUALITY = { 1: 'webm1080', 2: 'webm720', 4: 'webm720', 6: 'webm480', 9: 'webm480', 12: 'webm360', 16: 'webm360' };
 
+    // Rebindable keyboard shortcuts. `run` is invoked when the bound key fires;
+    // it references module functions that are hoisted/defined by run() time.
+    // Stored keys are normalized (single letters lower-cased, ' ' -> 'Space').
+    // Rebindable shortcuts. A binding string is either a normalized keyboard key
+    // (single letters lower-cased, ' ' -> 'Space') or a mouse button ('Mouse<n>'
+    // where n is event.button: 1 middle, 2 right, 3 back, 4 forward). `run` gets
+    // the originating event so cell-scoped actions can find the target.
+    // The "All" actions live as top-bar buttons; shortcuts instead target the
+    // single cell under the cursor so a mouse button can act on one panel.
+    const KEYBIND_ACTIONS = [
+        { id: 'playPauseHover', label: 'Play / Pause (hovered)',  run: e => playPauseHoveredCell(e) },
+        { id: 'muteHover',      label: 'Mute / Unmute (hovered)', run: e => muteHoveredCell(e) },
+        { id: 'oHover',         label: 'O counter (hovered)',     run: e => oHoveredCell(e) },
+        { id: 'focus',          label: 'Toggle Focus Mode',       run: () => toggleFocusMode() },
+        { id: 'fullscreen',     label: 'Toggle Full Screen',      run: () => toggleFullscreen() },
+        { id: 'roulette',       label: 'Open Roulette',           run: () => openMenuPanel() },
+    ];
+    const DEFAULT_KEYBINDS = { playPauseHover: '', muteHover: 'Mouse1', oHover: '', focus: 'f', fullscreen: '', roulette: '' };
+    // Targets where a non-left button keeps its native meaning, so a mouse
+    // shortcut must NOT fire over them: links (middle-click opens a new tab) and
+    // the settings/menu/volume panels (which contain their own controls). NOTE:
+    // plain buttons are deliberately NOT excluded — the big play button covers a
+    // cell's center, and middle/right-clicking it should still fire the shortcut
+    // (left-clicks are ignored by the dispatcher via e.button === 0).
+    const MOUSE_BIND_EXCLUDE = 'a, .mv-vol-popup, #mv-settings-modal, #mv-menu-panel';
+    const MOUSE_LABELS = { Mouse0: 'Left Click', Mouse1: 'Middle Click', Mouse2: 'Right Click', Mouse3: 'Mouse Back', Mouse4: 'Mouse Forward' };
+
+    // The cell a shortcut should act on: the click target's cell for mouse
+    // bindings, else whatever cell the pointer is hovering (keyboard bindings).
+    function hoveredCell(e) {
+        return (e && e.target && e.target.closest && e.target.closest('.mv-cell'))
+            || document.querySelector('.mv-cell:hover');
+    }
+    function muteHoveredCell(e) {
+        const cell = hoveredCell(e);
+        if (cell) toggleAudio(cell.dataset.sceneId);
+    }
+    function oHoveredCell(e) {
+        const cell = hoveredCell(e);
+        if (cell) incrementO(cell.dataset.sceneId);
+    }
+    function playPauseHoveredCell(e) {
+        const cell = hoveredCell(e);
+        const v = cell && cell.querySelector('video');
+        if (!v) return;
+        if (v.paused) v.play().catch(() => {}); else v.pause();
+    }
+
+    function normalizeKey(k) {
+        if (!k) return '';
+        if (k === ' ' || k === 'Spacebar') return 'Space';
+        return k.length === 1 ? k.toLowerCase() : k;
+    }
+    function keyLabel(k) {
+        if (!k) return 'Unbound';
+        if (MOUSE_LABELS[k]) return MOUSE_LABELS[k];
+        if (k.startsWith('Mouse')) return 'Mouse ' + k.slice(5);
+        return k.length === 1 ? k.toUpperCase() : k;
+    }
+    // Fire the action bound to `binding`, if any. Returns true if one ran.
+    function runBinding(binding, e) {
+        if (!binding) return false;
+        for (const action of KEYBIND_ACTIONS) {
+            if (playerSettings.keybinds[action.id] === binding) {
+                e.preventDefault();
+                action.run(e);
+                return true;
+            }
+        }
+        return false;
+    }
+    let keybindCaptureActive = false;
+
     function loadPlayerSettings(saved = {}) {
         return {
             directPlay: saved.directPlay ?? false,
             quality: { ...DEFAULT_QUALITY, ...(saved.quality || {}) },
             focusMode: saved.focusMode ?? false,
-            wheelSeek: saved.wheelSeek ?? false
+            wheelSeek: saved.wheelSeek ?? false,
+            keybinds: { ...DEFAULT_KEYBINDS, ...(saved.keybinds || {}) }
         };
     }
 
@@ -719,7 +793,85 @@
             applyQualityToAllCells();
         });
 
-        card.append(header, dpRow, swRow, qualSection);
+        // Shortcuts section — collapsed by default (native <details>) to keep
+        // the panel tidy; bind a keyboard key or mouse button per action.
+        const kbSection = document.createElement('details');
+        kbSection.className = 'mv-settings-shortcuts';
+        const kbSummary = document.createElement('summary');
+        kbSummary.className = 'mv-settings-section-heading mv-shortcuts-summary';
+        kbSummary.textContent = 'Shortcuts';
+        kbSection.appendChild(kbSummary);
+
+        const kbRows = document.createElement('div');
+        kbRows.className = 'mv-shortcuts-rows';
+        kbSection.appendChild(kbRows);
+
+        function renderKeybindRows() {
+            kbRows.innerHTML = '';
+            KEYBIND_ACTIONS.forEach(action => {
+                const row = document.createElement('div');
+                row.className = 'mv-settings-qual-row';
+                const lbl = document.createElement('label');
+                lbl.textContent = action.label;
+                const btn = document.createElement('button');
+                btn.className = 'mv-keybind-btn';
+                btn.textContent = keyLabel(playerSettings.keybinds[action.id]);
+                btn.title = 'Click to rebind. Backspace clears, Esc cancels.';
+                btn.addEventListener('click', () => beginRebind(action, btn));
+                row.append(lbl, btn);
+                kbRows.appendChild(row);
+            });
+        }
+
+        function beginRebind(action, btn) {
+            if (keybindCaptureActive) return;
+            keybindCaptureActive = true;
+            btn.classList.add('capturing');
+            btn.textContent = 'Press a key or mouse button…';
+
+            // Assign `binding` to this action (or '' to clear), stealing it from
+            // any other action that held it, then tear down capture and re-render.
+            const finish = binding => {
+                document.removeEventListener('keydown', onKey, true);
+                document.removeEventListener('mousedown', onMouse, true);
+                document.removeEventListener('contextmenu', swallow, true);
+                keybindCaptureActive = false;
+                btn.classList.remove('capturing');
+                if (binding !== null) {
+                    if (binding) {
+                        KEYBIND_ACTIONS.forEach(a => {
+                            if (a.id !== action.id && playerSettings.keybinds[a.id] === binding) {
+                                playerSettings.keybinds[a.id] = '';
+                            }
+                        });
+                    }
+                    playerSettings.keybinds[action.id] = binding;
+                    savePlayerSettings();
+                }
+                renderKeybindRows();
+            };
+            const swallow = ev => { ev.preventDefault(); ev.stopPropagation(); };
+            const onKey = ev => {
+                swallow(ev);
+                if (ev.key === 'Escape') return finish(null);              // cancel
+                if (ev.key === 'Backspace' || ev.key === 'Delete') return finish('');
+                finish(normalizeKey(ev.key));
+            };
+            const onMouse = ev => {
+                swallow(ev);
+                // Left click cancels (lets you click away); any other button binds.
+                if (ev.button === 0) return finish(null);
+                finish('Mouse' + ev.button);
+            };
+            // Capture phase so we beat the global shortcut handlers to the input.
+            document.addEventListener('keydown', onKey, true);
+            document.addEventListener('mousedown', onMouse, true);
+            document.addEventListener('contextmenu', swallow, true);
+        }
+
+        renderKeybindRows();
+
+        card.append(header, dpRow, swRow, qualSection, kbSection);
         overlay.appendChild(card);
         overlay.addEventListener('click', e => { if (e.target === overlay) closeSettingsModal(); });
         document.body.appendChild(overlay);
@@ -1640,7 +1792,7 @@
             slider.max = 2;
             slider.step = 0.05;
             slider.value = 1;
-            slider.title = 'Volume (0�?"200%)';
+            slider.title = 'Volume (0-200%)';
             slider.addEventListener('input', e => {
                 e.stopPropagation();
                 const val = parseFloat(slider.value);
@@ -1992,9 +2144,30 @@
         document.addEventListener('fullscreenchange', applyFullscreenIcon);
         applyFullscreenIcon();
         document.addEventListener('keydown', e => {
-            if (e.key === 'f' || e.key === 'F') toggleFocusMode();
-            else if (e.key === 'm' || e.key === 'M') toggleMuteAll();
-            else if (e.key === 'p' || e.key === 'P') playPauseAll();
+            // Let modified chords (Ctrl/Cmd/Alt) and typing in fields pass through,
+            // and stand down while a rebind capture is grabbing the next key.
+            if (keybindCaptureActive) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            const tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable) return;
+            runBinding(normalizeKey(e.key), e);
+        });
+
+        // Mouse-button shortcuts. Never hijack the left button; skip links and
+        // controls so they keep their native click. preventDefault on mousedown
+        // suppresses the middle-button autoscroll puck (it arms on press).
+        // Capture phase so a cell/seekbar stopPropagation can't swallow it.
+        document.addEventListener('mousedown', e => {
+            if (keybindCaptureActive || e.button === 0) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.target.closest(MOUSE_BIND_EXCLUDE)) return;
+            runBinding('Mouse' + e.button, e);
+        }, true);
+        // If the right button is bound, swallow the context menu it would open.
+        document.addEventListener('contextmenu', e => {
+            if (keybindCaptureActive || e.target.closest(MOUSE_BIND_EXCLUDE)) return;
+            const rightBound = KEYBIND_ACTIONS.some(a => playerSettings.keybinds[a.id] === 'Mouse2');
+            if (rightBound) e.preventDefault();
         });
         window.addEventListener('resize', () => {
             if (playerSettings.focusMode) applyJustifiedLayout();
