@@ -255,6 +255,13 @@
 
     const DOMAINS = [sceneDomain, performerDomain];
 
+    // Scene inline-panel constants. Declared here (not in the inline-panel
+    // section below) because onLocationChange() runs at load and calls
+    // removeScenePanel() — referencing these before a later `const` line would
+    // hit the temporal dead zone and abort trigger injection.
+    const INLINE_PANEL_ID = "adv-rating-inline-panel";
+    const INLINE_OPEN_KEY = "asrInlineOpen";
+
     /* ─── Domain-aware config helpers ────────────────────────────────── */
     function groupsFromConfig(config, domain) {
         const raw = config[domain.prefix + "group_ids"];
@@ -628,6 +635,9 @@
                     lastPaths[key] = path;
                     const existing = document.querySelector('#' + domain.triggerId);
                     if (existing) existing.remove();
+                    // Drop the stale inline panel when moving to a new scene so
+                    // it can't show the previous scene's ratings.
+                    if (domain.entityType === 'scene') removeScenePanel();
                     startPolling(domain, entityId);
                 }
                 // Clear other domain state since URL doesn't match it
@@ -640,12 +650,14 @@
                         }
                         const oex = document.querySelector('#' + other.triggerId);
                         if (oex) oex.remove();
+                        if (other.entityType === 'scene') removeScenePanel();
                     }
                 }
                 return;
             }
         }
         // No domain matched — clear everything.
+        removeScenePanel();
         for (const domain of DOMAINS) {
             const key = domain.entityType;
             lastPaths[key] = null;
@@ -675,11 +687,21 @@
         triggerBtn.className = 'adv-rating-btn';
         anchor.insertAdjacentElement('afterend', triggerBtn);
         triggerBtn.addEventListener('click', (e) => {
-            e.preventDefault(); e.stopPropagation(); openModal(domain, entityId);
+            e.preventDefault(); e.stopPropagation();
+            // Scenes: toggle the inline sidebar panel (video keeps playing).
+            // Performers: keep the overlay modal.
+            if (domain.entityType === 'scene') {
+                toggleScenePanel(entityId);
+            } else {
+                openModal(domain, entityId);
+            }
         });
         annotateUnratedCount(domain, triggerBtn, entityId);
         if (domain.hasFavourite) {
             injectFavouriteBtn(triggerBtn, entityId);
+        }
+        if (domain.entityType === 'scene') {
+            restoreScenePanel(entityId);
         }
     }
 
@@ -772,53 +794,64 @@
         }
     }
 
-    async function openModal(domain, entityId) {
-        if (document.querySelector('#' + domain.modalId)) return;
-        const modalOverlay = document.createElement('div');
-        modalOverlay.id = domain.modalId;
-        modalOverlay.className = 'adv-rating-modal-overlay';
-        const modalContent = document.createElement('div');
-        modalContent.className = 'adv-rating-modal-content';
-        // Use a domain-scoped close class so both modals don't share one selector.
-        const closeClass = domain.entityType === "scene" ? "adv-rating-close" : "perf-rating-close";
-        modalContent.innerHTML = `
-            <div class="adv-rating-header">
-                <div>
-                    <h3>${domain.modalTitle}</h3>
-                    <div class="adv-rating-subhead"></div>
-                </div>
-                <span class="${closeClass}">&times;</span>
-            </div>
-            <div class="ratings-list">Loading…</div>
-            <div class="adv-rating-breakdown"></div>
-        `;
-        modalOverlay.appendChild(modalContent);
-        document.body.appendChild(modalOverlay);
-        const handleClose = () => { modalOverlay.remove(); window.location.reload(); };
-        modalContent.querySelector('.' + closeClass).addEventListener('click', handleClose);
-        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) handleClose(); });
+    // Live-sync the entity's overall rating into Stash's Apollo cache so the
+    // native rating stars repaint instantly after a criterion change, with no
+    // page reload (replaces the old close→location.reload crutch). The DB is
+    // updated independently by the Scene/Performer.Update.Post recalc hook;
+    // this just mirrors the freshly computed value into the in-memory cache so
+    // React's toolbar stars reflect it immediately. Degrades silently if a
+    // future Stash drops getClient/cache.modify (the stars then stay stale
+    // until the next navigation/refetch, same as before this existed).
+    function syncRatingToCache(domain, entityId, rating100) {
+        if (typeof rating100 !== 'number') return;
+        try {
+            const SS = (typeof PluginApi !== 'undefined') && PluginApi.utils && PluginApi.utils.StashService;
+            if (!SS || typeof SS.getClient !== 'function') return;
+            const client = SS.getClient();
+            if (!client || !client.cache || typeof client.cache.modify !== 'function') return;
+            const typename = domain.entityType === 'performer' ? 'Performer' : 'Scene';
+            const id = client.cache.identify({ __typename: typename, id: String(entityId) });
+            if (!id) return;
+            client.cache.modify({ id, fields: { rating100: () => rating100 } });
+        } catch (e) {
+            console.warn('[advancedRating] live rating sync failed', e);
+        }
+    }
 
+    // Shared rating renderer used by BOTH the overlay modal and the scene
+    // inline panel. `host` must contain .adv-rating-subhead (optional),
+    // .ratings-list and .adv-rating-breakdown elements. Each criterion edit
+    // saves immediately and live-syncs the overall rating to the Apollo cache.
+    // Returns a controller with refresh().
+    async function mountRatingUI(host, domain, entityId) {
         const { groups, criteria } = await getRatingModel(domain);
         const precision = (await getStashRatingInfo()).precision;
         let entityTags = await domain.fetchEntityTags(entityId);
+        // Latest computed overall rating (null when no contributing groups, in
+        // which case the hook leaves rating100 untouched so we don't sync).
+        let currentRating100 = null;
 
         function render() {
-            const listContainer = modalContent.querySelector('.ratings-list');
-            const subhead = modalContent.querySelector('.adv-rating-subhead');
-            const breakdownEl = modalContent.querySelector('.adv-rating-breakdown');
+            const listContainer = host.querySelector('.ratings-list');
+            const subhead = host.querySelector('.adv-rating-subhead');
+            const breakdownEl = host.querySelector('.adv-rating-breakdown');
             listContainer.innerHTML = '';
 
             const breakdown = computeBreakdown(entityTags, groups, criteria, precision);
             const currentScores = breakdown.scoresByCriterion;
+            currentRating100 = (breakdown.finalAvg !== null && typeof breakdown.rating100 === 'number')
+                ? breakdown.rating100 : null;
 
-            subhead.innerHTML = '';
-            const summary = document.createElement('span');
-            summary.className = 'adv-rating-summary';
-            summary.innerText = `${breakdown.totalCriteria} criteria · ${breakdown.totalRated} rated`;
-            if (breakdown.totalUnrated > 0) {
-                summary.innerHTML += ` · <span class="adv-rating-unrated-pill">${breakdown.totalUnrated} unrated</span>`;
+            if (subhead) {
+                subhead.innerHTML = '';
+                const summary = document.createElement('span');
+                summary.className = 'adv-rating-summary';
+                summary.innerText = `${breakdown.totalCriteria} criteria · ${breakdown.totalRated} rated`;
+                if (breakdown.totalUnrated > 0) {
+                    summary.innerHTML += ` · <span class="adv-rating-unrated-pill">${breakdown.totalUnrated} unrated</span>`;
+                }
+                subhead.appendChild(summary);
             }
-            subhead.appendChild(summary);
 
             groups.forEach(g => {
                 const groupCriteria = criteria.filter(c => c.group === g.id);
@@ -867,6 +900,7 @@
                             listContainer.style.opacity = '0.5';
                             if (await updateEntityCriterionTag(domain, entityId, entityTags, prefix, i)) {
                                 entityTags = await domain.fetchEntityTags(entityId); render();
+                                syncRatingToCache(domain, entityId, currentRating100);
                             }
                             listContainer.style.opacity = '1';
                         });
@@ -878,6 +912,7 @@
                         listContainer.style.opacity = '0.5';
                         if (await updateEntityCriterionTag(domain, entityId, entityTags, prefix, null)) {
                             entityTags = await domain.fetchEntityTags(entityId); render();
+                            syncRatingToCache(domain, entityId, currentRating100);
                         }
                         listContainer.style.opacity = '1';
                     });
@@ -963,6 +998,112 @@
         }
 
         render();
+        return {
+            // Re-pull tags from the server and repaint (used when something
+            // external may have changed the entity's ratings).
+            refresh: async () => { entityTags = await domain.fetchEntityTags(entityId); render(); },
+        };
+    }
+
+    async function openModal(domain, entityId) {
+        if (document.querySelector('#' + domain.modalId)) return;
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = domain.modalId;
+        modalOverlay.className = 'adv-rating-modal-overlay';
+        const modalContent = document.createElement('div');
+        modalContent.className = 'adv-rating-modal-content';
+        // Use a domain-scoped close class so both modals don't share one selector.
+        const closeClass = domain.entityType === "scene" ? "adv-rating-close" : "perf-rating-close";
+        modalContent.innerHTML = `
+            <div class="adv-rating-header">
+                <div>
+                    <h3>${domain.modalTitle}</h3>
+                    <div class="adv-rating-subhead"></div>
+                </div>
+                <span class="${closeClass}">&times;</span>
+            </div>
+            <div class="ratings-list">Loading…</div>
+            <div class="adv-rating-breakdown"></div>
+        `;
+        modalOverlay.appendChild(modalContent);
+        document.body.appendChild(modalOverlay);
+        // No page reload on close: ratings save per-click and the toolbar stars
+        // are live-synced via syncRatingToCache, so closing just drops the overlay.
+        const handleClose = () => { modalOverlay.remove(); };
+        modalContent.querySelector('.' + closeClass).addEventListener('click', handleClose);
+        modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) handleClose(); });
+
+        await mountRatingUI(modalContent, domain, entityId);
+    }
+
+    /* ─────────────────────────────────────────────────────────────────
+       SCENE-ONLY: inline ratings panel
+       Lives in the scene-details sidebar (right under .scene-toolbar) so you
+       can rate while the video keeps playing. Toggled by the same ★+ trigger
+       that opens the overlay on performer pages. Replaces the overlay on the
+       scene page entirely; no page reload (see syncRatingToCache).
+       (INLINE_PANEL_ID / INLINE_OPEN_KEY are declared up near DOMAINS.)
+       ───────────────────────────────────────────────────────────────── */
+    function removeScenePanel() {
+        const p = document.getElementById(INLINE_PANEL_ID);
+        if (p) p.remove();
+    }
+
+    // Create the panel (collapsed) under the scene toolbar if it isn't there
+    // yet. Returns the panel element, or null if the toolbar isn't present.
+    function ensureScenePanel() {
+        let panel = document.getElementById(INLINE_PANEL_ID);
+        if (panel) return panel;
+        const toolbar = document.querySelector('.scene-toolbar');
+        if (!toolbar) return null;
+        panel = document.createElement('div');
+        panel.id = INLINE_PANEL_ID;
+        panel.className = 'adv-rating-inline-panel';
+        panel.innerHTML = `
+            <div class="adv-rating-inline-head">
+                <span class="adv-rating-inline-title">Advanced Ratings</span>
+                <span class="adv-rating-subhead"></span>
+            </div>
+            <div class="ratings-list">Loading…</div>
+            <div class="adv-rating-breakdown"></div>
+        `;
+        toolbar.insertAdjacentElement('afterend', panel);
+        return panel;
+    }
+
+    // Mount the shared rating UI into the panel once (guarded by data-mounted
+    // so re-opening doesn't rebuild). React may wipe the panel on re-render;
+    // ensureScenePanel recreates a fresh (unmounted) node, so it re-mounts.
+    async function mountScenePanelOnce(panel, sceneId) {
+        if (panel.dataset.mounted === sceneId) return;
+        panel.dataset.mounted = sceneId;
+        try {
+            await mountRatingUI(panel, sceneDomain, sceneId);
+        } catch (e) {
+            panel.dataset.mounted = '';
+            console.warn('[advancedRating] inline panel mount failed', e);
+        }
+    }
+
+    function setScenePanelOpen(panel, open, sceneId, persist) {
+        panel.classList.toggle('open', open);
+        const trigger = document.getElementById(sceneDomain.triggerId);
+        if (trigger) trigger.classList.toggle('adv-rating-btn--active', open);
+        if (persist !== false) localStorage.setItem(INLINE_OPEN_KEY, open ? '1' : '0');
+        if (open) mountScenePanelOnce(panel, sceneId);
+    }
+
+    function toggleScenePanel(sceneId) {
+        const panel = ensureScenePanel();
+        if (!panel) return;
+        setScenePanelOpen(panel, !panel.classList.contains('open'), sceneId);
+    }
+
+    // Restore the remembered open state when the trigger (re)appears.
+    function restoreScenePanel(sceneId) {
+        if (localStorage.getItem(INLINE_OPEN_KEY) !== '1') return;
+        const panel = ensureScenePanel();
+        if (panel) setScenePanelOpen(panel, true, sceneId, false);
     }
 
     /* ─────────────────────────────────────────────────────────────────
