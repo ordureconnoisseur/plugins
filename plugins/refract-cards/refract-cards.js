@@ -52,8 +52,14 @@
        always use it; performers' playing layout also draws the frame). */
     function applyModeClasses() {
         if (!document.body) { return; }
-        document.body.classList.toggle("refract-cards-playing", getPerfOn());
-        document.body.classList.toggle("refract-cards-tiers", getSceneOn() || getPerfOn());
+        /* Both classes drive shared CSS (the tier frame + the diagonal tier-
+           name ribbon). They're enabled whenever either card type is styled;
+           the per-card `.rc-on` marker + card-type selectors do the real
+           gating, so the performer playing-LAYOUT still only hits performer
+           cards (which are only marked when performers are on). */
+        var any = getSceneOn() || getPerfOn();
+        document.body.classList.toggle("refract-cards-playing", any);
+        document.body.classList.toggle("refract-cards-tiers", any);
     }
     applyModeClasses();
 
@@ -1045,7 +1051,7 @@
     }
 
     function syncPerformerCardHearts() {
-        var inPlayingCard = document.body.classList.contains("refract-cards-playing");
+        var inPlayingCard = getPerfOn();
         document.querySelectorAll(".performer-card").forEach(function (card) {
             var isFav = !!card.querySelector(".favorite-button.favorite");
             var existing = card.querySelector(":scope > .refract-heart-particles");
@@ -1282,10 +1288,26 @@
     var observer = null;
     var scheduled = false;
 
+    /* Scene cards get only the tier-name ribbon element (no GraphQL, no
+       performer circles — that's the part that ballooned them). The CSS fills
+       its text from the card's refract-card-tier-* class via ::after. */
+    function injectSceneTierLabels() {
+        if (!getSceneOn()) { return; }
+        document.querySelectorAll(".scene-card.rc-on:not([data-rc-tl])").forEach(function (card) {
+            card.setAttribute("data-rc-tl", "1");
+            if (!card.querySelector(":scope > .refract-pc-tier-label")) {
+                var d = document.createElement("div");
+                d.className = "refract-pc-tier-label";
+                card.appendChild(d);
+            }
+        });
+    }
+
     function runAll() {
         addScope();
         if (observer) { observer.disconnect(); }
         safeRun(applyCardScope);
+        safeRun(injectSceneTierLabels);
         safeRun(initCardTilts);
         /* initSceneCards (Refract's scene-card redesign: performer-avatar
            circles + tag-count badges via GraphQL) is intentionally NOT run.
