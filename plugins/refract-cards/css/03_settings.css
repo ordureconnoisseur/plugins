@@ -1,0 +1,48 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Refract Cards — settings panel
+   Styles the segmented Off / Tier frames / Playing card controls that the
+   JS renders into Settings → Plugins → Refract Cards. Scoped under
+   body.refract-cards (added to <body> on load) and the panel's own class
+   so it can't leak into the rest of Stash.
+   ═══════════════════════════════════════════════════════════════════ */
+
+body.refract-cards .refract-cards-settings .setting h3 {
+    margin-bottom: 0.2rem;
+}
+
+body.refract-cards .refract-cards-segmented {
+    display: inline-flex;
+    flex-shrink: 0;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+    border-radius: 8px;
+    overflow: hidden;
+    background: rgba(127, 127, 127, 0.08);
+}
+
+body.refract-cards .refract-cards-seg-btn {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    line-height: 1.2;
+    padding: 0.4rem 0.95rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+body.refract-cards .refract-cards-seg-btn + .refract-cards-seg-btn {
+    border-left: 1px solid rgba(127, 127, 127, 0.4);
+}
+
+body.refract-cards .refract-cards-seg-btn:hover {
+    background: rgba(127, 127, 127, 0.18);
+}
+
+body.refract-cards .refract-cards-seg-btn.is-active {
+    background: rgba(255, 255, 255, 0.85);
+    color: #111;
+    font-weight: 600;
+}

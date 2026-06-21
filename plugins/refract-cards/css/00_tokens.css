@@ -1,0 +1,64 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Refract Cards — design tokens
+   These are the Refract theme tokens the tier + playing-card rules read,
+   bundled here so the plugin works standalone on the DEFAULT Stash theme.
+
+   IMPORTANT: this file only DEFINES custom properties on body.refract-cards
+   (plus one @property registration + the Concert One font is declared in
+   02_playing_card.css). It deliberately sets NO color/background/font on
+   the body itself, so installing the plugin does not restyle anything
+   until a card mode is switched on. The accent is a neutral white/silver
+   (Refract's 8-colour picker is intentionally omitted).
+   ═══════════════════════════════════════════════════════════════════ */
+
+body.refract-cards {
+    /* Tier/playing-card text + badges inherit this; falls back to the
+       system UI font (no web font shipped for body text). */
+    --theme-font-stack: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    --bg-0: #0a0a0a;
+    --bg-1: #111;
+    --text: rgba(255, 255, 255, 0.92);
+    --text-muted: rgba(255, 255, 255, 0.55);
+
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-bg-strong: rgba(255, 255, 255, 0.10);
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-border-bright: rgba(255, 255, 255, 0.22);
+
+    --glass-blur-xs:  blur(6px);
+    --glass-blur-sm:  blur(10px);
+    --glass-blur-md:  blur(14px);
+    --glass-blur-lg:  blur(20px);
+    --glass-blur-xl:  blur(24px);
+    --glass-blur-2xl: blur(32px);
+
+    --shadow-xs:  0 1px 4px rgba(0, 0, 0, 0.35);
+    --shadow-sm:  0 2px 10px rgba(0, 0, 0, 0.25);
+    --shadow-md:  0 4px 24px rgba(0, 0, 0, 0.25);
+    --shadow-lg:  0 8px 26px rgba(0, 0, 0, 0.32);
+    --shadow-xl:  0 12px 40px rgba(0, 0, 0, 0.55);
+    --shadow-2xl: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+    --radius: 16px;
+    --radius-sm: 12px;
+    --radius-pill: 9999px;
+
+    /* Neutral white/silver accent — drives the non-tier playing-card stat
+       badges + the unrated glow. (Tier cards override these via their own
+       --tier-color tokens in 01_tiers.css.) */
+    --accent: #d2d6dd;
+    --accent-bright: #f1f3f7;
+    --accent-light: #ffffff;
+    --accent-rgb: 210, 214, 221;
+    --accent-glow: rgba(var(--accent-rgb), 0.28);
+    --accent-tint: rgba(var(--accent-rgb), 0.12);
+}
+
+/* Smooth interpolation for the Legendary/Perfect rotating conic borders.
+   Registering the custom property as an <angle> lets it animate. */
+@property --refract-rotate {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+}

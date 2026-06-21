@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Refract Cards — floating hearts on favourited performers
+   In playing-card mode, a favourited performer card gets a layer of ♥
+   glyphs drifting upward (injected by syncPerformerCardHearts() in
+   refract-cards.js). Pure transform/opacity animation so it GPU-
+   composites cleanly. Disabled for prefers-reduced-motion.
+   Gated to playing-card mode; the particle element is only injected then.
+   ═══════════════════════════════════════════════════════════════════ */
+
+body.refract-cards.refract-cards-playing .performer-card .refract-heart-particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 8; /* above the chin/banner (z:6), below the tier ribbon (z:12) */
+    border-radius: inherit;
+    /* Isolate the layer so heart movement doesn't dirty the rest of the
+       card's paint — the card already runs tier breathing / sheen / float. */
+    contain: layout paint;
+}
+
+body.refract-cards.refract-cards-playing .performer-card .refract-heart {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    color: #ff5a85;
+    opacity: 0;
+    /* translate3d forces GPU compositing without will-change. */
+    transform: translate3d(0, 24px, 0);
+    animation: refractHeartFloat var(--hd, 6s) linear infinite;
+    animation-delay: var(--dl, 0s);
+    font-size: var(--hs, 14px);
+    line-height: 1;
+}
+
+/* Five varied trajectories spread across the card width. */
+body.refract-cards.refract-cards-playing .performer-card .refract-heart-1 { left: 10%; --hs: 13px; --hd: 5.6s; --dl: 0s;   }
+body.refract-cards.refract-cards-playing .performer-card .refract-heart-2 { left: 32%; --hs: 17px; --hd: 7.0s; --dl: 1.0s; }
+body.refract-cards.refract-cards-playing .performer-card .refract-heart-3 { left: 52%; --hs: 12px; --hd: 6.0s; --dl: 2.0s; }
+body.refract-cards.refract-cards-playing .performer-card .refract-heart-4 { left: 72%; --hs: 18px; --hd: 6.6s; --dl: 3.0s; }
+body.refract-cards.refract-cards-playing .performer-card .refract-heart-5 { left: 90%; --hs: 13px; --hd: 5.8s; --dl: 4.0s; }
+
+/* Pixel translateY (not %) so a 13px heart actually clears the card; the
+   parent's overflow:hidden clips it off the top. 500px covers tall
+   portrait performer cards. */
+@keyframes refractHeartFloat {
+    0% {
+        transform: translate3d(0, 24px, 0) rotate(-6deg) scale(0.55);
+        opacity: 0;
+    }
+    8% {
+        opacity: 0.95;
+        transform: translate3d(4px, -20px, 0) rotate(2deg) scale(1);
+    }
+    50% {
+        opacity: 0.9;
+        transform: translate3d(-8px, -240px, 0) rotate(8deg) scale(1.05);
+    }
+    90% {
+        opacity: 0.75;
+        transform: translate3d(10px, -460px, 0) rotate(-4deg) scale(0.95);
+    }
+    100% {
+        opacity: 0;
+        transform: translate3d(0, -500px, 0) rotate(0deg) scale(0.7);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.refract-cards.refract-cards-playing .performer-card .refract-heart-particles {
+        display: none;
+    }
+}
