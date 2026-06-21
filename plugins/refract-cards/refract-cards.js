@@ -1303,6 +1303,36 @@
         });
     }
 
+    /* Read a 0-10 rating from a Stash .rating-banner: the modern
+       `rating-100-N` class (N = rating100, older builds N = floor/5 0-20),
+       the legacy `rating-N` star class, or a textContent fallback. Mirrors
+       the parse path in the extracted tagFilledRatings. */
+    function ratingFromBanner(el) {
+        if (!el) { return 0; }
+        var rating100 = null;
+        var m = (el.className || "").match(/\brating-100-(\d+)\b/);
+        if (m) {
+            var n = parseInt(m[1], 10);
+            rating100 = n > 20 ? Math.min(100, n) : n * 5;
+        } else {
+            m = (el.className || "").match(/\brating-(\d+)\b/);
+            if (m) { rating100 = Math.min(100, parseInt(m[1], 10) * 20); }
+        }
+        if (rating100 === null) {
+            var raw = (el.textContent || "").trim();
+            var rawV = parseFloat(raw);
+            if (isFinite(rawV) && rawV > 0) {
+                if (rawV > 5) {
+                    rating100 = Math.min(100, rawV * 10);
+                } else {
+                    var stars = document.body.classList.contains("refract-cards-rating-stars");
+                    rating100 = Math.min(100, stars ? rawV * 20 : rawV * 10);
+                }
+            }
+        }
+        return rating100 == null ? 0 : rating100 / 10;
+    }
+
     /* Scene cards: Stash's native rating banner is hidden by the CSS (it
        reads "Rating: 9.5" and won't fit the badge), so inject a controlled
        direct-child badge showing just the number. It carries the rating-banner
