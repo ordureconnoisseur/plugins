@@ -4,12 +4,12 @@
 
 /* Image-card hover affordance — body-delegated click handler in refract.js
    routes the image click to the underlying lightbox trigger. */
-body.refract-cards .image-card img {
+body.refract-cards .image-card.rc-on img {
     cursor: zoom-in !important;
 }
 
-body.refract-cards .card,
-body.refract-cards .grid-card {
+body.refract-cards .card.rc-on,
+body.refract-cards .grid-card.rc-on {
     background: var(--glass-bg) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius) !important;
@@ -44,8 +44,8 @@ body.refract-cards .grid-card {
    bigger and squarer on every click. Opt the carousel cards out of
    cv:auto so they render at their natural aspect ratio from the start.
    Gallery-grid cards keep the perf win. */
-body.refract-cards .slick-slider .card,
-body.refract-cards .slick-slider .grid-card {
+body.refract-cards .slick-slider .card.rc-on,
+body.refract-cards .slick-slider .grid-card.rc-on {
     content-visibility: visible;
     contain-intrinsic-size: none;
     /* Containment downgraded from `layout paint style` to `layout` only.
@@ -56,7 +56,7 @@ body.refract-cards .slick-slider .grid-card {
        containment keeps the slick translate-resize bug at bay without
        the per-card layer explosion. */
     contain: layout;
-    /* Re-assert overflow:hidden — the base .card rule sets it for the
+    /* Re-assert overflow:hidden — the base .card.rc-on rule sets it for the
        rounded-corner clip + the playing-card tier-ribbon "cut sash"
        effect (16_playing_card.css relies on overflow:hidden clipping
        the ribbon's negative right:-3rem). The slick override doesn't
@@ -79,7 +79,7 @@ body.refract-cards .slick-slider .grid-card {
    itself sits inside a transformed ancestor (slick-track's
    `translate3d(...)`) can spill past the parent's clip. clip-path
    enforces the clip at the compositor level. */
-body.refract-cards.refract-cards-playing .slick-slider :is(.scene-card, .performer-card)[class*="refract-card-tier-"] {
+body.refract-cards.refract-cards-playing .slick-slider :is(.scene-card.rc-on, .performer-card.rc-on)[class*="refract-card-tier-"] {
     clip-path: inset(0 round var(--radius));
     /* Tier-coloured border instead of the outer glow halo (which the
        clip-path would clip away anyway). 1.5px is enough to read as a
@@ -92,8 +92,8 @@ body.refract-cards.refract-cards-playing .slick-slider :is(.scene-card, .perform
         inset 0 0 0 1px rgba(var(--tier-color-bright, var(--tier-color)), 0.35),
         var(--shadow-md) !important;
 }
-body.refract-cards .card:hover,
-body.refract-cards .grid-card:hover {
+body.refract-cards .card.rc-on:hover,
+body.refract-cards .grid-card.rc-on:hover {
     border-color: rgba(var(--accent-rgb), 0.28) !important;
     box-shadow:
         var(--shadow-2xl),
@@ -101,12 +101,12 @@ body.refract-cards .grid-card:hover {
         0 0 40px 6px rgba(var(--accent-rgb), 0.22),
         0 0 90px 18px rgba(var(--accent-rgb), 0.09);
 }
-/* Hover scale is scoped to .grid-card only — the bare .card class is
+/* Hover scale is scoped to .grid-card.rc-on only — the bare .card.rc-on class is
    used by Stash for setting-sections, modal panels, etc., and the lift
    makes sliders + clickable controls jitter under the cursor. Grid
    cards (scene/performer/etc.) keep the lift as a safety net for when
    the JS tilt's mousemove handler hasn't fired yet. */
-body.refract-cards .grid-card:hover {
+body.refract-cards .grid-card.rc-on:hover {
     transform: scale3d(1.04, 1.04, 1.04);
 }
 
@@ -120,8 +120,8 @@ body.refract-cards .grid-card:hover {
    Tier-ribbon cards keep their higher-specificity tier shadow; the cheap
    border-colour highlight stays for hover feedback. Full effect remains on the
    real list/grid views. */
-body.refract-cards .slick-slider .card:hover,
-body.refract-cards .slick-slider .grid-card:hover {
+body.refract-cards .slick-slider .card.rc-on:hover,
+body.refract-cards .slick-slider .grid-card.rc-on:hover {
     transform: none !important;
     box-shadow: var(--shadow-md) !important;
 }
@@ -130,8 +130,8 @@ body.refract-cards .slick-slider .grid-card:hover {
    card-type-specific rule (tag cards, etc.). Edge-to-edge images rely on the
    card's overflow:hidden + border-radius for corner clipping; an extra
    per-image radius creates a visible card-background gap at the corners. */
-body.refract-cards .grid-card img,
-body.refract-cards .card img {
+body.refract-cards .grid-card.rc-on img,
+body.refract-cards .card.rc-on img {
     display: block;
     width: 100%;
 }
@@ -140,13 +140,13 @@ body.refract-cards .card img {
    case the card-level overflow:hidden clip leaves a 1px square edge
    visible (depends on image positioning context). Matches card radius
    so corners stay flush. */
-body.refract-cards .scene-card .scene-card-preview,
-body.refract-cards .scene-card .preview-image,
-body.refract-cards .scene-card .video-section,
-body.refract-cards .performer-card .thumbnail-section,
-body.refract-cards .gallery-card .thumbnail-section,
-body.refract-cards .image-card .thumbnail-section,
-body.refract-cards .scene-marker-card .thumbnail-section {
+body.refract-cards .scene-card.rc-on .scene-card-preview,
+body.refract-cards .scene-card.rc-on .preview-image,
+body.refract-cards .scene-card.rc-on .video-section,
+body.refract-cards .performer-card.rc-on .thumbnail-section,
+body.refract-cards .gallery-card.rc-on .thumbnail-section,
+body.refract-cards .image-card.rc-on .thumbnail-section,
+body.refract-cards .scene-marker-card.rc-on .thumbnail-section {
     border-top-left-radius: var(--radius);
     border-top-right-radius: var(--radius);
     overflow: hidden;
@@ -180,7 +180,7 @@ body.refract-cards .stash-tilt-glare-inner {
 
 /* ───────────────────────────────────────────────────────────────────
    Floating-hearts effect for favourited scenes
-   The .refract-heart-particles layer is appended to a .scene-card by
+   The .refract-heart-particles layer is appended to a .scene-card.rc-on by
    injectPerformerCircles() in refract.js when the card carries the
    "Favourite ★" tag from the Advanced Rating plugin. Seven ♥ glyphs
    drift upward across the card with staggered delays + horizontal
@@ -279,7 +279,7 @@ body.refract-cards.refract-lite .refract-heart-particles {
         from { opacity: 0; transform: translateY(8px); }
         to   { opacity: 1; transform: translateY(0); }
     }
-    body.refract-cards .grid-card {
+    body.refract-cards .grid-card.rc-on {
         /* No fill-mode — `both` would persist the `to` keyframe's
            `transform: translateY(0)` after the animation ends, and that
            persisting animation transform cascades ABOVE inline styles,
@@ -312,8 +312,8 @@ body.refract-cards .card-check {
     box-shadow: none !important;
     transition: opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
-body.refract-cards .card:hover .card-check,
-body.refract-cards .grid-card:hover .card-check,
+body.refract-cards .card.rc-on:hover .card-check,
+body.refract-cards .grid-card.rc-on:hover .card-check,
 body.refract-cards .card-check:checked {
     opacity: 1;
     backdrop-filter: var(--glass-blur-xs);
@@ -330,9 +330,9 @@ body.refract-cards .card-check:focus {
 }
 
 /* Rating — fixed square squircle + orange glow; number only (refract.js strips label) */
-body.refract-cards .performer-card,
-body.refract-cards .grid-card.performer-card,
-body.refract-cards .card.performer-card,
+body.refract-cards .performer-card.rc-on,
+body.refract-cards .grid-card.rc-on.performer-card.rc-on,
+body.refract-cards .card.rc-on.performer-card.rc-on,
 body.refract-cards #performer-page .image-container {
     position: relative;
 }
@@ -391,12 +391,12 @@ body.refract-cards .rating-banner {
    somewhere in the Stash subtree). Hide every banner that isn't a
    direct child of the card — refract.js injects exactly one direct-
    child banner per scene card as the single source of truth. */
-body.refract-cards .scene-card .rating-banner,
-body.refract-cards .grid-card.scene-card .rating-banner {
+body.refract-cards .scene-card.rc-on .rating-banner,
+body.refract-cards .grid-card.rc-on.scene-card.rc-on .rating-banner {
     display: none !important;
 }
-body.refract-cards .scene-card > .rating-banner,
-body.refract-cards .grid-card.scene-card > .rating-banner {
+body.refract-cards .scene-card.rc-on > .rating-banner,
+body.refract-cards .grid-card.rc-on.scene-card.rc-on > .rating-banner {
     display: inline-flex !important;
     /* Scene cards have wide 16:9 thumbnails where the full 3.5rem
        badge feels oversized. Trim ~23% so it reads as a compact
@@ -414,13 +414,13 @@ body.refract-cards .grid-card.scene-card > .rating-banner {
    Scene cards: rating-banner is injected by refract.js (Stash doesn't
    render one natively on scene cards — only inside the hidden
    .card-popovers). Performer cards: native. */
-body.refract-cards .performer-card .rating-banner,
-body.refract-cards .grid-card.performer-card .rating-banner,
-body.refract-cards .card.performer-card .rating-banner,
-body.refract-cards .scene-card > .rating-banner,
-body.refract-cards .grid-card.scene-card > .rating-banner,
-body.refract-cards .studio-card .rating-banner,
-body.refract-cards .grid-card.studio-card .rating-banner,
+body.refract-cards .performer-card.rc-on .rating-banner,
+body.refract-cards .grid-card.rc-on.performer-card.rc-on .rating-banner,
+body.refract-cards .card.rc-on.performer-card.rc-on .rating-banner,
+body.refract-cards .scene-card.rc-on > .rating-banner,
+body.refract-cards .grid-card.rc-on.scene-card.rc-on > .rating-banner,
+body.refract-cards .studio-card.rc-on .rating-banner,
+body.refract-cards .grid-card.rc-on.studio-card.rc-on .rating-banner,
 body.refract-cards #performer-page .image-container .rating-banner {
     position: absolute !important;
     top: 0.45rem !important;
@@ -446,10 +446,10 @@ body.refract-cards #performer-page .image-container .rating-banner {
    Scoped to direct-child rating-banner on scene cards (per the
    single-source-of-truth rule above); performer cards use the
    native nested banner. */
-body.refract-cards .scene-card:has(.card-check:hover) > .rating-banner,
-body.refract-cards .scene-card:has(.card-check:checked) > .rating-banner,
-body.refract-cards .performer-card:has(.card-check:hover) .rating-banner,
-body.refract-cards .performer-card:has(.card-check:checked) .rating-banner {
+body.refract-cards .scene-card.rc-on:has(.card-check:hover) > .rating-banner,
+body.refract-cards .scene-card.rc-on:has(.card-check:checked) > .rating-banner,
+body.refract-cards .performer-card.rc-on:has(.card-check:hover) .rating-banner,
+body.refract-cards .performer-card.rc-on:has(.card-check:checked) .rating-banner {
     opacity: 0;
     transition: opacity 0.15s ease;
 }
@@ -581,7 +581,7 @@ body.refract-cards.refract-cards-rating-stars .rating-banner::after {
    pseudo-class layer if needed in future. */
 
 /* Scene cards use a smaller banner — keep proportions */
-body.refract-cards.refract-cards-rating-stars .scene-card .rating-banner {
+body.refract-cards.refract-cards-rating-stars .scene-card.rc-on .rating-banner {
     width: 3.1rem !important;
     height: 3.1rem !important;
     min-width: 3.1rem !important;
@@ -697,9 +697,9 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .row:has(> [
    a stacking context) could paint — and intercept clicks — over the floating
    pager. Isolating the row keeps all card stacking scoped inside it so the
    pager (z-index 400, outside the row) always stays on top and clickable. */
-body.refract-cards .row:has(> .grid-card),
-body.refract-cards .row:has(> .scene-card),
-body.refract-cards .row:has(> .performer-card) {
+body.refract-cards .row:has(> .grid-card.rc-on),
+body.refract-cards .row:has(> .scene-card.rc-on),
+body.refract-cards .row:has(> .performer-card.rc-on) {
     isolation: isolate;
 }
 
@@ -860,8 +860,8 @@ body.refract-cards .row:has(> .performer-card) {
    translucent glass-bg. The image still fills the top, but where the
    image doesn't reach (text area, gaps), we paint a faint tier-colored
    tint so it reads as "lit" instead of "black". */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card[class*="refract-card-tier-"],
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card[class*="refract-card-tier-"] {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on[class*="refract-card-tier-"],
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on[class*="refract-card-tier-"] {
     border: 0 !important;
     outline: 0 !important;
     contain: none !important;
@@ -877,12 +877,12 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card[
 }
 
 /* ── Bronze (5.0–6.4): quiet — breathing only ──────────────────────── */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-bronze,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-bronze {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-bronze,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-bronze {
     animation: refractCardBreathe 7s ease-in-out infinite;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-bronze:hover,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-bronze:hover {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-bronze:hover,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-bronze:hover {
     border-color: rgba(var(--tier-color-bright), 0.85) !important;
     box-shadow:
         0 8px 26px rgba(0, 0, 0, 0.5),
@@ -892,12 +892,12 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
 }
 
 /* ── Silver (6.5–7.4): breathing + sheen sweep ─────────────────────── */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-silver,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-silver {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-silver,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-silver {
     animation: refractCardBreathe 6.5s ease-in-out infinite;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-silver:hover,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-silver:hover {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-silver:hover,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-silver:hover {
     border-color: rgba(var(--tier-color-bright), 0.95) !important;
     box-shadow:
         0 8px 28px rgba(0, 0, 0, 0.5),
@@ -907,12 +907,12 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
 }
 
 /* ── Gold (7.5–8.4): breathing (faster) + sheen + warm inset ───────── */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-gold,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-gold {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-gold,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-gold {
     animation: refractCardBreathe 6s ease-in-out infinite;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-gold:hover,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-gold:hover {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-gold:hover,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-gold:hover {
     border-color: rgba(var(--tier-color-bright), 1) !important;
     box-shadow:
         0 10px 32px rgba(0, 0, 0, 0.55),
@@ -922,12 +922,12 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
 }
 
 /* ── Diamond (8.5–9.4): breathing + sparkles ──────────────────────── */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-diamond,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-diamond {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-diamond,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-diamond {
     animation: refractCardBreathe 5.5s ease-in-out infinite;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-diamond:hover,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-diamond:hover {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-diamond:hover,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-diamond:hover {
     border-color: var(--accent-bright) !important;
     box-shadow:
         0 12px 36px rgba(0, 0, 0, 0.55),
@@ -937,8 +937,8 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
 }
 
 /* ── Legendary (9.5–9.9): breathing + rotating dual-color border ──── */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-legendary,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-legendary {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-legendary,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-legendary {
     position: relative;
     /* Two animations: breathing (controls box-shadow) + floating
        (controls translate / rotate / scale — separate from transform,
@@ -951,8 +951,8 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
     /* z-index handled in the shared tier hierarchy block below */
     transform-origin: center center !important;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-legendary:hover,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-legendary:hover {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-legendary:hover,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-legendary:hover {
     box-shadow:
         0 14px 40px rgba(0, 0, 0, 0.6),
         0 0 50px rgba(var(--tier-color), 0.78),
@@ -965,8 +965,8 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
    Uses the dedicated refractCardBreathePerfect keyframe so all six
    halo layers (white core + pink/yellow/blue/violet outer layers) are
    present at every animation tick — no rainbow disappearing on pulse. */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-perfect,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-perfect {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-perfect,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-perfect {
     position: relative;
     animation:
         refractCardBreathePerfect 4.5s ease-in-out infinite,
@@ -974,8 +974,8 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
     /* z-index handled in the shared tier hierarchy block below */
     transform-origin: center center !important;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-perfect:hover,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-perfect:hover {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-perfect:hover,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-perfect:hover {
     box-shadow:
         0 18px 46px rgba(0, 0, 0, 0.65),
         0 0 60px rgba(255, 255, 255, 0.85),
@@ -989,14 +989,14 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
 /* Silver, Gold, Diamond, Legendary all get a diagonal sheen that
    sweeps across the card every 8–14 seconds. Stagger durations so they
    don't all flash in sync. */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-silver::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-silver::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-gold::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-gold::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-diamond::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-diamond::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-legendary::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-legendary::before {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-silver::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-silver::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-gold::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-gold::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-diamond::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-diamond::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-legendary::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-legendary::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -1013,28 +1013,28 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
     pointer-events: none;
     z-index: 4;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-silver::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-silver::before {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-silver::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-silver::before {
     animation: refractCardSheen 18s ease-in-out infinite;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-gold::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-gold::before {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-gold::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-gold::before {
     animation: refractCardSheen 14s ease-in-out infinite;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-diamond::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-diamond::before {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-diamond::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-diamond::before {
     animation: refractCardSheen 11s ease-in-out infinite;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-legendary::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-legendary::before {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-legendary::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-legendary::before {
     animation: refractCardSheen 9s ease-in-out infinite;
 }
 
 /* ── ::after pseudo — sparkles (diamond) and rotating border (legendary, perfect) */
 
 /* Diamond sparkles — five tiny twinkling dots scattered across the card */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-diamond::after,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-diamond::after {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-diamond::after,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-diamond::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -1052,8 +1052,8 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
 }
 
 /* Legendary rotating border — triadic conic gradient (pink/blue/purple) */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-legendary::after,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-legendary::after {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-legendary::after,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-legendary::after {
     content: "";
     position: absolute;
     inset: -2.5px;
@@ -1082,8 +1082,8 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.
    reads clearly even at gallery zoom levels — was looking washed out
    in playing-card mode where the diagonal tier ribbon was covering
    the brightest top-right segment. */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.refract-card-tier-perfect::after,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.refract-card-tier-perfect::after {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on.refract-card-tier-perfect::after,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .scene-card.rc-on.refract-card-tier-perfect::after {
     content: "";
     position: absolute;
     inset: -4.5px;
@@ -1647,7 +1647,7 @@ body.refract-cards .edit-rating-button:focus > svg {
 }
 
 /* Country flag — keep icon, hide redundant text */
-body.refract-cards .performer-card .flag-icon {
+body.refract-cards .performer-card.rc-on .flag-icon {
     width: 1.2em;
     border-radius: 2px;
     box-shadow: var(--shadow-xs);
@@ -1663,19 +1663,19 @@ body.refract-cards .performer-card__country-string {
    pink in both default and hover when favorited. Layered pink-glow + black
    drop-shadow for legibility. Scoped to grid view so the scene-page performer
    carousel rules stay untouched. */
-body.refract-cards .grid-card.performer-card .favorite-button:not(.favorite) {
+body.refract-cards .grid-card.rc-on.performer-card.rc-on .favorite-button:not(.favorite) {
     color: rgba(255, 255, 255, 0.85) !important;
 }
-body.refract-cards .grid-card.performer-card .favorite-button:not(.favorite):hover {
+body.refract-cards .grid-card.rc-on.performer-card.rc-on .favorite-button:not(.favorite):hover {
     color: #fff !important;
 }
-body.refract-cards .grid-card.performer-card .favorite-button.favorite {
+body.refract-cards .grid-card.rc-on.performer-card.rc-on .favorite-button.favorite {
     color: #f472b6 !important;
 }
-body.refract-cards .grid-card.performer-card .favorite-button.favorite:hover {
+body.refract-cards .grid-card.rc-on.performer-card.rc-on .favorite-button.favorite:hover {
     color: #fbcfe8 !important;
 }
-body.refract-cards .grid-card.performer-card .favorite-button.favorite svg {
+body.refract-cards .grid-card.rc-on.performer-card.rc-on .favorite-button.favorite svg {
     filter:
         drop-shadow(0 0 6px rgba(244, 114, 182, 0.7))
         drop-shadow(0 1px 4px rgba(0, 0, 0, 0.6)) !important;
@@ -1687,13 +1687,13 @@ body.refract-cards .grid-card.performer-card .favorite-button.favorite svg {
    leaving a strip of the card's translucent bg below it (reads as a
    black band over the dark page bg). Growing fills that strip with
    the chin's tier-tinted background instead. */
-body.refract-cards .performer-card .card-section {
+body.refract-cards .performer-card.rc-on .card-section {
     flex: 1 1 auto;
 }
 
 /* Chin layout — same padding + flex column for every performer card
    regardless of rating-style mode. */
-body.refract-cards .performer-card .card-section {
+body.refract-cards .performer-card.rc-on .card-section {
     padding: 0.55rem 0.7rem 0.5rem !important;
     display: flex !important;
     flex-direction: column !important;
@@ -1716,7 +1716,7 @@ body.refract-cards .performer-card .card-section {
    painting over the higher-rated card's chin" even though z-index is
    correctly sorting them. The page bg + card glass-bg are both near-
    transparent, so the chin needs to provide its own opaque under-layer. */
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card .card-section {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-card.rc-on .card-section {
     background:
         linear-gradient(
             180deg,
@@ -1732,21 +1732,21 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .performer-c
    the chin — initPerformerCards() in refract.js also hides these via
    inline display:none, but the CSS rule covers the brief window
    before the JS runs and any React re-render that resets them. */
-body.refract-cards .performer-card > .card-popovers,
-body.refract-cards .performer-card > hr {
+body.refract-cards .performer-card.rc-on > .card-popovers,
+body.refract-cards .performer-card.rc-on > hr {
     display: none !important;
 }
-/* Stash's own .card.performer-card has `padding: 0 0 1rem` which leaves
+/* Stash's own .card.rc-on.performer-card.rc-on has `padding: 0 0 1rem` which leaves
    a 1rem strip of the card's base bg below the chin — visible as a
    darker band at the bottom of the card. Strip the padding so the chin
    reaches the card's bottom edge. */
-body.refract-cards .card.performer-card,
-body.refract-cards .performer-card {
+body.refract-cards .card.rc-on.performer-card.rc-on,
+body.refract-cards .performer-card.rc-on {
     padding: 0 !important;
 }
 
 /* Name: single line, prominent */
-body.refract-cards .performer-card .card-section-title {
+body.refract-cards .performer-card.rc-on .card-section-title {
     font-size: 0.95rem !important;
     font-weight: 700 !important;
     line-height: 1.25 !important;
@@ -1756,7 +1756,7 @@ body.refract-cards .performer-card .card-section-title {
 }
 
 /* Override React's inline -webkit-line-clamp: 2 */
-body.refract-cards .performer-card .TruncatedText {
+body.refract-cards .performer-card.rc-on .TruncatedText {
     display: block !important;
     overflow: hidden !important;
     white-space: nowrap !important;
@@ -1764,14 +1764,14 @@ body.refract-cards .performer-card .TruncatedText {
     -webkit-line-clamp: unset !important;
     min-width: 0;
 }
-body.refract-cards .performer-card .TruncatedText > div {
+body.refract-cards .performer-card.rc-on .TruncatedText > div {
     overflow: hidden !important;
     white-space: nowrap !important;
     text-overflow: ellipsis !important;
 }
 
 /* Gender icon — base */
-body.refract-cards .performer-card .gender-icon {
+body.refract-cards .performer-card.rc-on .gender-icon {
     width: 0.85rem !important;
     height: 0.85rem !important;
     flex-shrink: 0 !important;
@@ -1780,28 +1780,28 @@ body.refract-cards .performer-card .gender-icon {
     vertical-align: middle !important;
 }
 /* Female → pink glow */
-body.refract-cards .performer-card .gender-icon[data-gender="FEMALE"] {
+body.refract-cards .performer-card.rc-on .gender-icon[data-gender="FEMALE"] {
     color: #f472b6 !important;
     filter: drop-shadow(0 0 5px rgba(244, 114, 182, 0.7)) !important;
 }
 /* Trans female → same pink glow */
-body.refract-cards .performer-card .gender-icon[data-gender="TRANSGENDER_FEMALE"] {
+body.refract-cards .performer-card.rc-on .gender-icon[data-gender="TRANSGENDER_FEMALE"] {
     color: #f472b6 !important;
     filter: drop-shadow(0 0 5px rgba(244, 114, 182, 0.7)) !important;
 }
 /* Male → blue glow */
-body.refract-cards .performer-card .gender-icon[data-gender="MALE"] {
+body.refract-cards .performer-card.rc-on .gender-icon[data-gender="MALE"] {
     color: #60a5fa !important;
     filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.65)) !important;
 }
 /* Trans male → same blue */
-body.refract-cards .performer-card .gender-icon[data-gender="TRANSGENDER_MALE"] {
+body.refract-cards .performer-card.rc-on .gender-icon[data-gender="TRANSGENDER_MALE"] {
     color: #60a5fa !important;
     filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.65)) !important;
 }
 /* Non-binary / intersex → soft purple */
-body.refract-cards .performer-card .gender-icon[data-gender="NON_BINARY"],
-body.refract-cards .performer-card .gender-icon[data-gender="INTERSEX"] {
+body.refract-cards .performer-card.rc-on .gender-icon[data-gender="NON_BINARY"],
+body.refract-cards .performer-card.rc-on .gender-icon[data-gender="INTERSEX"] {
     color: #c084fc !important;
     filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.65)) !important;
 }
@@ -1831,10 +1831,10 @@ body.refract-cards .performer-card .gender-icon[data-gender="INTERSEX"] {
    the button to the image corner; overriding it pulls the button into
    normal flow under the image. `position: absolute` ancestors are
    already valid containing blocks for our ::before pseudo. */
-body.refract-cards .performer-card .favorite-button.favorite,
-body.refract-cards .scene-card .favorite-button.favorite,
-body.refract-cards .studio-card .favorite-button.favorite,
-body.refract-cards .tag-card .favorite-button.favorite {
+body.refract-cards .performer-card.rc-on .favorite-button.favorite,
+body.refract-cards .scene-card.rc-on .favorite-button.favorite,
+body.refract-cards .studio-card.rc-on .favorite-button.favorite,
+body.refract-cards .tag-card.rc-on .favorite-button.favorite {
     color: #f472b6 !important;
     filter:
         drop-shadow(0 0 6px rgba(244, 114, 182, 0.85))
@@ -1845,10 +1845,10 @@ body.refract-cards .tag-card .favorite-button.favorite {
 /* Sparkles emanate from around the heart on card hover. The pseudo
    sits over the button at -10px inset; multiple radial-gradient dots
    pulse together. Pink + white mix for variety. */
-body.refract-cards .performer-card .favorite-button.favorite::before,
-body.refract-cards .scene-card .favorite-button.favorite::before,
-body.refract-cards .studio-card .favorite-button.favorite::before,
-body.refract-cards .tag-card .favorite-button.favorite::before {
+body.refract-cards .performer-card.rc-on .favorite-button.favorite::before,
+body.refract-cards .scene-card.rc-on .favorite-button.favorite::before,
+body.refract-cards .studio-card.rc-on .favorite-button.favorite::before,
+body.refract-cards .tag-card.rc-on .favorite-button.favorite::before {
     content: "";
     position: absolute;
     inset: -14px;
@@ -1863,10 +1863,10 @@ body.refract-cards .tag-card .favorite-button.favorite::before {
     pointer-events: none;
     z-index: 1;
 }
-body.refract-cards .performer-card:hover .favorite-button.favorite::before,
-body.refract-cards .scene-card:hover .favorite-button.favorite::before,
-body.refract-cards .studio-card:hover .favorite-button.favorite::before,
-body.refract-cards .tag-card:hover .favorite-button.favorite::before {
+body.refract-cards .performer-card.rc-on:hover .favorite-button.favorite::before,
+body.refract-cards .scene-card.rc-on:hover .favorite-button.favorite::before,
+body.refract-cards .studio-card.rc-on:hover .favorite-button.favorite::before,
+body.refract-cards .tag-card.rc-on:hover .favorite-button.favorite::before {
     animation: refractHeartSparkle 1.4s ease-in-out infinite;
 }
 
@@ -1875,9 +1875,9 @@ body.refract-cards .tag-card:hover .favorite-button.favorite::before {
    ADDITIONAL background layer so it composes with the existing tier
    gradient without needing another pseudo-element (the card's ::before
    and ::after are already used by the tier system on legendary/perfect). */
-body.refract-cards .performer-card:has(.favorite-button.favorite),
-body.refract-cards .scene-card:has(.favorite-button.favorite),
-body.refract-cards .studio-card:has(.favorite-button.favorite) {
+body.refract-cards .performer-card.rc-on:has(.favorite-button.favorite),
+body.refract-cards .scene-card.rc-on:has(.favorite-button.favorite),
+body.refract-cards .studio-card.rc-on:has(.favorite-button.favorite) {
     background:
         radial-gradient(
             circle at 92% 8%,

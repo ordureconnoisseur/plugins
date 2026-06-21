@@ -57,7 +57,7 @@
 }
 
 /* ── Activate playing-card mode ──────────────────────────────────── */
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner {
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -91,8 +91,8 @@ body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner
    none so the checkbox is still clickable underneath, but it's hard
    to see what you're aiming at. When the user hovers near the
    checkbox, fade the banner so the circle is fully visible. */
-body.refract-cards.refract-cards-playing .performer-card:has(.card-check:hover) .refract-pc-name-banner,
-body.refract-cards.refract-cards-playing .performer-card:has(.card-check:checked) .refract-pc-name-banner {
+body.refract-cards.refract-cards-playing .performer-card.rc-on:has(.card-check:hover) .refract-pc-name-banner,
+body.refract-cards.refract-cards-playing .performer-card.rc-on:has(.card-check:checked) .refract-pc-name-banner {
     opacity: 0;
     transition: opacity 0.15s ease;
 }
@@ -102,7 +102,7 @@ body.refract-cards.refract-cards-playing .performer-card:has(.card-check:checked
    glow chain that mirrors the name text's drop-shadow structure
    (white-hot core → bright color cladding → color gas → far halo)
    so the gender symbol reads as part of the same neon-tube family. */
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner .gender-icon {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner .gender-icon {
     width: 1.35rem !important;
     height: 1.35rem !important;
     margin: 0 !important;
@@ -114,7 +114,7 @@ body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner
    backdrop emblem at the top-right corner. The diagonal tier ribbon
    (z-index 7) crosses ACROSS the heart, giving a layered playing-card
    look — like a heart suit being struck through by a banner. */
-body.refract-cards.refract-cards-playing .performer-card .favorite-button {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .favorite-button {
     position: absolute !important;
     /* Generously inset from the card edges so the heart reads as a
        proper backdrop emblem rather than a corner-stuck icon. */
@@ -127,7 +127,7 @@ body.refract-cards.refract-cards-playing .performer-card .favorite-button {
     z-index: 3 !important;
     padding: 0 !important;
 }
-body.refract-cards.refract-cards-playing .performer-card .favorite-button svg {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .favorite-button svg {
     width: 100% !important;
     height: 100% !important;
 }
@@ -139,12 +139,12 @@ body.refract-cards.refract-cards-playing .performer-card .favorite-button svg {
    on card hover so users can still click to unfavourite. Opacity-
    based hide (not display:none) keeps the layout box live and
    clickable on hover. */
-body.refract-cards.refract-cards-playing .performer-card .favorite-button.favorite {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .favorite-button.favorite {
     opacity: 0 !important;
     animation: none !important;
     transform: none !important;
 }
-body.refract-cards.refract-cards-playing .performer-card:hover .favorite-button.favorite {
+body.refract-cards.refract-cards-playing .performer-card.rc-on:hover .favorite-button.favorite {
     opacity: 1 !important;
 }
 
@@ -157,31 +157,31 @@ body.refract-cards.refract-cards-playing .performer-card:hover .favorite-button.
    hot + bright gender color stays; outer atmospheric halos (14px+,
    < 0.85 opacity) cut. */
 /* Female + Trans female — pink */
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner .gender-icon[data-gender="FEMALE"],
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner .gender-icon[data-gender="TRANSGENDER_FEMALE"] {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner .gender-icon[data-gender="FEMALE"],
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner .gender-icon[data-gender="TRANSGENDER_FEMALE"] {
     filter:
         drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95))
         drop-shadow(0 0 2px rgba(255, 255, 255, 1))
         drop-shadow(0 0 8px rgba(244, 114, 182, 0.95)) !important;
 }
 /* Male + Trans male — blue */
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner .gender-icon[data-gender="MALE"],
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner .gender-icon[data-gender="TRANSGENDER_MALE"] {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner .gender-icon[data-gender="MALE"],
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner .gender-icon[data-gender="TRANSGENDER_MALE"] {
     filter:
         drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95))
         drop-shadow(0 0 2px rgba(255, 255, 255, 1))
         drop-shadow(0 0 8px rgba(96, 165, 250, 0.95)) !important;
 }
 /* Non-binary / Intersex — purple */
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner .gender-icon[data-gender="NON_BINARY"],
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-banner .gender-icon[data-gender="INTERSEX"] {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner .gender-icon[data-gender="NON_BINARY"],
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-banner .gender-icon[data-gender="INTERSEX"] {
     filter:
         drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95))
         drop-shadow(0 0 2px rgba(255, 255, 255, 1))
         drop-shadow(0 0 8px rgba(192, 132, 252, 0.95)) !important;
 }
 
-body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-text {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .refract-pc-name-text {
     display: block;
     flex: 1 1 auto;
     min-width: 0;
@@ -233,35 +233,35 @@ body.refract-cards.refract-cards-playing .performer-card .refract-pc-name-text {
 /* Native rating banner overlay on the image — rating now lives in the
    bottom strip as a chip. Descendant selector (no `>`) so the rule
    catches the banner whether Stash renders it as a direct child of
-   .performer-card or nested inside an image wrapper. */
-body.refract-cards.refract-cards-playing .performer-card .rating-banner {
+   .performer-card.rc-on or nested inside an image wrapper. */
+body.refract-cards.refract-cards-playing .performer-card.rc-on .rating-banner {
     display: none !important;
 }
 /* Chin name title — moved to the top banner. The native title also
    carries the country flag inline — hide the title but keep the flag
    surfaceable; the flag-icon clone lives in the stats strip below. */
-body.refract-cards.refract-cards-playing .performer-card .card-section-title {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .card-section-title {
     display: none !important;
 }
 /* Disambiguation — Stash renders parenthetical disambiguation text
    after the name (e.g. "John Smith (UK)"). It clutters the playing-card
    layout. Hide it. */
-body.refract-cards.refract-cards-playing .performer-card .performer-disambiguation,
-body.refract-cards.refract-cards-playing .performer-card .disambiguation {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .performer-disambiguation,
+body.refract-cards.refract-cards-playing .performer-card.rc-on .disambiguation {
     display: none !important;
 }
 /* Native country flag(s) — hide. The `:not(.stash-perf-country)`
    exclusion keeps our wrapper (which also has the flag class on it)
    visible. Covers `.performer-card__country-flag` (modern Stash with
    the flag-icons CSS library) and legacy `.flag-icon`. */
-body.refract-cards.refract-cards-playing .performer-card .performer-card__country-flag:not(.stash-perf-country),
-body.refract-cards.refract-cards-playing .performer-card .flag-icon:not(.stash-perf-country) {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .performer-card__country-flag:not(.stash-perf-country),
+body.refract-cards.refract-cards-playing .performer-card.rc-on .flag-icon:not(.stash-perf-country) {
     display: none !important;
 }
 /* Third-party "new-release bell" plugin injects a gold bell at
    bottom-left of the card via absolute positioning — collides with
    the playing-card stats strip. Hide it in this mode. */
-body.refract-cards.refract-cards-playing .performer-card .new-release-bell-icon-wrapper {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .new-release-bell-icon-wrapper {
     display: none !important;
 }
 
@@ -274,7 +274,7 @@ body.refract-cards.refract-cards-playing .performer-card .new-release-bell-icon-
 
    Flex column: the country name (when present) stacks ABOVE the
    stat strip as a quiet caption. The chin auto-grows to fit both. */
-body.refract-cards.refract-cards-playing .performer-card .card-section {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .card-section {
     position: absolute !important;
     left: 0 !important;
     right: 0 !important;
@@ -296,7 +296,7 @@ body.refract-cards.refract-cards-playing .performer-card .card-section {
 }
 /* But the badges themselves still need to be interactive (scenes link
    etc) — re-enable pointer events on direct children. */
-body.refract-cards.refract-cards-playing .performer-card .card-section > * {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .card-section > * {
     pointer-events: auto;
 }
 
@@ -306,21 +306,21 @@ body.refract-cards.refract-cards-playing .performer-card .card-section > * {
    accent metallic gradient (instead of a flat single-color gradient).
    Tier classes below override these to the tier color pair so the
    whole strip glows in the rating's hue. */
-body.refract-cards.refract-cards-playing .performer-card {
+body.refract-cards.refract-cards-playing .performer-card.rc-on {
     --badge-color: var(--accent-rgb);
     --badge-color-bright: 255, 255, 255;
 }
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-bronze,
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-silver,
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-gold,
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-diamond,
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-legendary,
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-perfect {
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-bronze,
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-silver,
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-gold,
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-diamond,
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-legendary,
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-perfect {
     --badge-color: var(--tier-color);
     --badge-color-bright: var(--tier-color-bright, var(--tier-color));
 }
 
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-stats {
     display: flex !important;
     /* --pc-badge-scale is set per-card by initPerformerCards on the
        next animation frame after badges are injected. Default 1; JS
@@ -338,10 +338,10 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats {
 /* Re-enable the cake icon for age (suppressed in other modes) and
    the per-badge labels. Labels sit on the TOP row of the grid,
    spanning both columns. Icon + value sit on the bottom row. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-age > svg {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-age > svg {
     display: inline-block !important;
 }
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-label {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-label {
     display: block !important;
     grid-row: 1 !important;
     grid-column: 1 / -1 !important;
@@ -369,7 +369,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-label {
    the gradient-fill so it stays a quiet hint rather than competing with
    the label text. Hover the chip to see the full "Age at production"
    tooltip. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-label-mark {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-label-mark {
     margin-left: 0.15em !important;
     opacity: 0.8 !important;
     /* Override the parent's gradient text-fill so the asterisk paints
@@ -382,12 +382,12 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-label-mark 
     -webkit-text-fill-color: rgba(var(--badge-color-bright), 0.85) !important;
 }
 /* Icon → column 1 of the bottom row. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * > svg {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-stats > * > svg {
     grid-row: 2 !important;
     grid-column: 1 !important;
 }
 /* Value (the non-label span) → column 2 of the bottom row. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * > span:not(.stash-perf-label) {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-stats > * > span:not(.stash-perf-label) {
     grid-row: 2 !important;
     grid-column: 2 !important;
 }
@@ -403,7 +403,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * >
    the icon + value side-by-side on the bottom row. This keeps
    each chip narrow enough (label-width) to fit four chips across
    the card without overflow. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-stats > * {
     display: inline-grid !important;
     grid-template-columns: auto auto !important;
     grid-template-rows: auto auto !important;
@@ -442,7 +442,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * {
 /* Badge number — gradient text fill matching the name banner. JS
    wraps the number in an inner <span> for every badge type (rating,
    age, scenes, O count) so this selector is reliable. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * > span {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-stats > * > span {
     background: linear-gradient(
         135deg,
         rgba(var(--badge-color-bright), 1) 0%,
@@ -456,7 +456,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * >
         drop-shadow(0 1px 2px rgba(0, 0, 0, 0.85))
         drop-shadow(0 0 4px rgba(var(--badge-color), 0.85));
 }
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > *:hover {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-stats > *:hover {
     background:
         linear-gradient(
             135deg,
@@ -477,7 +477,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > *:h
 /* Badge icons — 2 layer glow (down from 3, perf). White-hot core +
    tier color is enough; the 16px outer halo barely visible against
    the chip glow anyway. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * > svg {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-stats > * > svg {
     width: calc(1.1rem * var(--pc-badge-scale, 1)) !important;
     height: calc(1.1rem * var(--pc-badge-scale, 1)) !important;
     flex: 0 0 auto !important;
@@ -491,7 +491,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-stats > * >
    strip via the chin's `flex-direction: column`. No chip / border /
    background. Reads as a quiet caption rather than a fifth stat.
    Dark text-shadow gives legibility over any image. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-country {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-country {
     display: block !important;
     align-self: flex-start !important;
     margin: 0 !important;
@@ -520,7 +520,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-country {
    base rule sets it hidden for name ellipsis) so the rank's glow and
    drop-shadow aren't sharply clipped by this tight line box; the name's
    own truncation moves to the inner span below. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-country.refract-country-with-rank {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-country.refract-country-with-rank {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
@@ -531,7 +531,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-country.ref
 }
 /* The name takes the slack and ellipsis-truncates so the rank is never
    pushed off the right edge by a long country name. */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-country.refract-country-with-rank .stash-perf-country-name {
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-country.refract-country-with-rank .stash-perf-country-name {
     flex: 1 1 auto !important;
     min-width: 0 !important;
     overflow: hidden !important;
@@ -541,10 +541,10 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-country.ref
 
 /* Strip order: rating first (left), O count last. Country flag no
    longer lives in the strip (inline in the name banner instead). */
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-rating  { order: 1; }
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-age     { order: 2; }
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-scenes  { order: 3; }
-body.refract-cards.refract-cards-playing .performer-card .stash-perf-ocount  { order: 4; }
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-rating  { order: 1; }
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-age     { order: 2; }
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-scenes  { order: 3; }
+body.refract-cards.refract-cards-playing .performer-card.rc-on .stash-perf-ocount  { order: 4; }
 
 /* ── Tier name diagonal ribbon — "BRONZE" / ... / "PERFECT" ─────────
    Banner crosses the TOP-RIGHT corner of the card on a 45° diagonal.
@@ -553,7 +553,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-ocount  { o
    text. Card's `overflow: hidden` (from the base card rule) clips
    the ribbon's overflowing ends, producing the classic "cut corner"
    sash look. Hidden on unrated cards. */
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card)[class*="refract-card-tier-"] .refract-pc-tier-label {
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on)[class*="refract-card-tier-"] .refract-pc-tier-label {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -594,7 +594,7 @@ body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card)[class
 }
 
 /* Ribbon text — painted on ::after with gradient text-clip. */
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card)[class*="refract-card-tier-"] .refract-pc-tier-label::after {
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on)[class*="refract-card-tier-"] .refract-pc-tier-label::after {
     font-size: 0.72rem;
     font-weight: 900;
     letter-spacing: 0.18em;
@@ -624,25 +624,25 @@ body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card)[class
      should yield to the underlying card interaction.
    `:has()` is supported per Refract's browser-compat target (README
    "Compatibility" section). */
-body.refract-cards.refract-cards-playing .performer-card:has(.favorite-button:hover) .refract-pc-tier-label,
-body.refract-cards.refract-cards-playing .scene-card:hover .refract-pc-tier-label {
+body.refract-cards.refract-cards-playing .performer-card.rc-on:has(.favorite-button:hover) .refract-pc-tier-label,
+body.refract-cards.refract-cards-playing .scene-card.rc-on:hover .refract-pc-tier-label {
     opacity: 0;
     transition: opacity 0.18s ease-out;
 }
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card) .refract-pc-tier-label {
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on) .refract-pc-tier-label {
     transition: opacity 0.22s ease-in;
 }
 
 /* Per-tier ribbon text content. */
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-bronze    .refract-pc-tier-label::after { content: "BRONZE"; }
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-silver    .refract-pc-tier-label::after { content: "SILVER"; }
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-gold      .refract-pc-tier-label::after { content: "GOLD"; }
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-diamond   .refract-pc-tier-label::after { content: "DIAMOND"; }
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-legendary .refract-pc-tier-label::after { content: "LEGENDARY"; }
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-perfect   .refract-pc-tier-label::after { content: "PERFECT"; }
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-bronze    .refract-pc-tier-label::after { content: "BRONZE"; }
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-silver    .refract-pc-tier-label::after { content: "SILVER"; }
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-gold      .refract-pc-tier-label::after { content: "GOLD"; }
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-diamond   .refract-pc-tier-label::after { content: "DIAMOND"; }
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-legendary .refract-pc-tier-label::after { content: "LEGENDARY"; }
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-perfect   .refract-pc-tier-label::after { content: "PERFECT"; }
 
 /* Legendary — triadic ribbon body (pink → blue → purple) */
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-legendary .refract-pc-tier-label {
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-legendary .refract-pc-tier-label {
     background: linear-gradient(
         90deg,
         rgba(var(--tier-color), 0) 0%,
@@ -660,7 +660,7 @@ body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refra
         0 0 56px rgba(var(--tier-color-3, var(--tier-color-2)), 0.4),
         0 4px 10px rgba(0, 0, 0, 0.5);
 }
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-legendary .refract-pc-tier-label::after {
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-legendary .refract-pc-tier-label::after {
     background: linear-gradient(
         90deg,
         rgba(var(--tier-color-bright, var(--tier-color)), 1) 0%,
@@ -677,7 +677,7 @@ body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refra
 }
 
 /* Perfect — rainbow ribbon body + rainbow gradient on the text */
-body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refract-card-tier-perfect .refract-pc-tier-label {
+body.refract-cards.refract-cards-playing :is(.performer-card.rc-on, .scene-card.rc-on).refract-card-tier-perfect .refract-pc-tier-label {
     background: linear-gradient(
         90deg,
         rgba(255, 107, 157, 0) 0%,
@@ -695,7 +695,7 @@ body.refract-cards.refract-cards-playing :is(.performer-card, .scene-card).refra
         0 0 56px rgba(147, 197, 253, 0.35),
         0 4px 12px rgba(0, 0, 0, 0.5);
 }
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-perfect .refract-pc-tier-label::after {
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-perfect .refract-pc-tier-label::after {
     background: linear-gradient(
         90deg,
         #ff6b9d,
@@ -733,7 +733,7 @@ body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-perfe
    gas radiating outward). Solid white text keeps every letter
    uniformly readable; the drop-shadow chain carries the tier color
    identity from inner cladding to far halo. */
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-legendary .refract-pc-name-text {
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-legendary .refract-pc-name-text {
     color: #ffffff;
     -webkit-text-fill-color: #ffffff;
     background: none;
@@ -755,7 +755,7 @@ body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-legen
    light/readable while the rainbow identity is preserved (no dark
    saturated hot-pink starting stop hurting the first letters).
    Multi-layer rainbow glow chain radiates outward. */
-body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-perfect .refract-pc-name-text {
+body.refract-cards.refract-cards-playing .performer-card.rc-on.refract-card-tier-perfect .refract-pc-name-text {
     background: linear-gradient(
         90deg,
         #ffd6e4,  /* pale pink */
@@ -808,7 +808,7 @@ body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-perfe
    needed. */
 
 /* ── Scene tagger: strip rating chrome from result thumbnails ─────────
-   Each tagger match renders a 150px .scene-card beside its title (see
+   Each tagger match renders a 150px .scene-card.rc-on beside its title (see
    the .search-item layout cap in 05_list_views.css). At that size the
    rating banner, the "PERFECT" tier sash, the rotating tier border and
    the breathe/float/sheen effects read as noise that fights the frame
@@ -820,18 +820,18 @@ body.refract-cards.refract-cards-playing .performer-card.refract-card-tier-perfe
    decorations only exist under tiers/playing-card, so those rules carry
    the matching :is() qualifier for specificity parity with their source
    rules. */
-body.refract-cards .search-item .scene-card .rating-banner {
+body.refract-cards .search-item .scene-card.rc-on .rating-banner {
     display: none !important;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card .refract-pc-tier-label {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card.rc-on .refract-pc-tier-label {
     display: none !important;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card[class*="refract-card-tier-"]::before,
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card[class*="refract-card-tier-"]::after {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card.rc-on[class*="refract-card-tier-"]::before,
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card.rc-on[class*="refract-card-tier-"]::after {
     content: none !important;
     display: none !important;
 }
-body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card[class*="refract-card-tier-"] {
+body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item .scene-card.rc-on[class*="refract-card-tier-"] {
     animation: none !important;
     transform: none !important;
     border-color: var(--glass-border) !important;
@@ -844,15 +844,15 @@ body.refract-cards:is(.refract-cards-tiers, .refract-cards-playing) .search-item
    a hair wider than the 150px cap. With the wrapping tier border gone
    that left the right/bottom corners reading square. Round all four on
    both the card and its image wrapper and keep the image within bounds. */
-body.refract-cards .search-item .scene-card {
+body.refract-cards .search-item .scene-card.rc-on {
     overflow: hidden !important;
     border-radius: var(--radius) !important;
 }
-body.refract-cards .search-item .scene-card :is(.video-section, .scene-card-preview, .preview-image) {
+body.refract-cards .search-item .scene-card.rc-on :is(.video-section, .scene-card-preview, .preview-image) {
     border-radius: var(--radius) !important;
     overflow: hidden !important;
 }
-body.refract-cards .search-item .scene-card img {
+body.refract-cards .search-item .scene-card.rc-on img {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;

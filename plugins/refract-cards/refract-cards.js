@@ -25,49 +25,59 @@
     }
     addScope();
 
-    /* ── Settings (per-browser, localStorage) ───────────────────────────── */
-    var SCENE_KEY = "refractCards.sceneMode";
-    var PERF_KEY  = "refractCards.performerMode";
-    var SCENE_MODES = ["plain", "tiers"];
-    var PERF_MODES  = ["plain", "tiers", "playing"];
-    var DEFAULT_SCENE = "tiers";
-    var DEFAULT_PERF  = "playing";
+    /* ── Settings (per-browser, localStorage) ────────────────────────────
+       Three independent on/off toggles. Scene cards have one fixed look
+       (the classic tier-frame card); performer cards have one fixed look
+       (the playing-card layout); "Other cards" applies the base Refract
+       card styling (glass, hover glow, 3D tilt) to galleries, images,
+       studios, tags, groups, and markers. "Off" for a group leaves those
+       cards exactly as the default Stash theme draws them. */
+    var PERF_KEY  = "refractCards.performers";
+    var SCENE_KEY = "refractCards.scenes";
+    var OTHER_KEY = "refractCards.others";
 
-    function getSceneMode() {
-        try { var v = localStorage.getItem(SCENE_KEY); if (SCENE_MODES.indexOf(v) !== -1) { return v; } } catch (e) { /* ignore */ }
-        return DEFAULT_SCENE;
+    function getBool(key) {
+        try { return localStorage.getItem(key) !== "0"; } catch (e) { return true; }  /* default ON */
     }
-    function getPerfMode() {
-        try { var v = localStorage.getItem(PERF_KEY); if (PERF_MODES.indexOf(v) !== -1) { return v; } } catch (e) { /* ignore */ }
-        return DEFAULT_PERF;
-    }
-    function setSceneMode(v) { try { localStorage.setItem(SCENE_KEY, v); } catch (e) { /* ignore */ } }
-    function setPerfMode(v)  { try { localStorage.setItem(PERF_KEY, v);  } catch (e) { /* ignore */ } }
+    function setBool(key, on) { try { localStorage.setItem(key, on ? "1" : "0"); } catch (e) { /* ignore */ } }
+    function getPerfOn()  { return getBool(PERF_KEY); }
+    function getSceneOn() { return getBool(SCENE_KEY); }
+    function getOtherOn() { return getBool(OTHER_KEY); }
 
-    /* Body classes the extracted CSS keys off. `tiers` enables the tier-frame
-       CSS globally; `playing` enables the performer playing-card layout. Which
-       cards actually get a tier class is decided per-type by cardTierEnabled()
-       below, so scene + performer modes stay independent. */
+    /* Card-type classes that count as "everything else". */
+    var OTHER_CARD_SELECTOR = ".gallery-card, .image-card, .studio-card, .tag-card, .scene-marker-card, .group-card, .movie-card";
+
+    /* Body classes the extracted CSS keys off: `playing` for the performer
+       playing-card layout, `tiers` for the tier-frame card treatment (scenes
+       always use it; performers' playing layout also draws the frame). */
     function applyModeClasses() {
         if (!document.body) { return; }
-        var s = getSceneMode(), p = getPerfMode();
-        var tiersActive   = (s === "tiers") || (p === "tiers") || (p === "playing");
-        var playingActive = (p === "playing");
-        document.body.classList.toggle("refract-cards-tiers", tiersActive);
-        document.body.classList.toggle("refract-cards-playing", playingActive);
+        document.body.classList.toggle("refract-cards-playing", getPerfOn());
+        document.body.classList.toggle("refract-cards-tiers", getSceneOn() || getPerfOn());
     }
     applyModeClasses();
 
-    /* Per-type gate consulted by the extracted applyCardTier + tagFilledRatings
-       so a scene only gets a tier frame when scene mode is "tiers", and a
-       performer only when its mode is "tiers" or "playing". */
+    /* Per-card scope marker. The CSS only styles cards carrying `.rc-on`, and
+       a card only gets it when its type's toggle is on — so turning a group
+       off restores the default Stash card (and bare `.card` panels like
+       settings/modals never get styled). */
+    function applyCardScope() {
+        function mark(sel, on) {
+            var els = document.querySelectorAll(sel);
+            for (var i = 0; i < els.length; i++) { els[i].classList.toggle("rc-on", on); }
+        }
+        mark(".scene-card", getSceneOn());
+        mark(".performer-card", getPerfOn());
+        mark(OTHER_CARD_SELECTOR, getOtherOn());
+    }
+
+    /* Consulted by the extracted applyCardTier + tagFilledRatings. Scenes get
+       the tier frame when scenes are on; performers when performers are on
+       (their playing layout includes the frame). Other card types never tier. */
     function cardTierEnabled(card) {
         if (!card) { return false; }
-        if (card.classList.contains("scene-card")) { return getSceneMode() === "tiers"; }
-        if (card.classList.contains("performer-card")) {
-            var p = getPerfMode();
-            return p === "tiers" || p === "playing";
-        }
+        if (card.classList.contains("scene-card")) { return getSceneOn(); }
+        if (card.classList.contains("performer-card")) { return getPerfOn(); }
         return false;
     }
 
@@ -388,7 +398,7 @@
            cards directly costs only a few listeners + one tiny div each, and
            the _stashTilt idempotence guard in cardTiltBind keeps repeat
            (SPA-rebind) calls cheap. */
-        document.querySelectorAll(".grid-card, .scene-card, .performer-card, .wall-item").forEach(function (card) {
+        document.querySelectorAll(".rc-on").forEach(function (card) {
             cardTiltBind(card);
         });
     }
@@ -752,6 +762,7 @@
     }
 
     function initPerformerCards() {
+        if (!getPerfOn()) { return; }
         document.querySelectorAll(".performer-card:not([data-stash-pc])").forEach(function (card) {
             card.setAttribute("data-stash-pc", "1");
 
@@ -1274,6 +1285,7 @@
     function runAll() {
         addScope();
         if (observer) { observer.disconnect(); }
+        safeRun(applyCardScope);
         safeRun(initCardTilts);
         /* initSceneCards (Refract's scene-card redesign: performer-avatar
            circles + tag-count badges via GraphQL) is intentionally NOT run.
@@ -1312,62 +1324,53 @@
         runAll();
     }
 
-    /* ── Settings panel (replaces the native plugin settings row) ────────── */
+    /* ── Settings panel (replaces the native plugin settings row) ──────────
+       Three on/off switches. Each turns Refract styling on or off for a card
+       group; off = the default Stash card for that group. */
     function buildSettingsComponent(R) {
         return function RefractCardsSettings() {
-            var sceneState = R.useState(getSceneMode());
-            var sceneMode = sceneState[0], setSceneLocal = sceneState[1];
-            var perfState = R.useState(getPerfMode());
-            var perfMode = perfState[0], setPerfLocal = perfState[1];
+            var perf  = R.useState(getPerfOn());
+            var scene = R.useState(getSceneOn());
+            var other = R.useState(getOtherOn());
 
-            function pickScene(v) { setSceneMode(v); setSceneLocal(v); onSettingsChanged(); }
-            function pickPerf(v)  { setPerfMode(v);  setPerfLocal(v);  onSettingsChanged(); }
+            function makeToggle(key, state, setState) {
+                return function () { var v = !state[0]; setBool(key, v); state[1](v); onSettingsChanged(); };
+            }
+            var togglePerf  = makeToggle(PERF_KEY, perf, perf);
+            var toggleScene = makeToggle(SCENE_KEY, scene, scene);
+            var toggleOther = makeToggle(OTHER_KEY, other, other);
 
-            function segmented(items, active, onPick) {
-                return R.createElement("div", { className: "refract-cards-segmented" },
-                    items.map(function (item) {
-                        return R.createElement("button", {
-                            key: item.key,
-                            type: "button",
-                            className: "refract-cards-seg-btn" + (active === item.key ? " is-active" : ""),
-                            onClick: function () { onPick(item.key); }
-                        }, item.label);
-                    })
+            function row(id, title, desc, checked, onChange) {
+                return R.createElement("div", { className: "setting", id: id },
+                    R.createElement("div", null,
+                        R.createElement("h3", null, title),
+                        R.createElement("div", { className: "sub-heading" }, desc)
+                    ),
+                    R.createElement("div", { className: "refract-cards-control" },
+                        R.createElement("div", { className: "custom-control custom-switch" },
+                            R.createElement("input", {
+                                type: "checkbox", className: "custom-control-input",
+                                id: id + "-toggle", checked: checked, onChange: onChange
+                            }),
+                            R.createElement("label", { className: "custom-control-label", htmlFor: id + "-toggle" })
+                        )
+                    )
                 );
             }
 
             return R.createElement("div", { className: "plugin-settings refract-cards-settings" },
-                R.createElement("div", { className: "setting", id: "refract-cards-scene-mode" },
-                    R.createElement("div", null,
-                        R.createElement("h3", null, "Scene cards"),
-                        R.createElement("div", { className: "sub-heading" },
-                            R.createElement("b", null, "Plain"),
-                            " — Refract card styling (glass, hover glow, tilt, performer circles), no rating frame. ",
-                            R.createElement("b", null, "Tier frames"),
-                            " — adds the Bronze → Perfect animated frame to rated cards.")
-                    ),
-                    segmented(
-                        [{ key: "plain", label: "Plain" }, { key: "tiers", label: "Tier frames" }],
-                        sceneMode, pickScene)
-                ),
-                R.createElement("div", { className: "setting", id: "refract-cards-perf-mode" },
-                    R.createElement("div", null,
-                        R.createElement("h3", null, "Performer cards"),
-                        R.createElement("div", { className: "sub-heading" },
-                            R.createElement("b", null, "Plain"),
-                            " — Refract card styling + stat strip, no rating frame. ",
-                            R.createElement("b", null, "Tier frames"),
-                            " — adds the Bronze → Perfect frame. ",
-                            R.createElement("b", null, "Playing card"),
-                            " — full trading-card layout: name banner with tier glow, diagonal tier ribbon, neon stat strip, floating hearts on favourites.")
-                    ),
-                    segmented(
-                        [{ key: "plain", label: "Plain" }, { key: "tiers", label: "Tier frames" }, { key: "playing", label: "Playing card" }],
-                        perfMode, pickPerf)
-                ),
+                row("refract-cards-perf", "Performer cards",
+                    "Full playing-card layout: name banner with tier glow, diagonal tier ribbon, neon stat strip (rating, age, scenes, O count, country), and floating hearts on favourites.",
+                    perf[0], togglePerf),
+                row("refract-cards-scene", "Scene cards",
+                    "The classic Refract card: glass surface, hover glow, 3D tilt, and the Bronze → Perfect tier frame on rated cards.",
+                    scene[0], toggleScene),
+                row("refract-cards-other", "Everything else",
+                    "Apply the base Refract card styling (glass, hover glow, 3D tilt) to all other card types - galleries, images, studios, tags, groups, and markers.",
+                    other[0], toggleOther),
                 R.createElement("div", { className: "setting" },
                     R.createElement("div", { className: "sub-heading" },
-                        "Saved per browser, applied instantly. Ratings are read from each card's rating badge; an unrated card gets no tier frame. Don't run this alongside the full Refract theme.")
+                        "Saved per browser, applied instantly. Don't run this alongside the full Refract theme.")
                 )
             );
         };
