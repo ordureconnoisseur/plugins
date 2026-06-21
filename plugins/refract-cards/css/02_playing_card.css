@@ -1,180 +1,5 @@
-/* ═══════════════════════════════════════════════════════════════════
-   Refract Cards — playing-card layout for PERFORMER cards
-   Active only when `body.refract-cards-playing` is set (performer mode
-   = "Playing card"). The block below re-gates the base performer-card
-   chin rules that the Refract theme normally applies unconditionally,
-   so on the default Stash theme nothing changes until playing-card mode
-   is turned on. The bulk that follows is Refract's 16_playing_card.css,
-   namespaced to this plugin.
-   ═══════════════════════════════════════════════════════════════════ */
+/* ═══ Refract 16_playing_card.css (namespaced for refract-cards) ═══ */
 
-/* The name banner + chin + tier ribbon are absolutely positioned, so the
-   card must be a positioning context. Refract only set this on rated tier
-   cards; force it for every playing-card so UNRATED cards position their
-   overlay correctly on the default theme. overflow:hidden clips the
-   diagonal ribbon's ends to the card's rounded corners. */
-body.refract-cards.refract-cards-playing .performer-card {
-    position: relative !important;
-    overflow: hidden !important;
-}
-
-/* ── Base performer-card chin rules the playing-card layout depends on
-   (ported from 03_cards.css, re-gated to playing-card mode) ─────────── */
-body.refract-cards.refract-cards-playing .performer-card .card-section {
-    flex: 1 1 auto;
-}
-
-/* Chin layout — same padding + flex column for every performer card
-   regardless of rating-style mode. */
-body.refract-cards.refract-cards-playing .performer-card .card-section {
-    padding: 0.55rem 0.7rem 0.5rem !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0 !important;
-}
-/* Hide the Stash-native popovers row + HR below the chin (the scene/O
-   counts move into the injected stat strip). CSS-gated to playing mode
-   so switching the mode off restores the default card cleanly. */
-body.refract-cards.refract-cards-playing .performer-card > .card-popovers,
-body.refract-cards.refract-cards-playing .performer-card > hr {
-    display: none !important;
-}
-/* Native age line — its value is surfaced as an "Age" chip in the stat
-   strip instead. Hidden via CSS (not inline JS) so it reappears when
-   playing-card mode is turned off. */
-body.refract-cards.refract-cards-playing .performer-card .performer-card__age {
-    display: none !important;
-}
-/* Stash's own .card.performer-card has `padding: 0 0 1rem` which leaves
-   a 1rem strip of the card's base bg below the chin — visible as a
-   darker band at the bottom of the card. Strip the padding so the chin
-   reaches the card's bottom edge. */
-body.refract-cards.refract-cards-playing .card.performer-card,
-body.refract-cards.refract-cards-playing .performer-card {
-    padding: 0 !important;
-}
-
-/* Name: single line, prominent */
-body.refract-cards.refract-cards-playing .performer-card .card-section-title {
-    font-size: 0.95rem !important;
-    font-weight: 700 !important;
-    line-height: 1.25 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-}
-
-/* Override React's inline -webkit-line-clamp: 2 */
-body.refract-cards.refract-cards-playing .performer-card .TruncatedText {
-    display: block !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-    text-overflow: ellipsis !important;
-    -webkit-line-clamp: unset !important;
-    min-width: 0;
-}
-body.refract-cards.refract-cards-playing .performer-card .TruncatedText > div {
-    overflow: hidden !important;
-    white-space: nowrap !important;
-    text-overflow: ellipsis !important;
-}
-
-/* Gender icon — base */
-body.refract-cards.refract-cards-playing .performer-card .gender-icon {
-    width: 0.85rem !important;
-    height: 0.85rem !important;
-    flex-shrink: 0 !important;
-    margin-right: 0.2em !important;
-    opacity: 1 !important;
-    vertical-align: middle !important;
-}
-/* Female → pink glow */
-body.refract-cards.refract-cards-playing .performer-card .gender-icon[data-gender="FEMALE"] {
-    color: #f472b6 !important;
-    filter: drop-shadow(0 0 5px rgba(244, 114, 182, 0.7)) !important;
-}
-/* Trans female → same pink glow */
-body.refract-cards.refract-cards-playing .performer-card .gender-icon[data-gender="TRANSGENDER_FEMALE"] {
-    color: #f472b6 !important;
-    filter: drop-shadow(0 0 5px rgba(244, 114, 182, 0.7)) !important;
-}
-/* Male → blue glow */
-body.refract-cards.refract-cards-playing .performer-card .gender-icon[data-gender="MALE"] {
-    color: #60a5fa !important;
-    filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.65)) !important;
-}
-/* Trans male → same blue */
-body.refract-cards.refract-cards-playing .performer-card .gender-icon[data-gender="TRANSGENDER_MALE"] {
-    color: #60a5fa !important;
-    filter: drop-shadow(0 0 5px rgba(96, 165, 250, 0.65)) !important;
-}
-/* Non-binary / intersex → soft purple */
-body.refract-cards.refract-cards-playing .performer-card .gender-icon[data-gender="NON_BINARY"],
-body.refract-cards.refract-cards-playing .performer-card .gender-icon[data-gender="INTERSEX"] {
-    color: #c084fc !important;
-    filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.65)) !important;
-}
-/* Stat row injected by JS — pin scene count to the right; age, when
-   present, pushes itself to the left via auto margin. Keeps scene count
-   in the same position even when a performer's age isn't set. */
-body.refract-cards.refract-cards-playing .stash-perf-stats {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-top: 0.35rem;
-    margin-top: 0.3rem;
-    border-top: 1px solid var(--glass-border);
-}
-body.refract-cards.refract-cards-playing .stash-perf-age {
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    font-weight: 500;
-    line-height: 1;
-    margin-right: auto;
-}
-body.refract-cards.refract-cards-playing .stash-perf-scenes {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-decoration: none !important;
-    line-height: 1;
-    transition: color 0.15s;
-}
-body.refract-cards.refract-cards-playing .stash-perf-scenes svg {
-    flex-shrink: 0;
-    transition: color 0.15s;
-}
-body.refract-cards.refract-cards-playing .stash-perf-scenes:hover {
-    color: var(--accent-bright) !important;
-}
-
-/* O count on performer cards — same muted style as scene-count; sits
-   left of scene-count in the stats row. Stash exposes performer.o_counter
-   in the native popover, refract extracts it before hiding popovers. */
-body.refract-cards.refract-cards-playing .stash-perf-ocount {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    line-height: 1;
-    margin-right: 0.5rem;
-    transition: color 0.15s;
-}
-body.refract-cards.refract-cards-playing .stash-perf-ocount svg {
-    width: 0.85em;
-    height: 0.85em;
-    flex-shrink: 0;
-}
-body.refract-cards.refract-cards-playing .stash-perf-ocount:hover {
-    color: var(--text);
-}
-
-/* ═══ Refract 16_playing_card.css (namespaced) ═══════════════════ */
 /* ═══════════════════════════════════════════════════════════════════
    Playing-card style for performer cards
    Active when `body.refract-cards-playing` is set.
@@ -307,11 +132,13 @@ body.refract-cards.refract-cards-playing .performer-card .favorite-button svg {
     height: 100% !important;
 }
 
-/* In playing-card mode the floating-heart particles (injected by
-   syncPerformerCardHearts in refract-cards.js — see 04_hearts.css) stand
-   in as the "favourited" indicator. Hide the heart icon itself + kill its
-   heartbeat; reveal it on card hover so users can still click to
-   unfavourite. Opacity-based hide keeps the box live + clickable. */
+/* In playing-card mode the floating-heart particles (.refract-heart-
+   particles, injected via syncPerformerCardHearts in refract.js) take
+   over as the visual indicator of "favourited". The favourited heart
+   icon itself is hidden by default + its heartbeat killed; it reveals
+   on card hover so users can still click to unfavourite. Opacity-
+   based hide (not display:none) keeps the layout box live and
+   clickable on hover. */
 body.refract-cards.refract-cards-playing .performer-card .favorite-button.favorite {
     opacity: 0 !important;
     animation: none !important;
@@ -689,7 +516,10 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-country {
 
 /* With an Ascension rank read-out appended (refract.js adds the marker
    class), the caption becomes a full-width row: nationality on the left,
-   rank pinned to the RIGHT edge of the card. */
+   rank pinned to the RIGHT edge of the card. `overflow: visible` (the
+   base rule sets it hidden for name ellipsis) so the rank's glow and
+   drop-shadow aren't sharply clipped by this tight line box; the name's
+   own truncation moves to the inner span below. */
 body.refract-cards.refract-cards-playing .performer-card .stash-perf-country.refract-country-with-rank {
     display: flex !important;
     align-items: center !important;
@@ -697,6 +527,7 @@ body.refract-cards.refract-cards-playing .performer-card .stash-perf-country.ref
     gap: 0.4rem !important;
     width: 100% !important;
     align-self: stretch !important;
+    overflow: visible !important;
 }
 /* The name takes the slack and ellipsis-truncates so the rank is never
    pushed off the right edge by a long country name. */

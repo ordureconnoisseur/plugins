@@ -1,14 +1,18 @@
 # Refract Cards
 
-Rating-tier card frames and a playing-card layout for performer cards,
-extracted from the [Refract theme](https://github.com/ordureconnoisseur/stash-refract)
-so they run on top of the **default Stash theme**.
+Refract's card styling as a standalone plugin, so cards look like the
+[Refract theme](https://github.com/ordureconnoisseur/stash-refract) while the
+rest of your Stash stays on the default theme.
 
-- **Tier frames** — cards rated 5.0+ get an animated frame + glow that
-  escalates Bronze → Silver → Gold → Diamond → Legendary → Perfect.
-- **Playing-card layout** (performers) — trading-card look: name banner
-  with tier glow, diagonal tier ribbon, and a stat strip (rating, age,
-  scenes, O count, country), plus floating hearts on favourites.
+Always on (every card type): glass card surfaces, borders, hover glow, the
+3D tilt-on-hover, restyled rating banners, and performer avatar circles on
+scene cards. On top of that, per card type:
+
+- **Tier frames** — rated cards (5.0+) get an animated frame that escalates
+  Bronze → Silver → Gold → Diamond → Legendary → Perfect.
+- **Playing-card layout** (performers) — trading-card look: name banner with
+  tier glow, diagonal tier ribbon, neon stat strip (rating, age, scenes, O
+  count, country), and floating hearts on favourites.
 
 ## Settings
 
@@ -16,11 +20,11 @@ Settings → Plugins → **Refract Cards**:
 
 | | Options |
 | --- | --- |
-| **Scene cards** | Off · Tier frames |
-| **Performer cards** | Off · Tier frames · Playing card |
+| **Scene cards** | Plain · Tier frames |
+| **Performer cards** | Plain · Tier frames · Playing card |
 
-Saved per browser, applied instantly. Tiers are read from each card's
-rating badge; an unrated card gets no frame.
+"Plain" keeps the Refract card look without a rating frame. Saved per
+browser, applied instantly. Tiers are read from each card's rating badge.
 
-> Don't run this alongside the full Refract theme — Refract already
-> includes these features and the two would fight over the same cards.
+> Don't run this alongside the full Refract theme — Refract already includes
+> all of this and the two would fight over the same cards.

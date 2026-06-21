@@ -1,6 +1,6 @@
 name: Refract Cards
-description: Rating-tier card frames (Bronze to Perfect) and a playing-card layout for performer cards. Works on the default Stash theme; configure per card type in the plugin settings.
-version: 0.1.0
+description: Refract's card styling on the default Stash theme - glass cards, hover glow, 3D tilt, performer circles, rating-tier frames (Bronze to Perfect), and a playing-card performer layout. Configurable per card type.
+version: 0.2.0
 url: https://github.com/ordureconnoisseur/refract-cards
 ui:
   assets:
@@ -9,10 +9,9 @@ ui:
     - refract-cards.js
   css:
     - css/00_tokens.css
-    - css/01_tiers.css
+    - css/01_cards.css
     - css/02_playing_card.css
     - css/03_settings.css
-    - css/04_hearts.css
 settings:
   cards:
     displayName: Card styles
