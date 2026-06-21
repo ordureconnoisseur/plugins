@@ -391,8 +391,8 @@ body.refract-cards .rating-banner {
    somewhere in the Stash subtree). Hide every banner that isn't a
    direct child of the card — refract.js injects exactly one direct-
    child banner per scene card as the single source of truth. */
-body.refract-cards .scene-card.rc-on .rating-banner,
-body.refract-cards .grid-card.rc-on.scene-card.rc-on .rating-banner {
+body.refract-cards .scene-card.rc-on .rating-banner:not(.rc-injected),
+body.refract-cards .grid-card.rc-on.scene-card.rc-on .rating-banner:not(.rc-injected) {
     display: none !important;
 }
 body.refract-cards .scene-card.rc-on > .rating-banner,

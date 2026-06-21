@@ -1303,11 +1303,39 @@
         });
     }
 
+    /* Scene cards: Stash's native rating banner is hidden by the CSS (it
+       reads "Rating: 9.5" and won't fit the badge), so inject a controlled
+       direct-child badge showing just the number. It carries the rating-banner
+       class (so all the existing badge + tier styling applies) plus rc-injected
+       (so the CSS hide rule skips it). Rating is read from the native banner,
+       no GraphQL. */
+    function injectSceneRatings() {
+        if (!getSceneOn()) { return; }
+        document.querySelectorAll(".scene-card.rc-on").forEach(function (card) {
+            if (card.querySelector(":scope > .rating-banner.rc-injected")) { return; }
+            var v10 = 0;
+            var banners = card.querySelectorAll(".rating-banner");
+            for (var i = 0; i < banners.length; i++) {
+                if (banners[i].classList.contains("rc-injected")) { continue; }
+                var r = ratingFromBanner(banners[i]);
+                if (r > 0) { v10 = r; break; }
+            }
+            if (v10 <= 0) { return; }
+            var stars = document.body.classList.contains("refract-cards-rating-stars");
+            var disp = stars ? String(Math.round((v10 / 2) * 100) / 100) : v10.toFixed(1);
+            var el = document.createElement("div");
+            el.className = "rating-banner rc-injected";
+            el.textContent = disp;
+            card.appendChild(el);
+        });
+    }
+
     function runAll() {
         addScope();
         if (observer) { observer.disconnect(); }
         safeRun(applyCardScope);
         safeRun(injectSceneTierLabels);
+        safeRun(injectSceneRatings);
         safeRun(initCardTilts);
         /* initSceneCards (Refract's scene-card redesign: performer-avatar
            circles + tag-count badges via GraphQL) is intentionally NOT run.
