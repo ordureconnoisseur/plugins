@@ -5,8 +5,7 @@ Refract's card styling as a standalone plugin, so cards look like the
 rest of your Stash stays on the default theme.
 
 Always on (every card type): glass card surfaces, borders, hover glow, the
-3D tilt-on-hover, restyled rating banners, and performer avatar circles on
-scene cards. On top of that, per card type:
+3D tilt-on-hover, and restyled rating banners. On top of that, per card type:
 
 - **Tier frames** — rated cards (5.0+) get an animated frame that escalates
   Bronze → Silver → Gold → Diamond → Legendary → Perfect.

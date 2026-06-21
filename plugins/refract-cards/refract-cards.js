@@ -1275,7 +1275,13 @@
         addScope();
         if (observer) { observer.disconnect(); }
         safeRun(initCardTilts);
-        safeRun(initSceneCards);
+        /* initSceneCards (Refract's scene-card redesign: performer-avatar
+           circles + tag-count badges via GraphQL) is intentionally NOT run.
+           Its sizing depends on Refract's scene-card layout + rating-style
+           modes that don't exist here, so on the default theme the circles/
+           badges render unsized and balloon the card. Scene cards still get
+           the base glass look + tilt + tier frames — tiers are read from the
+           native rating banner by tagFilledRatings(), no injection needed. */
         safeRun(initPerformerCards);
         safeRun(syncPerformerCardHearts);
         safeRun(integrateAscensionBadges);
