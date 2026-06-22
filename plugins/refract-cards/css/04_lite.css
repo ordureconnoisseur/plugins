@@ -41,12 +41,22 @@ body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="
         var(--shadow-lg) !important;
 }
 
-/* Drop the animated glow overlays: the sheen sweep (::before) and the
-   diamond sparkles / rotating conic borders (::after) are pure glow, so
-   hide them — the static border above carries the tier identity. */
-body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="refract-card-tier-"]::before,
-body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="refract-card-tier-"]::after {
+/* Sheen sweep (::before) is a pure glow effect — hide it. */
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="refract-card-tier-"]::before {
     display: none !important;
+}
+/* Diamond sparkles (::after) are pure glow — hide them. */
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on.refract-card-tier-diamond::after {
+    display: none !important;
+}
+/* KEEP the Legendary + Perfect rainbow ring (::after) — it's a frame, not
+   glow, and Refract's own lite mode keeps it. Freeze the rotation so it's a
+   static ring, and drop the outer drop-shadow bleed so there's no glow. The
+   conic gradient renders statically from --refract-rotate's 0deg start. */
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on.refract-card-tier-legendary::after,
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on.refract-card-tier-perfect::after {
+    animation: none !important;
+    filter: none !important;
 }
 
 /* Freeze the animated rainbow name-text on Perfect performer cards. */
