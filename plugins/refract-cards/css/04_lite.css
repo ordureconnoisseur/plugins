@@ -1,0 +1,55 @@
+/* ───────────────────────────────────────────────────────────────────
+   Lite mode (body.refract-lite)
+
+   A flat, lightweight take on the card look. Keeps the rating-tier
+   colours, a static tier frame, and the rating banners; drops the glass
+   glow, the breathing / sheen / sparkle / rotating-border tier
+   animations, the hover lift + neon halo, the 3D tilt (skipped in
+   refract-cards.js when this class is set), and the floating hearts
+   (also skipped in JS). Loaded last so it overrides 01_cards.css and
+   02_playing_card.css.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* Flat base cards — no hover scale lift, no accent neon halo. */
+body.refract-cards.refract-lite .grid-card.rc-on:hover,
+body.refract-cards.refract-lite .card.rc-on:hover {
+    transform: none !important;
+    box-shadow: var(--shadow-md) !important;
+    border-color: var(--glass-border-bright) !important;
+}
+
+/* Tier cards — freeze every animation (breathing glow, float, sheen,
+   sparkle, rotating border) and replace the multi-layer neon shadow with
+   a clean static frame in the tier colour. The tier-tinted background
+   from 01_cards.css stays, so the tier still reads at a glance without
+   the glow. */
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="refract-card-tier-"] {
+    animation: none !important;
+    translate: none !important;
+    rotate: none !important;
+    scale: none !important;
+    border: 1px solid rgba(var(--tier-color), 0.9) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--tier-color-bright, var(--tier-color)), 0.4),
+        var(--shadow-md) !important;
+}
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="refract-card-tier-"]:hover {
+    transform: none !important;
+    border-color: rgba(var(--tier-color-bright, var(--tier-color)), 1) !important;
+    box-shadow:
+        inset 0 0 0 1px rgba(var(--tier-color-bright, var(--tier-color)), 0.55),
+        var(--shadow-lg) !important;
+}
+
+/* Drop the animated glow overlays: the sheen sweep (::before) and the
+   diamond sparkles / rotating conic borders (::after) are pure glow, so
+   hide them — the static border above carries the tier identity. */
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="refract-card-tier-"]::before,
+body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on[class*="refract-card-tier-"]::after {
+    display: none !important;
+}
+
+/* Freeze the animated rainbow name-text on Perfect performer cards. */
+body.refract-cards.refract-lite .performer-card.rc-on .refract-pc-name-text {
+    animation: none !important;
+}

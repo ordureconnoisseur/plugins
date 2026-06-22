@@ -35,6 +35,7 @@
     var PERF_KEY  = "refractCards.performers";
     var SCENE_KEY = "refractCards.scenes";
     var OTHER_KEY = "refractCards.others";
+    var LITE_KEY  = "refractCards.lite";
 
     function getBool(key) {
         try { return localStorage.getItem(key) !== "0"; } catch (e) { return true; }  /* default ON */
@@ -43,6 +44,12 @@
     function getPerfOn()  { return getBool(PERF_KEY); }
     function getSceneOn() { return getBool(SCENE_KEY); }
     function getOtherOn() { return getBool(OTHER_KEY); }
+    /* Lite mode defaults OFF (opt-in), so it reads "1" explicitly rather
+       than the default-ON getBool. When on, the cards keep their tier
+       colours, a static tier frame, and the rating banners but drop the
+       glass glow, the breathing/sheen tier animations, the hover halo,
+       the 3D tilt, and the floating hearts. */
+    function getLiteOn() { try { return localStorage.getItem(LITE_KEY) === "1"; } catch (e) { return false; } }
 
     /* Card-type classes that count as "everything else". */
     var OTHER_CARD_SELECTOR = ".gallery-card, .image-card, .studio-card, .tag-card, .scene-marker-card, .group-card, .movie-card";
@@ -60,6 +67,9 @@
         var any = getSceneOn() || getPerfOn();
         document.body.classList.toggle("refract-cards-playing", any);
         document.body.classList.toggle("refract-cards-tiers", any);
+        /* Lite mode is a CSS layer (04_lite.css) keyed off this class; it
+           also gates the JS tilt (cardTiltBind) and hearts. */
+        document.body.classList.toggle("refract-lite", getLiteOn());
     }
     applyModeClasses();
 
@@ -1051,7 +1061,9 @@
     }
 
     function syncPerformerCardHearts() {
-        var inPlayingCard = getPerfOn();
+        /* Lite mode drops the floating hearts; the else-branch below then
+           strips any hearts injected before lite was turned on. */
+        var inPlayingCard = getPerfOn() && !getLiteOn();
         document.querySelectorAll(".performer-card").forEach(function (card) {
             var isFav = !!card.querySelector(".favorite-button.favorite");
             var existing = card.querySelector(":scope > .refract-heart-particles");
@@ -1412,6 +1424,7 @@
             var perf  = R.useState(getPerfOn());
             var scene = R.useState(getSceneOn());
             var other = R.useState(getOtherOn());
+            var lite  = R.useState(getLiteOn());
 
             function makeToggle(key, state, setState) {
                 return function () { var v = !state[0]; setBool(key, v); state[1](v); onSettingsChanged(); };
@@ -1419,6 +1432,7 @@
             var togglePerf  = makeToggle(PERF_KEY, perf, perf);
             var toggleScene = makeToggle(SCENE_KEY, scene, scene);
             var toggleOther = makeToggle(OTHER_KEY, other, other);
+            var toggleLite  = makeToggle(LITE_KEY, lite, lite);
 
             function row(id, title, desc, checked, onChange) {
                 return R.createElement("div", { className: "setting", id: id },
@@ -1448,6 +1462,9 @@
                 row("refract-cards-other", "Everything else",
                     "Apply the base Refract card styling (glass, hover glow, 3D tilt) to all other card types - galleries, images, studios, tags, groups, and markers.",
                     other[0], toggleOther),
+                row("refract-cards-lite", "Lite mode",
+                    "A flatter, calmer look: keeps the rating-tier colours, a static tier frame, and the rating banners, but drops the glass glow, the breathing tier animations, the hover glow, the 3D tilt, and the floating hearts. Lighter to run.",
+                    lite[0], toggleLite),
                 R.createElement("div", { className: "setting" },
                     R.createElement("div", { className: "sub-heading" },
                         "Saved per browser, applied instantly. Don't run this alongside the full Refract theme.")
