@@ -59,7 +59,54 @@ body.refract-cards.refract-lite :is(.scene-card, .performer-card).rc-on.refract-
     filter: none !important;
 }
 
-/* Freeze the animated rainbow name-text on Perfect performer cards. */
-body.refract-cards.refract-lite .performer-card.rc-on .refract-pc-name-text {
+/* ── Playing-card front: flatten the per-card neon scaffold ──────────
+   Playing-card mode stacks a neon scaffold on every card: filter glow
+   chains on the name / gender icon / tier ribbon (legendary + perfect
+   names run several drop-shadow layers each), a multi-layer halo on the
+   tier ribbon, and a shimmer animation on perfect ribbons + names. Across
+   a large library that is a lot of continuous filter + shadow raster.
+   Keep the layout and tier COLOURS (carried by the gradients, not the
+   glow); drop the GPU-heavy parts. */
+body.refract-cards.refract-lite.refract-cards-playing :is(.performer-card, .scene-card).rc-on .refract-pc-name-text,
+body.refract-cards.refract-lite.refract-cards-playing :is(.performer-card, .scene-card).rc-on .refract-pc-name-banner .gender-icon,
+body.refract-cards.refract-lite.refract-cards-playing :is(.performer-card, .scene-card).rc-on .refract-pc-tier-label,
+body.refract-cards.refract-lite.refract-cards-playing :is(.performer-card, .scene-card).rc-on .refract-pc-tier-label::after {
+    filter: none !important;
     animation: none !important;
+}
+body.refract-cards.refract-lite.refract-cards-playing :is(.performer-card, .scene-card).rc-on .refract-pc-tier-label {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ── Card-back: stop the foil / holo shimmer ─────────────────────────
+   Only ever on the single flipped card, but no reason to animate it in
+   lite either. */
+body.refract-cards.refract-lite.refract-cards-playing .refract-cb,
+body.refract-cards.refract-lite.refract-cards-playing .refract-cb::after,
+body.refract-cards.refract-lite.refract-cards-playing .refract-cb-score-num {
+    animation: none !important;
+}
+
+/* ── Skip rendering offscreen cards in list grids ────────────────────
+   content-visibility:auto lets the browser skip layout, paint AND image
+   decode for any card scrolled out of view, doing that work only as the
+   card nears the viewport. Scoped to the vertical LIST grids only (direct
+   children of .row.justify-content-center) so the home-page carousels are
+   left alone. contain-intrinsic-size uses the `auto` keyword so each card
+   remembers its real size after rendering once.
+   NOTE: content-visibility implies paint containment, which clips a card's
+   OUTSIDE decorations — including the legendary/perfect rotating-border
+   ::after (inset -4.5px), the static rainbow ring this plugin deliberately
+   keeps. So those two tiers are EXCLUDED here; every other card still gets
+   the win. */
+body.refract-cards.refract-lite .row.justify-content-center > .performer-card:not(.refract-card-tier-legendary):not(.refract-card-tier-perfect),
+body.refract-cards.refract-lite .row.justify-content-center > .scene-card:not(.refract-card-tier-legendary):not(.refract-card-tier-perfect),
+body.refract-cards.refract-lite .row.justify-content-center > .gallery-card,
+body.refract-cards.refract-lite .row.justify-content-center > .image-card,
+body.refract-cards.refract-lite .row.justify-content-center > .studio-card,
+body.refract-cards.refract-lite .row.justify-content-center > .tag-card,
+body.refract-cards.refract-lite .row.justify-content-center > .group-card,
+body.refract-cards.refract-lite .row.justify-content-center > .movie-card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
 }

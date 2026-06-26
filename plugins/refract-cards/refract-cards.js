@@ -1372,6 +1372,356 @@
         });
     }
 
+    /* ── Performer card flip (playing-card mode) ──────────────────────
+       Ported from Refract (v1.15.0). The corner flip button reveals a back
+       face: a mirrored, heavily blurred frosted version of the performer
+       photo behind the advanced-rating category bars (parsed from the
+       plugin's `Category: N` tag convention), a stats strip, and a media
+       strip. Opt-in per card (you click the button) and built LAZILY on
+       first flip, so normal browsing is untouched and no GraphQL runs until
+       you actually flip. Playing-card mode + performer cards only. */
+    var CARD_BACK_EXPLICIT_KEY = "refractCards.cardBackExplicit";
+    /* Explicit card-back labels are built but held back: the toggle is hidden
+       and isCardBackExplicit() is forced off while this is false. Flip to true
+       to ship the feature (no other change needed). */
+    var REFRACT_CARDBACK_EXPLICIT_ENABLED = false;
+    var REFRACT_CATEGORY_RE = /^(.+?)\s*:\s*([0-5])$/; /* advanced-rating tag */
+
+    function refractFlipEscHtml(s) {
+        return String(s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    var REFRACT_FLIP_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>';
+
+    /* Category display order, mirroring the advanced-rating plugin. The plugin
+       stores its performer criteria as an ordered `performer_criteria_ids` list
+       in its own plugin config, with display names in `performer_name_<id>`. We
+       read that same config once (cached) so the card-back ratings sit in the
+       exact order the plugin shows them, including any reordering the user does
+       in its settings. Until/if that loads we use the plugin's default order. */
+    var REFRACT_AR_DEFAULT_NAMES = {
+        face: "Face", breasts: "Breasts", ass: "Ass", body: "Body Overall",
+        genitals: "Genitals", technique: "Technique",
+        energy: "Energy & Presence", sluttiness: "Sluttiness"
+    };
+    var REFRACT_AR_CAT_ORDER = ["face", "breasts", "ass", "body overall", "genitals",
+        "technique", "energy & presence", "sluttiness"];
+    var refractAROrderLoaded = false;
+    function refractLoadARCategoryOrder() {
+        if (refractAROrderLoaded) { return; }
+        refractAROrderLoaded = true;
+        try {
+            gql("query { configuration { plugins } }").then(function (res) {
+                var plugins = res && res.data && res.data.configuration && res.data.configuration.plugins;
+                var cfg = plugins && plugins.advancedRating;
+                if (!cfg) { return; }
+                var raw = cfg.performer_criteria_ids;
+                if (typeof raw !== "string" || !raw.trim()) { return; }
+                var order = raw.split(",").map(function (s) { return s.trim(); }).filter(Boolean)
+                    .map(function (id) {
+                        var nm = cfg["performer_name_" + id] || REFRACT_AR_DEFAULT_NAMES[id] || id;
+                        return String(nm).toLowerCase();
+                    });
+                if (order.length) { REFRACT_AR_CAT_ORDER = order; }
+            }).catch(function () {});
+        } catch (e) {}
+    }
+
+    function injectPerformerCardFlip() {
+        if (!document.body.classList.contains("refract-cards-playing")) { return; }
+        if (!getPerfOn()) { return; }
+        refractLoadARCategoryOrder();
+        /* Only marked (rc-on) performer cards get the flip affordance, matching
+           the rest of the playing-card styling. */
+        var cards = document.querySelectorAll(".performer-card.rc-on:not([data-refract-flip])");
+        for (var i = 0; i < cards.length; i++) {
+            (function (card) {
+                card.setAttribute("data-refract-flip", "1");
+                var link = card.querySelector('a[href*="/performers/"]');
+                var m = link && (link.getAttribute("href") || "").match(/\/performers\/(\d+)/);
+                if (!m) { return; }
+                var pid = m[1];
+                var btn = document.createElement("button");
+                btn.className = "refract-card-flip-btn";
+                btn.type = "button";
+                btn.title = "Flip card";
+                btn.setAttribute("aria-label", "Flip card");
+                btn.innerHTML = REFRACT_FLIP_ICON;
+                btn.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    refractDoPerformerFlip(card, pid);
+                });
+                card.appendChild(btn);
+            })(cards[i]);
+        }
+    }
+
+    /* Two-phase flip: spin the whole card to its edge (rotateY -90deg, where
+       it foreshortens to an invisible vertical line), swap front<->back
+       content at that hidden midpoint, then spin back to face-on. The card
+       rests at rotateY(0) either way, so the back is never mirrored and the
+       state survives a React re-render (no leftover inline transform). A true
+       preserve-3d two-face flip isn't possible here: the card needs
+       overflow:hidden (rounded corners + the tier ribbon clip), which forces
+       transform-style:flat. */
+    function refractDoPerformerFlip(card, pid) {
+        if (card._rfxFlipBusy) { return; }
+        var toBack = !card.classList.contains("refract-show-back");
+        if (toBack && !card.querySelector(".refract-card-back")) {
+            refractBuildPerformerBack(card, pid);
+        }
+        card._rfxFlipBusy = true;
+        card.style.zIndex = "200";
+        /* Phase 1: turn to the edge (-90deg). */
+        card.style.transition = "transform 0.24s ease-in";
+        card.style.transform = "perspective(1200px) rotateY(-90deg)";
+        setTimeout(function () {
+            /* At the invisible edge, swap faces, then TELEPORT across to the
+               mirror edge (+90deg, also edge-on and invisible) with transitions
+               off. Finishing the same-direction turn (+90 -> 0) reads as one
+               continuous flip, and BOTH faces come to rest at rotateY(0) so
+               nothing is ever mirrored (no scaleX trickery, no accumulation,
+               and the state survives a React re-render). */
+            if (toBack) { card.classList.add("refract-show-back"); }
+            else { card.classList.remove("refract-show-back"); }
+            card.style.transition = "none";
+            card.style.transform = "perspective(1200px) rotateY(90deg)";
+            void card.offsetWidth;
+            /* Phase 2: finish the turn to face-on. */
+            card.style.transition = "transform 0.24s ease-out";
+            card.style.transform = "perspective(1200px) rotateY(0deg)";
+            setTimeout(function () {
+                card.style.transition = "";
+                card.style.transform = "";
+                card.style.zIndex = "";
+                card._rfxFlipBusy = false;
+            }, 250);
+        }, 235);
+    }
+
+    function refractBuildPerformerBack(card, pid) {
+        var back = document.createElement("div");
+        back.className = "refract-card-back";
+        var img = card.querySelector("img.performer-card-image");
+        var imgSrc = img ? (img.getAttribute("src") || "") : "";
+        var nameEl = card.querySelector(".performer-name");
+        var name = nameEl ? (nameEl.textContent || "").trim() : "";
+        var tier = "";
+        var cl = (card.className || "").match(/refract-card-tier-(\w+)/);
+        if (cl) { tier = cl[1]; }
+        var photo = imgSrc
+            ? ' style="background-image:url(\'' + imgSrc.replace(/'/g, "%27") + '\')"' : '';
+
+        /* Fixed, NON-SCROLLING dossier with the STATS as the hero: a title bar
+           (name top-left, tier chip top-right), a hero row pairing the portrait
+           beside the score banner, a 3-up media strip (top scene + library
+           photos), then the category "Assets" as the large flex body (one
+           readable row each), and a collector footer of library stats. */
+        back.innerHTML =
+            '<div class="refract-back-photo"' + photo + '></div>' +
+            '<div class="refract-back-frost"></div>' +
+            '<div class="refract-cb refract-cb-tier-' + (tier || 'none') + '">' +
+            '<div class="refract-cb-head">' +
+            '<span class="refract-cb-title">' +
+            '<span class="refract-cb-name">' + refractFlipEscHtml(name) + '</span>' +
+            '</span>' +
+            (tier ? '<span class="refract-cb-tierchip">' + tier + '</span>' : '') +
+            '</div>' +
+            '<div class="refract-cb-hero">' +
+            '<div class="refract-cb-portrait"' + photo + '></div>' +
+            '<div class="refract-cb-score refract-cb-score-empty"></div>' +
+            '</div>' +
+            '<div class="refract-cb-assets"><div class="refract-cb-loading">Loading</div></div>' +
+            '<div class="refract-cb-media refract-cb-media-loading">' +
+            '<div class="refract-cb-media-item"><div class="refract-cb-media-img"' + photo + '></div></div>' +
+            '</div>' +
+            '<div class="refract-cb-foot"></div>' +
+            '</div>';
+        card.appendChild(back);
+
+        /* Gender "type" glyph before the name, cloned from the card's native
+           gender icon (same source the front name-banner uses). Carries its
+           data-gender attribute so the per-gender glow CSS applies here too. */
+        var genderSrc = card.querySelector(".gender-icon");
+        var titleEl2 = back.querySelector(".refract-cb-title");
+        var nameEl2 = back.querySelector(".refract-cb-name");
+        if (genderSrc && titleEl2 && nameEl2) {
+            var gIcon = genderSrc.cloneNode(true);
+            gIcon.classList.add("refract-cb-gender");
+            titleEl2.insertBefore(gIcon, nameEl2);
+        }
+
+        var q =
+            'query RefractFlip($id: ID!) {' +
+            '  findPerformer(id: $id) { id rating100 favorite o_counter scene_count measurements height_cm weight career_length tags { id name } }' +
+            '  findScenes(scene_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 3, sort: "rating", direction: DESC }) { scenes { id title rating100 paths { screenshot } } }' +
+            '  findImages(image_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 3, sort: "rating", direction: DESC }) { images { id paths { thumbnail } } }' +
+            '}';
+        gqlWithVars(q, { id: pid }).then(function (res) {
+            var d = res && res.data;
+            var p = d && d.findPerformer;
+            var scenes = d && d.findScenes && d.findScenes.scenes;
+            var images = d && d.findImages && d.findImages.images;
+            if (p) { refractFillPerformerBack(back, p, scenes, images); }
+        }).catch(function () {
+            var l = back.querySelector(".refract-cb-loading");
+            if (l) { l.textContent = "Couldn't load stats"; }
+        });
+    }
+
+    function isCardBackExplicit() {
+        if (!REFRACT_CARDBACK_EXPLICIT_ENABLED) { return false; }
+        try { return localStorage.getItem(CARD_BACK_EXPLICIT_KEY) === "1"; }
+        catch (e) { return false; }
+    }
+
+    /* Career span in whole years, parsed from the free-text career_length
+       ("2014 -", "2014-2020", etc.). Open-ended ranges count up to now; a
+       non-year string passes through if it's short enough to fit a chip. */
+    function refractCareerYears(cl) {
+        if (!cl) { return ""; }
+        var s = String(cl).replace(/\s+/g, " ").trim();
+        var ys = s.match(/\d{4}/g);
+        if (ys && ys.length) {
+            var start = parseInt(ys[0], 10);
+            var end = ys.length > 1 ? parseInt(ys[1], 10) : (new Date()).getFullYear();
+            var span = end - start;
+            if (span < 0) { span = 0; }
+            return span + (span === 1 ? " yr" : " yrs");
+        }
+        return s.length <= 12 ? s : "";
+    }
+
+    /* Media-strip click -> open the scene/image. SPA-navigate via pushState +
+       popstate (Stash's React Router responds to popstate), but leave
+       ctrl/cmd/middle-click to the native href so new-tab still works. */
+    function refractMediaNavClick(e) {
+        var a = (e.target && e.target.closest) ? e.target.closest(".refract-cb-media-item") : null;
+        if (!a) { return; }
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) { return; }
+        var href = a.getAttribute("href");
+        if (!href) { return; }
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.location.pathname + window.location.search !== href) {
+            window.history.pushState(null, "", href);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+        }
+    }
+
+    function refractFillPerformerBack(back, p, scenes, images) {
+        var explicit = isCardBackExplicit();
+        var L = explicit ? {
+            score: "Slut Score", assets: "Assets", scenes: "On-Cam Fucks", o: "Loads", topscene: "Best Fuck"
+        } : {
+            score: "Rating", assets: "Ratings", scenes: "Scenes", o: "O-Count", topscene: "Top Scene"
+        };
+
+        /* Headline score (the overall rating100 / "slut score") - the hero. */
+        var score = back.querySelector(".refract-cb-score");
+        if (score) {
+            score.classList.remove("refract-cb-score-empty");
+            score.innerHTML =
+                '<div class="refract-cb-score-num">' + (p.rating100 != null ? p.rating100 : "--") + '</div>' +
+                '<div class="refract-cb-score-lbl">' + L.score + '</div>' +
+                (p.favorite ? '<span class="refract-cb-fav" title="Favourite">&#10084;</span>' : '');
+        }
+
+        /* Media strip: lead with the top scene (labelled + rated), then the
+           performer's top-rated library photos, then any remaining scenes as
+           stills. Up to three; all lazy (only fetched on flip). Falls back to
+           the portrait placeholder when she has no scenes or photos. */
+        var mediaEl = back.querySelector(".refract-cb-media");
+        if (mediaEl) {
+            mediaEl.classList.remove("refract-cb-media-loading");
+            var media = [];
+            var top = scenes && scenes[0];
+            if (top && top.paths && top.paths.screenshot) {
+                media.push({ url: top.paths.screenshot, tag: L.topscene, rate: top.rating100, href: "/scenes/" + top.id });
+            }
+            (images || []).forEach(function (im) {
+                if (media.length >= 3) { return; }
+                if (im && im.paths && im.paths.thumbnail) { media.push({ url: im.paths.thumbnail, href: "/images/" + im.id }); }
+            });
+            (scenes || []).slice(1).forEach(function (sc) {
+                if (media.length >= 3) { return; }
+                if (sc && sc.paths && sc.paths.screenshot) { media.push({ url: sc.paths.screenshot, href: "/scenes/" + sc.id }); }
+            });
+            if (media.length) {
+                mediaEl.innerHTML = media.map(function (m) {
+                    var tag = m.tag ? '<span class="refract-cb-media-tag">' + refractFlipEscHtml(m.tag) + '</span>' : '';
+                    var rate = (m.rate != null) ? '<span class="refract-cb-media-rate">&#9733; ' + m.rate + '</span>' : '';
+                    return '<a class="refract-cb-media-item" href="' + refractFlipEscHtml(m.href) + '">' +
+                        '<div class="refract-cb-media-img" style="background-image:url(\'' +
+                        String(m.url).replace(/'/g, "%27") + '\')"></div>' + tag + rate + '</a>';
+                }).join("");
+                mediaEl.addEventListener("click", refractMediaNavClick);
+            }
+        }
+
+        /* Category ratings ("Assets") - the main body, one readable row each
+           (name, full-width meter bar and the 0-5 value). FIXED order, matching
+           the advanced-rating plugin's own criteria order (so each category
+           always sits in the same row); anything the plugin doesn't list falls
+           to the end alphabetically. The list scrolls if it overflows. Parsed
+           from advanced-rating's `Category: N` tags. */
+        var cats = [];
+        (p.tags || []).forEach(function (t) {
+            var nm = t.name || "";
+            var mm = nm.match(REFRACT_CATEGORY_RE);
+            if (mm) { cats.push({ name: mm[1].replace(/[\W_]+$/, "").trim(), score: parseInt(mm[2], 10) }); }
+        });
+        cats.sort(function (a, b) {
+            var an = a.name.toLowerCase(), bn = b.name.toLowerCase();
+            var ia = REFRACT_AR_CAT_ORDER.indexOf(an); if (ia === -1) { ia = 999; }
+            var ib = REFRACT_AR_CAT_ORDER.indexOf(bn); if (ib === -1) { ib = 999; }
+            if (ia !== ib) { return ia - ib; }
+            return an < bn ? -1 : (an > bn ? 1 : 0);
+        });
+        var shown = cats;
+        var assets = back.querySelector(".refract-cb-assets");
+        if (assets) {
+            var h = '<div class="refract-cb-assets-head"><span>' + L.assets + '</span>' +
+                (cats.length ? '<span class="refract-cb-assets-n">' + cats.length + '</span>' : '') + '</div>';
+            if (shown.length) {
+                h += '<div class="refract-cb-grid">';
+                shown.forEach(function (c) {
+                    var segs = "";
+                    for (var s = 1; s <= 5; s++) { segs += '<span class="refract-cb-seg' + (s <= c.score ? " on" : "") + '"></span>'; }
+                    h += '<div class="refract-cb-stat refract-s' + c.score + '"><span class="refract-cb-stat-name">' +
+                        refractFlipEscHtml(c.name) + '</span><span class="refract-cb-bar">' + segs + '</span>' +
+                        '<span class="refract-cb-stat-val">' + c.score + '</span></div>';
+                });
+                h += '</div>';
+            } else {
+                h += '<div class="refract-cb-empty">No ' + (explicit ? 'assets rated' : 'category ratings') + ' yet</div>';
+            }
+            assets.innerHTML = h;
+        }
+
+        /* Collector footer: library counts beside physical/career vitals,
+           each shown only if set. */
+        var foot = back.querySelector(".refract-cb-foot");
+        if (foot) {
+            var fi = [];
+            if (p.scene_count != null) { fi.push([L.scenes, p.scene_count]); }
+            if (p.o_counter != null && p.o_counter > 0) { fi.push([L.o, p.o_counter]); }
+            if (p.measurements) { fi.push(["Meas", p.measurements]); }
+            if (p.height_cm) { fi.push(["Height", p.height_cm + "cm"]); }
+            if (p.weight) { fi.push(["Weight", p.weight + "kg"]); }
+            var cy = refractCareerYears(p.career_length);
+            if (cy) { fi.push(["Career", cy]); }
+            foot.innerHTML = fi.map(function (it) {
+                return '<span class="refract-cb-foot-item"><b>' + refractFlipEscHtml(String(it[1])) +
+                    '</b>' + refractFlipEscHtml(String(it[0])) + '</span>';
+            }).join("");
+        }
+    }
+
     function runAll() {
         addScope();
         if (observer) { observer.disconnect(); }
@@ -1387,6 +1737,7 @@
            the base glass look + tilt + tier frames — tiers are read from the
            native rating banner by tagFilledRatings(), no injection needed. */
         safeRun(initPerformerCards);
+        safeRun(injectPerformerCardFlip);
         safeRun(syncPerformerCardHearts);
         safeRun(integrateAscensionBadges);
         safeRun(tagFilledRatings);
