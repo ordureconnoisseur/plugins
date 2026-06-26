@@ -1722,6 +1722,36 @@
         }
     }
 
+    /* Default performer placeholder recolour (ported from the Refract theme).
+       When a performer has no image, Stash serves a white silhouette SVG whose
+       img src carries `default=true`; white-on-white with the card name is
+       unreadable (worst in lite mode). An <img> can't be recoloured via CSS,
+       so for each placeholder on a styled (rc-on) performer card we overlay a
+       span masked by the same silhouette shape, fill it with a translucent
+       accent, and fade the white original. The mask URL is made same-origin
+       (strip the host) so it isn't blocked when Stash is opened on a different
+       origin than the image host. Guarded by the overlay's presence so it
+       survives React replacing the surrounding nodes. */
+    function tintDefaultPerformerImages() {
+        var imgs = document.querySelectorAll('.performer-card.rc-on img.performer-card-image[src*="default=true"]');
+        for (var i = 0; i < imgs.length; i++) {
+            var img = imgs[i];
+            var parent = img.parentElement;
+            if (!parent) { continue; }
+            if (parent.querySelector(":scope > .refract-default-perf-silhouette")) { continue; }
+            if (getComputedStyle(parent).position === "static") {
+                parent.style.position = "relative";
+            }
+            var rel = (img.getAttribute("src") || "").replace(/^https?:\/\/[^/]+/, "");
+            var ov = document.createElement("span");
+            ov.className = "refract-default-perf-silhouette";
+            ov.style.setProperty("-webkit-mask-image", 'url("' + rel + '")');
+            ov.style.setProperty("mask-image", 'url("' + rel + '")');
+            img.classList.add("refract-default-perf-img");
+            parent.appendChild(ov);
+        }
+    }
+
     function runAll() {
         addScope();
         if (observer) { observer.disconnect(); }
@@ -1738,6 +1768,7 @@
            native rating banner by tagFilledRatings(), no injection needed. */
         safeRun(initPerformerCards);
         safeRun(injectPerformerCardFlip);
+        safeRun(tintDefaultPerformerImages);
         safeRun(syncPerformerCardHearts);
         safeRun(integrateAscensionBadges);
         safeRun(tagFilledRatings);

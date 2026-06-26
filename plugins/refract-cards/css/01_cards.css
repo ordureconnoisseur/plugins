@@ -152,6 +152,29 @@ body.refract-cards .scene-marker-card.rc-on .thumbnail-section {
     overflow: hidden;
 }
 
+/* Default performer placeholder recolour (see tintDefaultPerformerImages in
+   refract-cards.js). When a performer has no image, Stash serves a glaring
+   white silhouette that collides with the white card name (worst in lite
+   mode). The white <img> is faded out and replaced by an accent-tinted
+   silhouette: a span masked by the same SVG shape, filled with translucent
+   accent so it reads as on-brand. Only applied to styled (rc-on) cards. */
+body.refract-cards img.refract-default-perf-img {
+    opacity: 0 !important;
+}
+body.refract-cards .refract-default-perf-silhouette {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: rgba(var(--accent-rgb), 0.42);
+    -webkit-mask-size: cover;
+    mask-size: cover;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
 /* Tilt glare overlay — injected by refract.js */
 body.refract-cards .stash-tilt-glare {
     position: absolute;
