@@ -1,6 +1,6 @@
 # Multi-View Player
 
-A Stash plugin that lets you queue scenes and live search filters from any browse page and watch up to 16 simultaneously in a minimal grid player. Filter slots automatically cycle through matching scenes when each one ends.
+A Stash plugin that lets you queue scenes and live search filters from any browse page and watch up to 16 simultaneously in a minimal grid player. Filter slots automatically cycle through matching scenes when each one ends, and any cell can loop a range you pick out of its scene.
 
 ## Requirements
 
@@ -80,6 +80,7 @@ The queue is shared across tabs — changes on one tab are immediately reflected
 | **⏮** button | Restart the current scene from the beginning |
 | **⏭** button | For filter/random cells: load the next scene; for pinned scenes: restart |
 | **O** button | Increment the scene's O counter |
+| Loop button | Set the loop start, then the loop end, then clear (see [A/B Loops](#ab-loops)) |
 | **O All** (top bar) | Increment O counter on all scenes |
 | **✕** button | Remove scene from the grid |
 | Pause All (top bar) | Play / pause all scenes simultaneously |
@@ -87,6 +88,8 @@ The queue is shared across tabs — changes on one tab are immediately reflected
 | Dice button (top bar) | Open roulette — load N random scenes |
 | Settings (top bar) | Quality and display preferences |
 | `F` key | Toggle Focus Mode |
+| `A` / `B` keys | Mark the loop start / end on the cell under the cursor |
+| `L` key | Clear the loop on the cell under the cursor |
 
 The cell with active audio is highlighted with an orange outline.
 
@@ -102,6 +105,28 @@ Click the **focus button** in the top bar (or press **F**) to toggle Focus Mode.
 
 Press **F** (or click the focus button) again to return to the normal grid.
 
+### A/B Loops
+
+Any cell can replay a chosen range of its scene instead of the whole thing. Give each cell its own range and the grid becomes a wall of hand-picked clips, every one looping independently.
+
+Set a range in either of two ways:
+
+- **Loop button** in the cell controls. First click marks the start (**A**) at the current position, second click marks the end (**B**), third click clears the loop.
+- **`A` and `B` keys** with the cursor over a cell. `L` clears it. All three are rebindable in Settings.
+
+Once a range is set:
+
+- The cell's seekbar re-centres on the loop: the looped stretch is drawn in the accent colour with a **draggable mark at each end** so you can nudge the range while it plays, the brighter part of it shows how far through the loop you are, and everything outside the range dims out of the way
+- The range is shown as `0:41 - 1:12` next to the cell controls
+- The cell restarts from **A** every time it reaches **B**, forever, independent of every other cell
+- Only marking **A** loops from there to the end of the scene, so you can set a start and refine the end later
+
+Loops are saved per scene in your browser and come back when you reopen the player, so a wall you set up once can be reopened as-is. A looping scene always reopens at **A** rather than at a saved resume position. **Settings → Saved A/B Loops** shows how many scenes have one and can clear them all at once.
+
+Filter and roulette cells don't take a loop: their scene changes as they advance, so a saved range would apply to the wrong video.
+
+> Looping a **transcoded** stream normally reuses what the browser has already buffered, which costs nothing. If the stream can't seek backwards, the cell has to re-request the transcode at **A** on every pass, and that is rate-limited to avoid hammering your server: a very short loop may overshoot its end slightly. Enabling **Direct Play** in Settings avoids this entirely where your files play natively.
+
 ### Shortcuts
 
 Every shortcut is **rebindable to a keyboard key _or_ a mouse button**. Open **Settings**, expand the collapsible **Shortcuts** section, click the binding next to an action, then press the key or mouse button you want (middle, right, back, and forward buttons are supported). Backspace clears a binding, Esc cancels.
@@ -111,6 +136,9 @@ Every shortcut is **rebindable to a keyboard key _or_ a mouse button**. Open **S
 | Mute / Unmute (hovered) | Middle Click | Acts on the scene under the cursor |
 | Play / Pause (hovered) | _unbound_ | Acts on the scene under the cursor |
 | O counter (hovered) | _unbound_ | Acts on the scene under the cursor |
+| Loop: set A (hovered) | `A` | Marks the loop start at the current position |
+| Loop: set B (hovered) | `B` | Marks the loop end at the current position |
+| Loop: clear (hovered) | `L` | Removes that scene's loop |
 | Toggle Focus Mode | `F` | |
 | Toggle Full Screen | _unbound_ | |
 | Open Roulette | _unbound_ | |

@@ -372,6 +372,109 @@ html, body {
     transform-origin: left center;
 }
 
+/* ── A/B loop range ────────────────────────────────────────────────────────── */
+
+/* The band between the two marks. With a loop set, the accent belongs to the
+   looped stretch, not to "everything played so far", so the band owns the
+   accent and the ordinary progress fill outside it is dimmed to a hint (see
+   .mv-looping below). The track keeps click-to-seek, so the band ignores the
+   pointer and only the marks themselves are grabbable. */
+.mv-loop-region {
+    display: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Unplayed part of the loop: accent held back so the played part reads brighter. */
+.mv-loop-region::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--mv-accent);
+    opacity: 0.35;
+}
+
+/* Position within the loop, so a long range still shows where it's up to. */
+.mv-loop-progress {
+    position: absolute;
+    inset: 0;
+    background: var(--mv-accent);
+    transform: scaleX(0);
+    transform-origin: left center;
+}
+
+/* Played-so-far outside the loop stays legible but stops competing. */
+.mv-cell.mv-looping .mv-seekbar-fill {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.mv-loop-handle {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 4px;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55);
+    pointer-events: auto;
+    cursor: ew-resize;
+    z-index: 3;
+}
+
+.mv-loop-handle.is-a { left: -2px; }
+.mv-loop-handle.is-b { right: -2px; }
+
+/* Grabbing a 4px mark on a 4px bar is unfair, so extend the hit area up into
+   the cell and out to either side without moving the visible mark. */
+.mv-loop-handle::before {
+    content: '';
+    position: absolute;
+    left: -7px;
+    right: -7px;
+    bottom: -4px;
+    height: 22px;
+}
+
+/* Easier to aim at once you're in the cell (the bar itself grows on hover). */
+.mv-cell:hover .mv-loop-handle {
+    top: -5px;
+    bottom: -5px;
+    width: 5px;
+}
+
+/* Range readout, bottom-left of the overlay opposite the buttons. */
+.mv-loop-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-right: auto;
+    padding: 0 7px;
+    height: 28px;
+    border-radius: 4px;
+    background: var(--mv-overlay-bg);
+    color: var(--mv-accent);
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.mv-loop-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
+
+/* Only meaningful once a range exists. */
+.mv-cell:not(.mv-looping) .mv-loop-badge { display: none; }
+
+.mv-cell-loop-btn.is-active { color: var(--mv-accent); }
+
+/* Dense grids have no room for the readout; the lit band on the bar and the
+   button tooltip still say what the range is. */
+#mv-grid.layout-3x4 .mv-loop-badge,
+#mv-grid.layout-4x4 .mv-loop-badge { display: none; }
+
 /* ── Volume popup ──────────────────────────────────────────────────────────── */
 
 .mv-vol-popup {
@@ -757,6 +860,8 @@ body.mv-idle .mv-cell:hover:not(.mv-popup-open) .mv-seekbar {
     border-color: var(--mv-accent);
     color: var(--mv-accent);
 }
+.mv-keybind-btn:disabled { opacity: 0.45; cursor: default; }
+.mv-keybind-btn:disabled:hover { border-color: #3a3a3a; }
 
 /* Collapsible Shortcuts section */
 .mv-settings-shortcuts {
