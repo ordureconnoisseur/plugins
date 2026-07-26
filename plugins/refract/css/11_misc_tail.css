@@ -1023,6 +1023,15 @@ body.stash-liquid-glass .refract-card-style-toggle {
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-pill);
     padding: 3px;
+    /* In the Interface card the toggle is a flex item that Stash's
+       native .setting layout can shrink below its content, leaving the
+       last label poking out of the pill border. Never shrink. */
+    flex-shrink: 0 !important;
+    width: -moz-fit-content;
+    width: fit-content;
+}
+body.stash-liquid-glass .refract-segmented-btn {
+    white-space: nowrap;
 }
 body.stash-liquid-glass .refract-segmented-btn {
     appearance: none;
@@ -1136,6 +1145,102 @@ body.stash-liquid-glass .refract-suggestion-body {
     gap: 0.85rem;
     padding: 0.75rem 1rem 0.85rem;
     border-top: 1px solid var(--glass-border);
+}
+
+/* Card customiser: shares the suggestion-box card chrome but renders as
+   a plain always-open section (plain divs, not details/summary), so the
+   header loses every drawer affordance. */
+body.stash-liquid-glass .refract-card-customiser .refract-suggestion-summary {
+    cursor: default;
+}
+body.stash-liquid-glass .refract-card-customiser .refract-suggestion-summary:hover {
+    background: transparent;
+}
+body.stash-liquid-glass .refract-card-customiser .refract-suggestion-summary::after {
+    display: none;
+}
+
+/* Real-card preview: Stash's actual SceneCard/PerformerCard rendered
+   with library data. Constrain widths (the grid normally sizes cards
+   via JS useCardWidth, which doesn't run here). The pair is CENTERED
+   with a deliberate gap; the shuffle button is a glass icon square
+   pinned to the block's top-right corner (blank-cards glyph). Cursor
+   stays default on the cards since clicks are swallowed. */
+body.stash-liquid-glass .refract-card-preview-real {
+    position: relative;
+}
+body.stash-liquid-glass .refract-card-preview-real .refract-preview-cards {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    justify-content: center;
+    flex-wrap: wrap;
+    pointer-events: auto;
+    /* keep centred content clear of the corner button */
+    padding: 0.25rem 3rem;
+}
+body.stash-liquid-glass .refract-card-preview-real .scene-card {
+    width: 300px !important;
+}
+body.stash-liquid-glass .refract-card-preview-real .performer-card {
+    width: 190px !important;
+}
+body.stash-liquid-glass .refract-card-preview-real a,
+body.stash-liquid-glass .refract-card-preview-real button:not(.refract-preview-shuffle) {
+    cursor: default !important;
+}
+body.stash-liquid-glass .refract-preview-shuffle {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    width: 2.3rem;
+    height: 2.3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
+}
+body.stash-liquid-glass .refract-preview-shuffle:hover {
+    color: var(--accent-bright);
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(var(--accent-rgb), 0.4);
+}
+body.stash-liquid-glass .refract-preview-shuffle:active {
+    transform: scale(0.94);
+}
+body.stash-liquid-glass .refract-preview-shuffle svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Element chips in the customiser (Scene / Performer card elements
+   rows): reuse the segmented-btn look; a LIT chip (is-active) means
+   the element is shown on the card. */
+body.stash-liquid-glass .refract-card-elems {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: flex-end;
+    max-width: 24rem;
+}
+
+/* Pointer note left in the old plugin-settings panel after the move to
+   Settings -> Interface -> Refract. */
+body.stash-liquid-glass .refract-settings-moved-note {
+    padding: 0.35rem 0 0.5rem;
+}
+body.stash-liquid-glass .refract-settings-moved-note a {
+    color: var(--accent-bright);
+    text-decoration: none;
+}
+body.stash-liquid-glass .refract-settings-moved-note a:hover {
+    text-decoration: underline;
 }
 
 /* ── Card preview (Suggestion Box) ───────────────────────────────────
