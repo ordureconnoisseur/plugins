@@ -1102,15 +1102,24 @@
         });
         loopRow.append(loopText, loopClearBtn);
 
+        // Collapsible section, chevron and all. Returns the <details> to append
+        // and the body rows go into `.rows`.
+        const makeSection = title => {
+            const section = document.createElement('details');
+            section.className = 'mv-settings-section';
+            const summary = document.createElement('summary');
+            summary.className = 'mv-settings-section-heading mv-section-summary';
+            summary.textContent = title;
+            const rows = document.createElement('div');
+            rows.className = 'mv-section-rows';
+            section.append(summary, rows);
+            return { section, rows };
+        };
+
         // Seeking section. The two modifier roles live here rather than in
         // Shortcuts because a binding holds one bare key and cannot carry a
         // modifier; the actions they modify are rebindable as usual.
-        const seekSection = document.createElement('div');
-        seekSection.className = 'mv-settings-qual-section';
-        const seekHeading = document.createElement('span');
-        seekHeading.className = 'mv-settings-section-heading';
-        seekHeading.textContent = 'Seeking';
-        seekSection.appendChild(seekHeading);
+        const { section: seekSection, rows: seekRows } = makeSection('Seeking');
 
         const addStepRow = (label, key, title) => {
             const row = document.createElement('div');
@@ -1132,7 +1141,7 @@
                 savePlayerSettings();
             });
             row.append(lbl, input);
-            seekSection.appendChild(row);
+            seekRows.appendChild(row);
         };
         addStepRow('Seek step (seconds)', 'seekStep',
             'How far the wheel and the seek shortcuts move the playhead.');
@@ -1164,7 +1173,7 @@
             });
             modSelects[key] = sel;
             row.append(lbl, sel);
-            seekSection.appendChild(row);
+            seekRows.appendChild(row);
         };
         // Grey out the modifier the other role already owns, so the two can
         // never be set to the same key and race each other.
@@ -1184,12 +1193,7 @@
         syncModSelects();
 
         // Quality section
-        const qualSection = document.createElement('div');
-        qualSection.className = 'mv-settings-qual-section';
-        const qualHeading = document.createElement('span');
-        qualHeading.className = 'mv-settings-section-heading';
-        qualHeading.textContent = 'Quality per Grid Size';
-        qualSection.appendChild(qualHeading);
+        const { section: qualSection, rows: qualRows } = makeSection('Quality per Grid Size');
 
         const selects = {};
         GRID_ROWS.forEach(({ key, label }) => {
@@ -1214,7 +1218,7 @@
             });
             selects[key] = sel;
             row.append(lbl, sel);
-            qualSection.appendChild(row);
+            qualRows.appendChild(row);
         });
 
         dpToggle.addEventListener('change', () => {
@@ -1226,16 +1230,7 @@
 
         // Shortcuts section — collapsed by default (native <details>) to keep
         // the panel tidy; bind a keyboard key or mouse button per action.
-        const kbSection = document.createElement('details');
-        kbSection.className = 'mv-settings-shortcuts';
-        const kbSummary = document.createElement('summary');
-        kbSummary.className = 'mv-settings-section-heading mv-shortcuts-summary';
-        kbSummary.textContent = 'Shortcuts';
-        kbSection.appendChild(kbSummary);
-
-        const kbRows = document.createElement('div');
-        kbRows.className = 'mv-shortcuts-rows';
-        kbSection.appendChild(kbRows);
+        const { section: kbSection, rows: kbRows } = makeSection('Shortcuts');
 
         function renderKeybindRows() {
             kbRows.innerHTML = '';
@@ -1301,6 +1296,17 @@
         }
 
         renderKeybindRows();
+
+        // Accordion: opening one section closes the others, so the panel never
+        // grows past a screen. Closing the others fires their own toggle, which
+        // returns immediately because they are shut.
+        const sections = [seekSection, qualSection, kbSection];
+        sections.forEach(section => {
+            section.addEventListener('toggle', () => {
+                if (!section.open) return;
+                sections.forEach(other => { if (other !== section) other.open = false; });
+            });
+        });
 
         card.append(header, dpRow, swRow, invRow, volRow, loopRow, seekSection, qualSection, kbSection);
         overlay.appendChild(card);

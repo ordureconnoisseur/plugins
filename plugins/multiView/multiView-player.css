@@ -839,13 +839,6 @@ body.mv-idle .mv-cell:hover:not(.mv-popup-open) .mv-seekbar {
     cursor: pointer;
 }
 
-.mv-settings-qual-section {
-    display: flex;
-    flex-direction: column;
-    padding: 12px 16px 16px;
-    gap: 8px;
-}
-
 .mv-settings-section-heading {
     font-size: 11px;
     font-weight: 600;
@@ -916,12 +909,14 @@ body.mv-idle .mv-cell:hover:not(.mv-popup-open) .mv-seekbar {
 .mv-keybind-btn:disabled { opacity: 0.45; cursor: default; }
 .mv-keybind-btn:disabled:hover { border-color: #3a3a3a; }
 
-/* Collapsible Shortcuts section */
-.mv-settings-shortcuts {
-    padding: 12px 16px 16px;
+/* Collapsible settings sections. One at a time is open (an accordion), so the
+   panel stays short no matter how many sections there are. */
+.mv-settings-section {
+    padding: 12px 16px;
     border-top: 1px solid var(--mv-border);
 }
-.mv-shortcuts-summary {
+.mv-settings-section[open] { padding-bottom: 16px; }
+.mv-section-summary {
     cursor: pointer;
     list-style: none;
     display: flex;
@@ -931,10 +926,10 @@ body.mv-idle .mv-cell:hover:not(.mv-popup-open) .mv-seekbar {
     user-select: none;
     transition: color 0.15s;
 }
-.mv-shortcuts-summary:hover { color: #999; }
-.mv-shortcuts-summary::-webkit-details-marker { display: none; }
+.mv-section-summary:hover { color: #999; }
+.mv-section-summary::-webkit-details-marker { display: none; }
 /* Chevron that rotates when the section opens */
-.mv-shortcuts-summary::before {
+.mv-section-summary::before {
     content: '';
     width: 5px;
     height: 5px;
@@ -943,8 +938,8 @@ body.mv-idle .mv-cell:hover:not(.mv-popup-open) .mv-seekbar {
     transform: rotate(-45deg);
     transition: transform 0.15s;
 }
-.mv-settings-shortcuts[open] .mv-shortcuts-summary::before { transform: rotate(45deg); }
-.mv-shortcuts-rows {
+.mv-settings-section[open] .mv-section-summary::before { transform: rotate(45deg); }
+.mv-section-rows {
     display: flex;
     flex-direction: column;
     gap: 8px;
