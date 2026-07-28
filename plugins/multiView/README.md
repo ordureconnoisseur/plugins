@@ -73,7 +73,7 @@ The queue is shared across tabs — changes on one tab are immediately reflected
 |---|---|
 | Click a cell | Play / pause that scene |
 | Middle-click a cell | Mute / unmute that scene |
-| Scroll wheel over a cell | Skip ±5 seconds (enable **Scroll-Wheel Seek** in Settings first) |
+| Scroll wheel over a cell | Skip by the seek step, 5 seconds by default (enable **Scroll-Wheel Seek** in Settings first) |
 | Seekbar (bottom of cell) | Scrub to any position (see [Seeking](#seeking)) |
 | Volume button | Open per-cell volume slider |
 | Mute All (top bar) | Mute / unmute all scenes simultaneously |
