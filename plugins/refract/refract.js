@@ -265,8 +265,13 @@
                 }, 1000);
                 return function () { clearInterval(t); };
             }, [cands.length]);
+            var MAX_DOCK_ICONS = 6;
             function toggle(key) {
-                var next = sel.indexOf(key) !== -1
+                var isOn = sel.indexOf(key) !== -1;
+                /* Hard cap: more than 6 + burger squeezes the bar into
+                   uselessness on narrow phones. */
+                if (!isOn && sel.length >= MAX_DOCK_ICONS) { return; }
+                var next = isOn
                     ? sel.filter(function (k) { return k !== key; })
                     : sel.concat([key]);
                 try { localStorage.setItem(DOCK_ITEMS_KEY, JSON.stringify(next)); } catch (e) { /* ignore */ }
@@ -274,6 +279,7 @@
                 setSel(next);
                 refractRebuildMobileDock();
             }
+            var full = sel.length >= MAX_DOCK_ICONS;
             if (!cands.length) {
                 return R.createElement("div", { className: "sub-heading" },
                     "Icons load once the navbar has been scanned…");
@@ -281,13 +287,15 @@
             return R.createElement("div", { className: "refract-dock-grid" },
                 cands.map(function (c) {
                     var on = sel.indexOf(c.key) !== -1;
+                    var blocked = !on && full;
                     return R.createElement("button", {
                         key: c.key,
                         type: "button",
-                        className: "refract-dock-grid-item" + (on ? " is-active" : ""),
-                        title: c.label,
+                        className: "refract-dock-grid-item" + (on ? " is-active" : "") + (blocked ? " is-blocked" : ""),
+                        title: blocked ? (c.label + " (dock is full: 6 max)") : c.label,
                         "aria-label": c.label,
                         "aria-pressed": on ? "true" : "false",
+                        "aria-disabled": blocked ? "true" : "false",
                         onClick: function () { toggle(c.key); },
                         dangerouslySetInnerHTML: { __html: c.iconHtml }
                     });
@@ -750,7 +758,7 @@
                     R.createElement("div", null,
                         R.createElement("h3", null, "Mobile dock"),
                         R.createElement("div", { className: "sub-heading" },
-                            "Choose which icons sit in the bottom bar on narrow screens; lit icons are shown. Plugin buttons included. The burger is always last, and everything stays reachable from its drawer.")
+                            "Choose which icons sit in the bottom bar on narrow screens; lit icons are shown, up to six. Plugin buttons included. The burger is always last, and everything stays reachable from its drawer.")
                     ),
                     R.createElement(DockConfigGrid)
                 ),
@@ -2925,6 +2933,19 @@
                source button carries a clean currentColor flame svg that the
                clone fallback below mirrors faithfully. */
             selector: "#plugin_hon"
+        },
+        {
+            key: "multiview",
+            label: "Multiview",
+            /* multiView's floating picking launcher is BODY-level (not a
+               navbar control) and hidden on mobile by 12_mobile.css; this
+               tile mirrors its open button so launches work from the
+               drawer. Exists only while picking mode is on — the tile
+               appears/disappears with it. Its two counters (scene picks +
+               filter slots) collapse into ONE combined badge, painted by
+               the badge pass below. */
+            selector: "#mv-open-btn",
+            scope: "body"
         }
     ];
     function refractAppendPluginActionTiles() {
@@ -2934,7 +2955,10 @@
 
         for (var i = 0; i < PLUGIN_ACTION_TILES.length; i++) {
             var spec = PLUGIN_ACTION_TILES[i];
-            var src = nav.querySelector(spec.selector);
+            /* scope "body": the control lives outside the navbar (e.g.
+               multiView's floating launcher). */
+            var root = spec.scope === "body" ? document : nav;
+            var src = root.querySelector(spec.selector);
             var existing = drawer.querySelector('.refract-drawer-tile[data-action="' + spec.key + '"]');
             if (!src) { continue; }      // not mounted; reconcile below clears any stale tile
             if (existing) { continue; }  // already mirrored
@@ -2945,6 +2969,7 @@
             tile.setAttribute("data-action", spec.key);
             tile.setAttribute("data-action-selector", spec.selector);
             tile.setAttribute("data-action-tile", "1");
+            if (spec.scope) { tile.setAttribute("data-action-scope", spec.scope); }
             tile.setAttribute("aria-label", spec.label);
 
             var iconSpan = document.createElement("span");
@@ -2972,8 +2997,34 @@
         var atiles = drawer.querySelectorAll(".refract-drawer-tile[data-action-tile]");
         for (var a = 0; a < atiles.length; a++) {
             var sel = atiles[a].getAttribute("data-action-selector");
-            if (sel && !nav.querySelector(sel) && atiles[a].parentNode) {
+            var aroot = atiles[a].getAttribute("data-action-scope") === "body" ? document : nav;
+            if (sel && !aroot.querySelector(sel) && atiles[a].parentNode) {
                 atiles[a].parentNode.removeChild(atiles[a]);
+            }
+        }
+
+        /* multiview tile badge: ONE combined number (scene picks + filter
+           slots) instead of the launcher's two separate counters. The
+           counters keep their textContent even while display:none'd at
+           zero, so parse-and-sum is safe. */
+        var mvTile = drawer.querySelector('.refract-drawer-tile[data-action="multiview"]');
+        if (mvTile) {
+            var mvScenes = document.getElementById("mv-scene-count");
+            var mvFilters = document.getElementById("mv-filter-count");
+            var mvTotal = (parseInt(mvScenes && mvScenes.textContent, 10) || 0)
+                + (parseInt(mvFilters && mvFilters.textContent, 10) || 0);
+            var mvBadge = mvTile.querySelector(".refract-drawer-tile-badge");
+            if (mvTotal > 0) {
+                if (!mvBadge) {
+                    mvBadge = document.createElement("span");
+                    mvBadge.className = "refract-drawer-tile-badge";
+                    mvTile.appendChild(mvBadge);
+                }
+                if (mvBadge.textContent !== String(mvTotal)) {
+                    mvBadge.textContent = String(mvTotal);
+                }
+            } else if (mvBadge && mvBadge.parentNode) {
+                mvBadge.parentNode.removeChild(mvBadge);
             }
         }
         return true;
