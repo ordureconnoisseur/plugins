@@ -74,7 +74,7 @@ The queue is shared across tabs — changes on one tab are immediately reflected
 | Click a cell | Play / pause that scene |
 | Middle-click a cell | Mute / unmute that scene |
 | Scroll wheel over a cell | Skip ±5 seconds (enable **Scroll-Wheel Seek** in Settings first) |
-| Seekbar (bottom of cell) | Scrub to any position |
+| Seekbar (bottom of cell) | Scrub to any position (see [Seeking](#seeking)) |
 | Volume button | Open per-cell volume slider |
 | Mute All (top bar) | Mute / unmute all scenes simultaneously |
 | **⏮** button | Restart the current scene from the beginning |
@@ -90,6 +90,7 @@ The queue is shared across tabs — changes on one tab are immediately reflected
 | `F` key | Toggle Focus Mode |
 | `A` / `B` keys | Mark the loop start / end on the cell under the cursor |
 | `L` key | Clear the loop on the cell under the cursor |
+| `←` / `→` keys | Step the cell under the cursor back / forward |
 
 The cell with active audio is highlighted with an orange outline.
 
@@ -104,6 +105,26 @@ Click the **focus button** in the top bar (or press **F**) to toggle Focus Mode.
 ![Focus Mode](screenshot-focus.png)
 
 Press **F** (or click the focus button) again to return to the normal grid.
+
+### Seeking
+
+Bring the pointer near the bottom of a cell and its seekbar grows into a proper target, the controls row lifts out of the way, and a readout above the bar shows the time you are pointing at against the scene length. Clicking the bar jumps there, exactly as before.
+
+For anything finer, hold the **fine modifier** (**Shift** by default):
+
+- **Shift while dragging the bar** scales your movement down to a fifth, so a cell that was worth about six seconds per pixel becomes worth about one. Press or release Shift mid-drag and it picks up from wherever you are rather than jumping.
+- **Shift+click** on the bar starts refining from the *current* position instead of jumping to the pointer, so you can inch a loop point in without losing your place.
+- **Shift+←/→** and **Shift+scroll** use the fine step instead of the normal one.
+
+Both steps are set in **Settings → Seeking**, along with which modifier keys do what.
+
+The arrow keys step the cell under the cursor and work **while paused**, which is the easy way to line up a loop: pause, walk the playhead onto the frame you want, then press `A` or `B`.
+
+Hold the **all-cells modifier** (**Alt** by default) with the arrow keys or the scroll wheel to move *every* cell by the same amount at once.
+
+> Every cell playing a **transcoded** stream has to re-request it from Stash to move its playhead, so a grid-wide seek asks your server for up to 16 fresh encodes. Repeated presses are collapsed into one seek per cell and the requests are spread out, but stepping around a transcoded grid is never going to feel instant. **Direct Play** makes all of it immediate wherever your files play natively.
+>
+> **Ctrl** can be picked as either modifier but is neither default, because Ctrl+scroll is the browser's own zoom gesture.
 
 ### A/B Loops
 
@@ -139,6 +160,8 @@ Every shortcut is **rebindable to a keyboard key _or_ a mouse button**. Open **S
 | Loop: set A (hovered) | `A` | Marks the loop start at the current position |
 | Loop: set B (hovered) | `B` | Marks the loop end at the current position |
 | Loop: clear (hovered) | `L` | Removes that scene's loop |
+| Seek back (hovered) | `←` | Hold the fine modifier for the fine step, the all-cells modifier to move every cell |
+| Seek forward (hovered) | `→` | As above |
 | Toggle Focus Mode | `F` | |
 | Toggle Full Screen | _unbound_ | |
 | Open Roulette | _unbound_ | |

@@ -292,6 +292,7 @@ html, body {
     align-items: center;
     justify-content: flex-end;
     gap: 6px;
+    transition: transform 0.15s;
 }
 .mv-cell-btn {
     display: flex;
@@ -362,6 +363,44 @@ html, body {
 .mv-cell:hover .mv-seekbar {
     height: 6px;
 }
+
+/* Seek zone: the pointer is near the bottom of a cell, so the bar becomes a
+   real target and the controls row lifts clear of it.
+
+   Entry is decided in JS from geometry rather than by :hover, because the
+   overlay carrying the buttons is z-index 20 and sits on top of the bar's
+   invisible hit strip (z-index 15). Approaching the bar from inside the cell
+   crosses the buttons first and they swallow the hover, so :hover on the bar
+   can never fire. Once the zone is live the bar outranks the overlay, which is
+   safe because the buttons have moved up out of the strip. */
+.mv-cell.mv-seek-zone .mv-seekbar {
+    height: 14px;
+    z-index: 25;
+}
+/* Buttons now sit at 20px+ from the bottom, so the strip stops right below them. */
+.mv-cell.mv-seek-zone .mv-seekbar::before { height: 20px; }
+.mv-cell.mv-seek-zone .mv-cell-controls { transform: translateY(-14px); }
+
+/* Time under the pointer. Only up while the zone is live, per the request:
+   visible when you need it for lining up a loop, gone the rest of the time. */
+.mv-seek-time {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    transform: translateX(-50%);
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.82);
+    color: #fff;
+    font-size: 11px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 4;
+}
+.mv-cell.mv-seek-zone .mv-seek-time { opacity: 1; }
 
 .mv-seekbar-fill {
     height: 100%;
@@ -841,6 +880,20 @@ body.mv-idle .mv-cell:hover:not(.mv-popup-open) .mv-seekbar {
 
 .mv-quality-select:hover { border-color: #555; }
 .mv-quality-select:disabled { opacity: 0.4; cursor: default; }
+.mv-quality-select option:disabled { color: #666; }
+
+.mv-seek-step-input {
+    width: 84px;
+    background: #1b1b1b;
+    color: #ddd;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: inherit;
+}
+.mv-seek-step-input:hover { border-color: #555; }
+.mv-seek-step-input:focus { outline: none; border-color: var(--mv-accent); }
 
 .mv-keybind-btn {
     min-width: 70px;
