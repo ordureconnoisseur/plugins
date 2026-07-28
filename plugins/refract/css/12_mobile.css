@@ -69,62 +69,67 @@
 body.stash-liquid-glass nav.top-nav .refract-burger,
 body.stash-liquid-glass nav.top-nav .refract-mobile-new,
 body.stash-liquid-glass .refract-burger-scrim,
+body.stash-liquid-glass .refract-mobile-dock,
 body.stash-liquid-glass .refract-mobile-drawer {
     display: none;
 }
 
 @media (max-width: 900px) {
 
-    /* ── Burger button ────────────────────────────────────────────── */
-    body.stash-liquid-glass nav.top-nav .refract-burger {
-        display: inline-flex !important;
-        align-items: center;
-        justify-content: center;
-        width: var(--nav-btn-size);
-        height: var(--nav-btn-size);
-        flex: 0 0 auto;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: var(--radius-sm);
-        color: var(--text);
-        padding: 0;
-        cursor: pointer;
-        position: relative;
-        order: 99;
-        margin-left: auto;
-        transition:
-            background 0.18s ease,
-            border-color 0.18s ease,
-            color 0.18s ease,
-            box-shadow 0.22s ease;
+    /* ── Forum-reported mobile fixes (obatzdamelt, thread 2026-07) ──
+       1. Detail-page tab strips (performer/scene/image pages) overflow
+          off-screen on narrow viewports; let them wrap.
+       2. The filter / saved-filters popover panes can't scroll or be
+          selected on the performers/tags pages; the theme's positioned
+          sidebar-pane traps them. Unset restores native behavior. */
+    body.stash-liquid-glass .nav-tabs {
+        flex-wrap: wrap !important;
     }
-    body.stash-liquid-glass nav.top-nav .refract-burger:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-color: rgba(255, 255, 255, 0.20);
-    }
-    /* Open state — accent halo */
-    body.stash-liquid-glass nav.top-nav .refract-burger.is-open {
-        color: var(--accent);
-        background: var(--accent-tint);
-        border-color: var(--accent-glow);
-        box-shadow:
-            0 0 18px rgba(var(--accent-rgb), 0.45),
-            inset 0 0 0 1px rgba(var(--accent-rgb), 0.18);
+    body.stash-liquid-glass .detail-body .sidebar-pane {
+        position: unset !important;
     }
 
-    /* Icon wrapper + three line spans that morph into an X.
-       `display` is !important as a backstop against 02_navbar.css's
-       global `nav.top-nav span { display: none }` purge (which hides
-       Stash's label text spans). The real protection is that purge's
-       :not([class*="refract-"]) exemption: !important alone lost here
-       in v1.19.0 when the purge gained specificity. */
-    body.stash-liquid-glass nav.top-nav .refract-burger .refract-burger-icon {
+    /* ── No top bar on mobile (2026-07-28) ──────────────────────────
+       The bottom dock owns navigation; the floating top navbar (brand
+       orb + New mirror) is retired entirely and its top clearance is
+       reclaimed. */
+    body.stash-liquid-glass nav.top-nav.navbar {
+        display: none !important;
+    }
+    body.stash-liquid-glass .main.container-fluid {
+        padding-top: 12px !important;
+    }
+    /* The sticky filter toolbar pins below the navbar on desktop
+       (top: nav-btn-size + 2.6rem); with the top bar retired it should
+       hug the top edge instead. */
+    body.stash-liquid-glass .filtered-list-toolbar {
+        top: 0.5rem !important;
+    }
+    /* TagSidebar plugin panel: same story — its desktop offset clears
+       the navbar; on mobile start at the top and stop above the dock. */
+    body.stash-liquid-glass .tag-sidebar__panel {
+        top: 12px !important;
+        height: calc(100vh - 24px - 4.8rem - env(safe-area-inset-bottom, 0px)) !important;
+        max-height: calc(100vh - 24px - 4.8rem - env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* ── Burger button (RETIRED from the top nav 2026-07-28) ────────
+       The bottom dock's last tile is now the drawer opener; the
+       injected top-nav .refract-burger stays in the DOM but is never
+       shown (default display:none above, no re-show here). The
+       icon-line + X-morph styles below are shared by the dock burger. */
+
+    /* Icon wrapper + three line spans that morph into an X. `display`
+       is !important as a backstop against 02_navbar.css's global
+       `nav.top-nav span { display: none }` purge (only relevant for
+       the legacy nav instance; the dock lives outside nav.top-nav). */
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger) .refract-burger-icon {
         position: relative;
         width: 18px;
         height: 14px;
         display: block !important;
     }
-    body.stash-liquid-glass nav.top-nav .refract-burger .refract-burger-line {
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger) .refract-burger-line {
         position: absolute;
         left: 0;
         width: 100%;
@@ -139,27 +144,118 @@ body.stash-liquid-glass .refract-mobile-drawer {
             transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1) 0.12s,
             opacity 0.12s ease;
     }
-    /* When open, full opacity so the X reads as boldly as the accent halo. */
-    body.stash-liquid-glass nav.top-nav .refract-burger.is-open .refract-burger-line {
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger).is-open .refract-burger-line {
         opacity: 1;
     }
-    body.stash-liquid-glass nav.top-nav .refract-burger .refract-burger-line:nth-child(1) { top: 0; }
-    body.stash-liquid-glass nav.top-nav .refract-burger .refract-burger-line:nth-child(2) { top: 6px; }
-    body.stash-liquid-glass nav.top-nav .refract-burger .refract-burger-line:nth-child(3) { top: 12px; }
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger) .refract-burger-line:nth-child(1) { top: 0; }
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger) .refract-burger-line:nth-child(2) { top: 6px; }
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger) .refract-burger-line:nth-child(3) { top: 12px; }
 
     /* X morph — top + bottom lines slide to middle then rotate */
-    body.stash-liquid-glass nav.top-nav .refract-burger.is-open .refract-burger-line:nth-child(1) {
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger).is-open .refract-burger-line:nth-child(1) {
         top: 6px;
         transform: rotate(45deg);
     }
-    body.stash-liquid-glass nav.top-nav .refract-burger.is-open .refract-burger-line:nth-child(2) {
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger).is-open .refract-burger-line:nth-child(2) {
         opacity: 0;
         transform: scaleX(0);
         transition-delay: 0s;
     }
-    body.stash-liquid-glass nav.top-nav .refract-burger.is-open .refract-burger-line:nth-child(3) {
+    body.stash-liquid-glass :is(.refract-burger, .refract-dock-burger).is-open .refract-burger-line:nth-child(3) {
         top: 6px;
         transform: rotate(-45deg);
+    }
+
+    /* ── Bottom dock — iOS-style pill bar with the essential routes ──
+       Scenes / Performers / Studios / Tags / Settings one tap away,
+       burger tile at the end opening the full drawer. Sits above the
+       scrim (z 110 > 99) so the burger doubles as the close control
+       while the drawer is open. */
+    /* Edge-to-edge native tab bar, sized like binge mobile's bottom
+       nav (3.5rem content height, near-black, hairline top border,
+       12px blur, safe-area folded INSIDE the bar so it reads as part
+       of the device chrome rather than a floating element). */
+    body.stash-liquid-glass .refract-mobile-dock {
+        display: flex !important;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 110;
+        height: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: space-around;
+        gap: 0;
+        padding: 0 0.5rem env(safe-area-inset-bottom, 0px);
+        border-radius: 0;
+        /* Refract's own tab-bar material (the approved variant-A look);
+           only the SIZE comes from binge mobile. */
+        background: rgb(28, 26, 33);
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+    }
+    body.stash-liquid-glass .refract-mobile-dock .refract-dock-item {
+        flex: 1 1 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 3.1rem;
+        min-width: 3.1rem;
+        align-self: center;
+        /* Nudge the icons slightly ABOVE true centre — the bar reads
+           better with the visual weight sitting a touch high (margin
+           trick rather than transform, which :active's press-scale
+           would overwrite). */
+        margin-bottom: 10px;
+        border-radius: 999px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        padding: 0;
+        cursor: pointer;
+        text-decoration: none;
+        transition: color 0.16s ease, background 0.16s ease, transform 0.14s cubic-bezier(0.34, 1.2, 0.64, 1);
+    }
+    body.stash-liquid-glass .refract-mobile-dock .refract-dock-item svg {
+        width: 1.3rem;
+        height: 1.3rem;
+    }
+    body.stash-liquid-glass .refract-mobile-dock .refract-dock-item:active {
+        transform: scale(0.9);
+    }
+    body.stash-liquid-glass .refract-mobile-dock .refract-dock-item.is-active {
+        color: var(--accent-bright);
+        background: var(--accent-tint);
+        box-shadow: 0 0 14px rgba(var(--accent-rgb), 0.3);
+    }
+    body.stash-liquid-glass .refract-mobile-dock .refract-dock-burger.is-open {
+        color: var(--accent);
+        background: var(--accent-tint);
+        box-shadow:
+            0 0 18px rgba(var(--accent-rgb), 0.45),
+            inset 0 0 0 1px rgba(var(--accent-rgb), 0.18);
+    }
+
+    /* Clear the dock: give the app's scroll content bottom breathing
+       room so the last row of cards isn't parked under the pill. */
+    body.stash-liquid-glass .main.container-fluid,
+    body.stash-liquid-glass main.container-fluid {
+        padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    /* Floating pager (09_buttons.css pins it at bottom: 1.5rem) would
+       sit behind the dock; lift it above the bar. */
+    body.stash-liquid-glass [data-pager-row="float"] {
+        bottom: calc(5.3rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    /* multiView's floating picking launcher: hidden on mobile for now
+       (fights the dock for the bottom edge; a proper mobile placement
+       is TBD). Desktop untouched. */
+    body.stash-liquid-glass #mv-launcher {
+        display: none !important;
     }
 
     /* ── Backdrop scrim ───────────────────────────────────────────── */
@@ -187,7 +283,12 @@ body.stash-liquid-glass .refract-mobile-drawer {
 
     /* ── Hide Stash's navbar children entirely on mobile ──────────────
        Refract builds its own mobile nav from scratch. Keep .navbar-brand
-       (home link), the contextual /new button mirror, and our burger. */
+       (home link), the contextual /new button mirror, and our burger.
+       (A drawer opt-out was tried 2026-07-28 and pulled the same day:
+       an inline icon navbar overflows as soon as a few plugins add nav
+       items, and the drawer IS the overflow strategy. Needs a real
+       design — e.g. inline icons + overflow-only drawer — before it
+       comes back; see VersGeek's forum request.) */
     body.stash-liquid-glass nav.top-nav > *:not(.navbar-brand):not(.refract-burger):not(.refract-mobile-new) {
         display: none !important;
     }
@@ -248,7 +349,10 @@ body.stash-liquid-glass .refract-mobile-drawer {
         gap: 9px;
         padding: 13px;
         position: fixed;
-        top: 64px;
+        /* Anchored ABOVE the bottom dock (the drawer's opener) and
+           rising from it — not dropping from the retired top bar. */
+        top: auto;
+        bottom: calc(5.2rem + env(safe-area-inset-bottom, 0px));
         left: 12px;
         right: 12px;
         background: rgba(20, 20, 24, 0.92);
@@ -260,12 +364,13 @@ body.stash-liquid-glass .refract-mobile-drawer {
             var(--shadow-xl),
             inset 0 0 0 1px rgba(var(--accent-rgb), 0.08);
         z-index: 100;
-        max-height: calc(100vh - 80px);
+        max-height: calc(100vh - 7rem);
         overflow-y: auto;
-        /* Closed state — invisible, non-interactive, anchored top-right. */
+        /* Closed state — invisible, non-interactive; slides UP from the
+           dock on open. */
         opacity: 0;
-        transform: translateY(-12px) scale(0.96);
-        transform-origin: top right;
+        transform: translateY(12px) scale(0.96);
+        transform-origin: bottom center;
         pointer-events: none;
         transition:
             opacity 0.22s ease,
