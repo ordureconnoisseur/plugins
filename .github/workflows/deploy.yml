@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "plugins/**"
+      - "build_site.sh"
+      - "validate_index.py"
   workflow_dispatch:
 
 permissions:
@@ -21,6 +23,10 @@ jobs:
           fetch-depth: 0
       - name: Build site
         run: bash build_site.sh _site/main
+      - name: Validate index
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 validate_index.py _site/main/index.yml
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

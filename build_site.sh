@@ -10,6 +10,16 @@ fi
 rm -rf "$outdir"
 mkdir -p "$outdir"
 
+# Emit a value as a double-quoted YAML scalar, escaping backslashes and quotes.
+# Free-text fields (name, description, version) come straight from each plugin's
+# own yml and may contain ":", "#" or quotes. Written raw, one such character
+# makes index.yml invalid YAML and Stash then rejects the WHOLE source, so every
+# plugin becomes uninstallable, not just the one at fault.
+yamlQuote()
+{
+    printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+}
+
 buildPlugin()
 {
     f=$1
@@ -34,10 +44,10 @@ buildPlugin()
     dep=$(grep "^# requires:" "$f" | cut -c 12- | sed -e 's/\r//')
 
     echo "- id: $plugin_id
-  name: $name
+  name: $(yamlQuote "$name")
   metadata:
-    description: $description
-  version: $version
+    description: $(yamlQuote "$description")
+  version: $(yamlQuote "$version")
   date: $updated
   path: $plugin_id.zip
   sha256: $(sha256sum "$zipfile" | cut -d' ' -f1)" >> "$outdir"/index.yml
