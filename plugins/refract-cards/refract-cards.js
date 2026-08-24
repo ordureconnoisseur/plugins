@@ -17,7 +17,39 @@
 
     var PLUGIN_ID = "refract-cards";
 
+    /* ── Stand down when the full Refract theme is installed ───────────
+       This plugin is the card layer for the DEFAULT Stash theme. The
+       theme ships the same card subsystem natively -- this file's middle
+       section was lifted from it -- so running both means two copies of
+       every injected node (.refract-pc-name-text, .stash-perf-stats) and
+       two sets of rules fighting over them. The visible symptom is a
+       Perfect-tier performer name that renders dark: the theme dropped
+       the gradient text-clip in 1.17.2, this plugin still has it, and
+       its selectors carry one more class so they win. A user with both
+       installed cannot fix that by updating the theme, which makes it
+       very hard to diagnose from a bug report.
+
+       The settings panel used to just say "Don't run this alongside the
+       full Refract theme", which is a note nobody reads at the moment it
+       matters. So detect the theme and do nothing instead, and say so in
+       the panel where the toggles would have been.
+
+       Detected two ways because the order plugin scripts run in is not
+       guaranteed: the theme's own html class if its JS went first, and
+       its asset tags otherwise. The "/plugin/refract/" path does not
+       collide with "/plugin/refract-cards/". */
+    function refractThemeActive() {
+        try {
+            var el = document.documentElement;
+            if (el && el.classList.contains("stash-liquid-glass")) { return true; }
+            return !!document.querySelector(
+                'link[href*="/plugin/refract/css"], script[src*="/plugin/refract/javascript"]');
+        } catch (e) { return false; }
+    }
+    var THEME_ACTIVE = refractThemeActive();
+
     function addScope() {
+        if (THEME_ACTIVE) { return; }
         try {
             if (document.documentElement) { document.documentElement.classList.add("refract-cards"); }
             if (document.body) { document.body.classList.add("refract-cards"); }
@@ -1778,6 +1810,7 @@
     }
 
     function scheduleRun() {
+        if (THEME_ACTIVE) { return; }
         if (scheduled) { return; }
         scheduled = true;
         var run = function () { scheduled = false; runAll(); };
@@ -1786,6 +1819,7 @@
     }
 
     function startObserver() {
+        if (THEME_ACTIVE) { return; }
         if (!window.MutationObserver || !document.body) { return; }
         observer = new MutationObserver(scheduleRun);
         runAll();
@@ -1801,8 +1835,43 @@
     /* ── Settings panel (replaces the native plugin settings row) ──────────
        Three on/off switches. Each turns Refract styling on or off for a card
        group; off = the default Stash card for that group. */
+    /* Quiet support line at the foot of the settings panel. Muted, passive,
+       and below every real setting - no banner, no dismiss state. */
+    function supportNote(R) {
+        function link(href, label) {
+            return R.createElement("a", {
+                href: href,
+                target: "_blank",
+                rel: "noopener noreferrer"
+            }, label);
+        }
+        return R.createElement("div", { className: "setting refract-cards-support" },
+            R.createElement("div", { className: "sub-heading" },
+                "Refract Cards is free. ",
+                link("https://github.com/sponsors/ordureconnoisseur", "Sponsor"),
+                " or ",
+                link("https://ko-fi.com/ordureconnoisseur", "Ko-fi"),
+                " if you would like to chip in."));
+    }
+
     function buildSettingsComponent(R) {
         return function RefractCardsSettings() {
+            /* Standing down. Show why, rather than toggles that would do
+               nothing, so the state is discoverable from the one screen
+               someone checks when the cards look wrong. */
+            if (THEME_ACTIVE) {
+                return R.createElement("div", { className: "refract-cards-settings" },
+                    R.createElement("div", { className: "setting" },
+                        R.createElement("div", null,
+                            R.createElement("h3", null, "Inactive - the Refract theme is installed"),
+                            R.createElement("div", { className: "sub-heading" },
+                                "Refract Cards styles cards on top of the default Stash theme. " +
+                                "The Refract theme already includes the same card styling, so this " +
+                                "plugin has switched itself off to avoid drawing every card twice. " +
+                                "Its card settings live in Settings > Interface > Refract. " +
+                                "Disable the Refract theme to use this plugin instead."))),
+                    supportNote(R));
+            }
             var perf  = R.useState(getPerfOn());
             var scene = R.useState(getSceneOn());
             var other = R.useState(getOtherOn());
@@ -1849,8 +1918,9 @@
                     lite[0], toggleLite),
                 R.createElement("div", { className: "setting" },
                     R.createElement("div", { className: "sub-heading" },
-                        "Saved per browser, applied instantly. Don't run this alongside the full Refract theme.")
-                )
+                        "Saved per browser, applied instantly. If the Refract theme is installed, this plugin switches itself off, since the theme already styles cards.")
+                ),
+                supportNote(R)
             );
         };
     }
@@ -1883,6 +1953,7 @@
 
     /* ── Boot ───────────────────────────────────────────────────────────── */
     function boot() {
+        if (THEME_ACTIVE) { return; }
         addScope();
         applyModeClasses();
         safeRun(refractFetchRatingSystem);

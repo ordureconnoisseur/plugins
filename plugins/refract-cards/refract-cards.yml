@@ -1,6 +1,6 @@
 name: Refract Cards
-description: Refract's card styling on the default Stash theme - glass cards, hover glow, 3D tilt, rating-tier frames (Bronze to Perfect), and a playing-card performer layout. Configurable per card type.
-version: 0.5.1
+description: Refract's card styling for the default Stash theme - glass cards, hover glow, 3D tilt, rating-tier frames (Bronze to Perfect), and a playing-card performer layout. Not needed with the Refract theme, which already includes all of this.
+version: 0.5.2
 url: https://github.com/ordureconnoisseur/refract-cards
 ui:
   assets:
