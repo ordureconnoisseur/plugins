@@ -624,6 +624,13 @@
         }, 100);
     }
 
+    /* The favourite heart is scene-only and is created as a side effect
+       of injectTrigger, so it has to be cleared anywhere the scene
+       trigger is cleared. */
+    function removeFavouriteBtn() {
+        document.querySelectorAll('#adv-favourite-trigger').forEach(function (el) { el.remove(); });
+    }
+
     function onLocationChange() {
         const path = window.location.pathname;
         for (const domain of DOMAINS) {
@@ -635,6 +642,7 @@
                     lastPaths[key] = path;
                     const existing = document.querySelector('#' + domain.triggerId);
                     if (existing) existing.remove();
+                    if (domain.entityType === 'scene') removeFavouriteBtn();
                     // Drop the stale inline panel when moving to a new scene so
                     // it can't show the previous scene's ratings.
                     if (domain.entityType === 'scene') removeScenePanel();
@@ -650,7 +658,7 @@
                         }
                         const oex = document.querySelector('#' + other.triggerId);
                         if (oex) oex.remove();
-                        if (other.entityType === 'scene') removeScenePanel();
+                        if (other.entityType === 'scene') { removeFavouriteBtn(); removeScenePanel(); }
                     }
                 }
                 return;
@@ -658,6 +666,7 @@
         }
         // No domain matched — clear everything.
         removeScenePanel();
+        removeFavouriteBtn();
         for (const domain of DOMAINS) {
             const key = domain.entityType;
             lastPaths[key] = null;
@@ -1113,6 +1122,16 @@
     const FAVOURITE_TAG_NAME = "Favourite ★";
 
     function injectFavouriteBtn(anchorBtn, sceneId) {
+        /* Self-dedupe. The heart is injected by injectTrigger, but the
+           navigation cleanup above only ever removed the RATING trigger,
+           and tryInject's guard only checks for that one too. So every
+           queue skip re-ran the injector and stacked another heart with
+           the same id: five scenes in, five hearts and five duplicate
+           ids. Clearing any survivor here makes stacking impossible
+           regardless of which caller runs. */
+        const stale = document.getElementById('adv-favourite-trigger');
+        if (stale) stale.remove();
+
         const btn = document.createElement('button');
         btn.id = 'adv-favourite-trigger';
         btn.className = 'adv-favourite-btn';
@@ -1275,6 +1294,23 @@
        SETTINGS PANEL: ONE component renders both domains, gated by
        PluginApi.patch.instead("PluginSettings") on plugin_id "advancedRating".
        ───────────────────────────────────────────────────────────────── */
+    /* Quiet support line at the foot of the settings panel. Muted, passive,
+       and below every real setting - no banner, no dismiss state. */
+    function aprSupportNote(R) {
+        const link = (href, label) => R.createElement("a", {
+            href,
+            target: "_blank",
+            rel: "noopener noreferrer"
+        }, label);
+        return R.createElement("div", { className: "setting apr-support" },
+            R.createElement("div", { className: "sub-heading" },
+                "Advanced Rating is free. ",
+                link("https://github.com/sponsors/ordureconnoisseur", "Sponsor"),
+                " or ",
+                link("https://ko-fi.com/ordureconnoisseur", "Ko-fi"),
+                " if you would like to chip in."));
+    }
+
     function buildSettingsPanel() {
         const R = PluginApi.React;
         return function AdvRatingSettings() {
@@ -1870,6 +1906,7 @@
                 generalSection,
                 renderDomainSection(sceneDomain),
                 renderDomainSection(performerDomain),
+                aprSupportNote(R),
             );
         };
     }
