@@ -163,6 +163,25 @@ body.stash-liquid-glass .video-js.vjs-user-inactive .st-player-overlay {
 /* While scrubbing the seek bar, hide the overlay so it doesn't sit on
    the frame being previewed. Equal specificity to the show rules
    above, so it must stay AFTER them in the file to win. */
+/* Loading spinner. video.js draws `.vjs-loading-spinner` at the centre of
+   the player with no z-index of its own, and refract's centre-control
+   overlay sits at `z-index: 1` over the same point -- so while a scene
+   buffers or seeks, the spinner rendered UNDERNEATH the play button, both
+   fighting for the exact same 1002.5 x 464 centre.
+   Stand the controls down while the player is waiting. The spinner is the
+   thing to look at during a buffer, and this reuses the treatment already
+   used for scrubbing right below. */
+body.stash-liquid-glass .video-js:is(.vjs-waiting, .vjs-seeking) .st-player-overlay {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: opacity 0.12s ease !important;
+}
+/* ...and put the spinner above the overlay regardless, so it is never
+   occluded even in a state that does not carry those classes. */
+body.stash-liquid-glass .video-js .vjs-loading-spinner {
+    z-index: 3 !important;
+}
+
 body.stash-liquid-glass .video-js.vjs-scrubbing .st-player-overlay {
     opacity: 0 !important;
     visibility: hidden !important;
@@ -425,7 +444,7 @@ body.stash-liquid-glass .video-js .vjs-time-divider {
     visibility: visible !important;
     color: var(--text) !important;
     font-family: inherit !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     line-height: 38px !important;
     padding: 0 0.35rem !important;
     min-width: auto !important;
@@ -573,7 +592,7 @@ body.stash-liquid-glass .video-js .vjs-playback-rate .vjs-playback-rate-value {
     position: absolute !important;
     inset: 0 !important;
     line-height: 38px !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     font-weight: 600 !important;
     text-align: center !important;
     color: var(--text) !important;
@@ -602,7 +621,7 @@ body.stash-liquid-glass .video-js .vjs-menu-item {
     color: var(--text) !important;
     background: transparent !important;
     font-family: inherit !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     padding: 0.35rem 0.65rem !important;
     border-radius: 6px !important;
     text-transform: none !important;
@@ -742,18 +761,53 @@ body.stash-liquid-glass .scrubber-heatmap {
     opacity: 0.92 !important;
 }
 
-/* Time label that appears on hovered thumbnail */
+/* Time label on a scrubber thumbnail.
+   The label is a RANGE ("0:00 - 0:06"), and on a short scene the
+   thumbnails are narrow -- a 2-minute scene gives ~57px items against
+   ~55px of text. With wrapping allowed the range broke across two lines
+   mid-range, which is the one place it must not break: "0:00 -" over
+   "0:06" reads as two separate times. It stays on one line now, and the
+   padding is trimmed so it fits a narrow thumbnail rather than relying
+   on the thumbnail being wide. */
 body.stash-liquid-glass .scrubber-item-time {
     background: rgba(12, 12, 14, 0.85) !important;
     color: var(--text) !important;
-    font-size: 0.7rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 500 !important;
-    padding: 0.2rem 0.5rem !important;
+    white-space: nowrap !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0.2rem 0.4rem !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: 6px !important;
     -webkit-backdrop-filter: var(--glass-blur-sm);
     backdrop-filter: var(--glass-blur-sm);
     font-variant-numeric: tabular-nums !important;
+}
+
+/* The label sizes to ITS OWN thumbnail, not to the viewport. Scrubber
+   item width is set by the scene's duration: a 52-minute scene gives
+   160px thumbnails and a 2-minute scene gives 50px, and at 50px a full
+   range needs ~55px of ink against ~42px of room, so it spilled out of
+   its own pill. A container query is the honest tool here -- the
+   constraint really is the thumbnail's width, and nothing else on the
+   page knows it. */
+body.stash-liquid-glass .scrubber-item {
+    container-type: inline-size;
+}
+@container (max-width: 120px) {
+    body.stash-liquid-glass .scrubber-item-time {
+        font-size: 9.1px !important;
+        padding: 0.18rem 0.25rem !important;
+        letter-spacing: -0.01em !important;
+    }
+}
+@container (max-width: 78px) {
+    body.stash-liquid-glass .scrubber-item-time {
+        font-size: 8.2px !important;
+        padding: 0.15rem 0.15rem !important;
+        letter-spacing: -0.02em !important;
+    }
 }
 
 /* ── Scene-tabs Video Filter panel ──────────────────────────────────
@@ -766,7 +820,7 @@ body.stash-liquid-glass .scrubber-item-time {
 /* Section headers (Filters / Transforms / Actions) */
 body.stash-liquid-glass .scene-video-filter h5 {
     color: var(--text-muted) !important;
-    font-size: 0.7rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
@@ -794,7 +848,7 @@ body.stash-liquid-glass .scene-video-filter .row.form-group > .col-sm-3 {
     flex: 0 0 5.5rem !important;
     max-width: 5.5rem !important;
     color: var(--text) !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     font-weight: 500 !important;
     white-space: nowrap !important;
     overflow: visible !important;
@@ -985,4 +1039,261 @@ body.stash-liquid-glass .video-js.refract-video-idle .st-player-overlay {
 }
 body.stash-liquid-glass .video-js.refract-video-idle {
     cursor: none !important;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   The source menu, as two questions
+   Stash flattens a format-by-resolution matrix into one thirteen-row list.
+   Its <li>s stay in the DOM (hidden below) and take every click; these two
+   rows are what you actually read.
+   ═══════════════════════════════════════════════════════════════════════ */
+body.stash-liquid-glass .video-js .vjs-menu-content.refract-src-hidden {
+    display: none !important;
+}
+/* video.js gives `.vjs-menu` height 0 and absolutely positions the <ul>
+   inside it at bottom:1.5em -- so an in-flow replacement drops out of the
+   bottom of the player instead of rising above the control bar. The panel
+   takes the same anchoring the list it replaces had, and the menu is freed
+   from its 10em fixed width and left offset so a two-column panel can sit
+   flush with the button that opened it. */
+body.stash-liquid-glass .video-js .vjs-source-selector .vjs-menu {
+    width: auto;
+    left: auto;
+    right: 0;
+}
+body.stash-liquid-glass .video-js .refract-src {
+    position: absolute;
+    bottom: 1.5em;
+    right: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
+    padding: 0.55rem 0.6rem;
+    /* Wide enough that a group's options fit on one line instead of
+       wrapping an orphan onto a second. Measured: Format needs ~204px
+       and Projection ~231px for all four chips; at the old 19rem the
+       options column was 165px, so nearly every group broke its last
+       chip onto a line of its own and the panel read as a ragged stack.
+       Wider here buys a much SHORTER panel. */
+    min-width: 24rem;
+    text-align: left;
+    border-radius: 0.6rem;
+    background: rgba(12, 12, 16, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+    -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+}
+/* Label beside its options, not stacked above them. Four stacked
+   headings cost ~60px of a 356px panel for four words; on the side they
+   cost nothing and the panel reads as a settings sheet. */
+body.stash-liquid-glass .video-js .refract-src-group {
+    display: grid;
+    /* 5.4rem fits the longest heading. At 4.4rem "Resolution" (71.4px of
+       ink) and "Projection" (72.2px) overflowed a 61.6px column and ran
+       into their own first option -- measured gap to the options row was
+       -2.8px and -3.6px, i.e. touching. */
+    grid-template-columns: 5.4rem minmax(0, 1fr);
+    align-items: start;
+    column-gap: 0.5rem;
+}
+body.stash-liquid-glass .video-js .refract-src-head {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: right;
+    margin: 0;
+    /* Pinned to the first row of options. Without an explicit line box
+       the heading centred itself across the whole group, so on a
+       two-row group it floated between the rows instead of labelling
+       them. */
+    align-self: start;
+    line-height: 1;
+    padding-top: 0.55rem;
+}
+/* Options size to their own label and do not grow. The bug was
+   `flex: 1 1 auto`: a lone trailing option absorbed the whole line, so
+   MP4 came out 58.7px wide while DASH, alone on the second line, came
+   out 191.2px. Fixed grid tracks fixed that but truncated the labels
+   instead ("Origi...", "0....", "360 ..."), which is worse -- a control
+   you cannot read is not a control. Content width, no grow. */
+body.stash-liquid-glass .video-js .refract-src-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+body.stash-liquid-glass .video-js .refract-src-row > .refract-src-opt {
+    flex: 0 0 auto;
+}
+
+/* ── Speed: a slider, not eight more pills ───────────────────────────
+   Speed is an ordered scale with a natural resting point at 1x, which
+   is what a slider is for, and the eight pills were the largest block
+   in the panel. It snaps to Stash's own rates, so the readout is always
+   a real option rather than an invented number. */
+body.stash-liquid-glass .video-js .refract-src-rate {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 26px;
+}
+body.stash-liquid-glass .video-js .refract-src-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 1.2rem;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+body.stash-liquid-glass .video-js .refract-src-slider:focus {
+    outline: none;
+}
+body.stash-liquid-glass .video-js .refract-src-slider:focus-visible {
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.22);
+    border-radius: var(--radius-sm);
+}
+/* Same anatomy as the zoom slider in 04_filters.css: a 5px carved track,
+   a 12px accent thumb, and the filled-left portion drawn by a very wide
+   box-shadow on the thumb that the track's overflow clips. It was a
+   bespoke 4px track with a dark-ringed thumb before, which is the one
+   slider in refract that did not look like the others. */
+body.stash-liquid-glass .video-js .refract-src-slider::-webkit-slider-runnable-track {
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-inset-track);
+    overflow: hidden;
+}
+body.stash-liquid-glass .video-js .refract-src-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -4px;
+    border-radius: 50%;
+    background: rgba(var(--accent-rgb), 0.78);
+    border: none;
+    box-shadow:
+        -100vw 0 0 calc(100vw - 6px) rgba(var(--accent-rgb), 0.45),
+        0 0 10px rgba(var(--accent-rgb), 0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+body.stash-liquid-glass .video-js .refract-src-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.15);
+    box-shadow:
+        -100vw 0 0 calc(100vw - 6px) rgba(var(--accent-rgb), 0.6),
+        0 0 14px rgba(var(--accent-rgb), 0.6);
+}
+body.stash-liquid-glass .video-js .refract-src-slider:active::-webkit-slider-thumb {
+    transform: scale(1.04);
+}
+body.stash-liquid-glass .video-js .refract-src-slider::-moz-range-track {
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: var(--shadow-inset-track);
+}
+body.stash-liquid-glass .video-js .refract-src-slider::-moz-range-progress {
+    height: 5px;
+    border-radius: 999px;
+    background: rgba(var(--accent-rgb), 0.45);
+}
+body.stash-liquid-glass .video-js .refract-src-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(var(--accent-rgb), 0.78);
+    border: none;
+    box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.45);
+}
+
+/* The readout is the only number here, so it gets a fixed box: without
+   one the slider's length changed as the label went 1x -> 1.25x. */
+body.stash-liquid-glass .video-js .refract-src-rate-val {
+    flex: 0 0 auto;
+    width: 3.1rem;
+    text-align: right;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--accent-bright);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The volume panel reserves 4em for a slider that is positioned
+   off-canvas in the vertical variant, so it sat 56px wide around a 36px
+   button -- 20px of dead bar, which read as a hole once the playback
+   rate button next to it was folded into the panel. */
+body.stash-liquid-glass .video-js .vjs-control-bar .vjs-volume-panel.vjs-volume-panel-vertical {
+    /* An explicit width, not `auto`: auto let the off-canvas slider
+       contribute and made the panel WIDER (78px against the original
+       56px). The vertical slider is positioned out of flow, so the panel
+       only ever needs to be its mute button. */
+    width: 36px !important;
+    min-width: 36px !important;
+    flex: 0 0 36px !important;
+    overflow: visible !important;
+}
+/* Stash's own controls, folded into this panel. Hidden rather than
+   removed: the panel forwards its clicks to their menu items, and a
+   display:none <li> still runs its handler. */
+body.stash-liquid-glass .video-js .vjs-control-bar .refract-vr-folded,
+body.stash-liquid-glass .video-js .vjs-control-bar .refract-rate-folded {
+    display: none !important;
+}
+body.stash-liquid-glass .video-js .refract-src-opt,
+body.stash-liquid-glass .video-js .refract-src-direct {
+    appearance: none;
+    /* No flex-grow: the grid track sets the width now. */
+    padding: 4px 8px;
+    text-align: center;
+    white-space: nowrap;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font: inherit;
+    font-size: var(--fs-sm);
+    line-height: 1.2;
+    text-transform: none;
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease;
+}
+body.stash-liquid-glass .video-js .refract-src-direct {
+    width: 100%;
+    font-weight: 600;
+}
+body.stash-liquid-glass .video-js .refract-src-opt:hover:not([disabled]),
+body.stash-liquid-glass .video-js .refract-src-direct:hover {
+    background: rgba(var(--accent-rgb), 0.22);
+    border-color: rgba(var(--accent-rgb), 0.6);
+}
+body.stash-liquid-glass .video-js .refract-src-opt.is-on,
+body.stash-liquid-glass .video-js .refract-src-direct.is-on {
+    background: rgba(var(--accent-rgb), 0.28);
+    border-color: var(--accent-bright);
+    color: #fff;
+    font-weight: 600;
+}
+body.stash-liquid-glass .video-js .refract-src-opt[disabled] {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* The source-selector measured 36x38 while every other control in the
+   bar is 36x36, so its rounded-square background was a rectangle and the
+   glyph sat off-centre in it. Its 38px line-height was setting the
+   height. */
+body.stash-liquid-glass .video-js .vjs-control-bar .vjs-menu-button {
+    height: 36px !important;
+    line-height: 36px !important;
 }

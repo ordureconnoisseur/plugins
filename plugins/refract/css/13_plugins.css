@@ -56,7 +56,7 @@ body.stash-liquid-glass .mv-filter-badge {
     border: none !important;
     border-radius: 0 !important;
     color: var(--accent-bright) !important;
-    font-size: 0.95rem !important;
+    font-size: var(--fs-md) !important;
     font-weight: 700 !important;
     line-height: 1 !important;
     font-variant-numeric: tabular-nums !important;
@@ -172,7 +172,7 @@ body.stash-liquid-glass .mv-launcher-count {
     border: 1px solid var(--glass-border) !important;
     color: var(--text) !important;
     border-radius: var(--radius-sm) !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     font-weight: 600 !important;
     font-variant-numeric: tabular-nums !important;
 }
@@ -418,7 +418,10 @@ body.stash-liquid-glass .performer-card .hon-battle-rank-badge.hon-battle-rank-b
     display: inline-flex !important;
     align-items: center !important;
     flex-wrap: nowrap !important;
-    gap: 0.34rem !important;
+    /* Measured 1.75px of daylight between the flame and the number -- the
+       nominal gap is eaten by the glyph's own box. Widened until the two read
+       as an icon and a number rather than as one smudge. */
+    gap: 0.5rem !important;
     flex: 0 0 auto !important;
     width: auto !important;
     max-width: 100% !important;
@@ -434,7 +437,17 @@ body.stash-liquid-glass .performer-card .hon-battle-rank-badge.hon-battle-rank-b
             backdrop-filter: none !important;
     box-shadow: none !important;
     pointer-events: auto !important;
-    font-size: 0.92rem !important;
+    /* Measured: the country caption it sits in is 9.8px, and this was
+       0.92rem = 12.88px -- 31% larger. In a 15px row with `align-items:
+       center` the taller box overhung the caption at BOTH ends, so the
+       read-out looked like it had slipped off the line, and its bottom
+       came within 3px of the stat strip (an emoji-sized glyph routinely
+       paints outside its line box, so it touched the pills).
+
+       Matched to the caption's own scale instead. It stays heavier and
+       warmer than the nationality beside it, which is enough to separate
+       them without a second type size on one line. */
+    font-size: var(--fs-sm) !important;
     font-weight: 700 !important;
     line-height: 1 !important;
     color: rgba(255, 255, 255, 0.92) !important;
@@ -451,7 +464,11 @@ body.stash-liquid-glass .performer-card .hon-battle-rank-badge.hon-battle-rank-b
    (a stretch flex-column). Right-align it so the rank stays pinned to the
    card's right edge — the same side it sits on when a country caption IS
    present (pushed right in a space-between row). Direct-child selector so
-   it only targets the fallback, never the country-nested case. */
+   it only targets the fallback, never the country-nested case.
+
+   NOTE: this rule alone does not decide the fallback's position. The
+   `.refract-chin-with-rank` rule further down is one class more specific
+   and pins the badge absolutely; see the layout-scoped override beside it. */
 body.stash-liquid-glass .performer-card .card-section > .refract-ascension-badge {
     align-self: flex-end !important;
 }
@@ -464,13 +481,17 @@ body.stash-liquid-glass .performer-card .card-section > .refract-ascension-badge
    so it stays legible over any card image. Sized a touch above the
    number's cap height so the flame reads clearly. */
 body.stash-liquid-glass .performer-card .refract-ascension-icon {
-    width: 1.15em !important;
-    height: 1.15em !important;
+    /* 1em, not 1.15em. Above 1em the flame is taller than the line box it
+       sits in, which is what pushed the read-out into the pill strip. */
+    width: 1em !important;
+    height: 1em !important;
     flex: 0 0 auto !important;
     overflow: visible !important;
+    /* Tighter halo. A 5px ember glow on a 15px line reached the pills
+       below even when the glyph itself did not. */
     filter:
-        drop-shadow(0 0 1.5px rgba(255, 180, 70, 0.95))
-        drop-shadow(0 0 5px rgba(255, 90, 20, 0.6))
+        drop-shadow(0 0 1.2px rgba(255, 180, 70, 0.95))
+        drop-shadow(0 0 3.5px rgba(255, 90, 20, 0.55))
         drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55)) !important;
 }
 
@@ -497,7 +518,8 @@ body.stash-liquid-glass .performer-card .refract-ascension-badge .hon-rank-total
    The grounding shadow lives on the badge container instead. */
 body.stash-liquid-glass .performer-card .refract-ascension-badge .hon-rank-text {
     font-weight: 800 !important;
-    font-size: 0.92rem !important;
+    /* Follows the container down; see the note on the badge's font-size. */
+    font-size: var(--fs-sm) !important;
     letter-spacing: 0.01em !important;
     background: linear-gradient(180deg, #ffd24a 0%, #ff7a18 48%, #e11d2a 100%) !important;
     -webkit-background-clip: text !important;
@@ -555,7 +577,7 @@ body.stash-liquid-glass .react-datepicker__header {
 body.stash-liquid-glass .react-datepicker__current-month {
     color: var(--text) !important;
     font-weight: 700;
-    font-size: 0.9rem;
+    font-size: var(--fs-base);
     letter-spacing: 0.01em;
     margin-bottom: 0.4rem;
 }
@@ -572,7 +594,7 @@ body.stash-liquid-glass .react-datepicker__year-read-view {
     border-radius: var(--radius-pill) !important;
     padding: 0.18rem 0.6rem !important;
     color: var(--text) !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -607,7 +629,7 @@ body.stash-liquid-glass .react-datepicker__day-names {
 }
 body.stash-liquid-glass .react-datepicker__day-name {
     color: var(--text-muted) !important;
-    font-size: 0.7rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 600 !important;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -635,7 +657,7 @@ body.stash-liquid-glass .react-datepicker__day {
     margin: 1px !important;
     border-radius: 50% !important;
     color: var(--text) !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     font-weight: 500 !important;
     cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
@@ -778,7 +800,7 @@ body.stash-liquid-glass .gs-input-row > input {
     padding: 0.35rem 0 !important;
     margin: 0 !important;
     color: var(--text) !important;
-    font-size: 1.05rem !important;
+    font-size: var(--fs-body) !important;
     line-height: 1.6 !important;
     min-height: 2rem !important;
     height: auto !important;
@@ -854,7 +876,7 @@ body.stash-liquid-glass .adv-rating-btn {
     justify-content: center !important;
     gap: 8px;
     line-height: 1 !important;
-    font-size: 0.9rem !important;
+    font-size: var(--fs-base) !important;
     transition: background 0.18s ease, border-color 0.18s ease,
                 color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease !important;
 }
@@ -909,7 +931,7 @@ body.stash-liquid-glass .adv-rating-btn .adv-rating-btn-badge {
     height: auto !important;
     padding: 0 !important;
     margin: 0 !important;
-    font-size: 0.82rem !important;
+    font-size: var(--fs-sm) !important;
     font-weight: 700 !important;
     font-variant-numeric: tabular-nums;
 }
@@ -1292,7 +1314,7 @@ body.stash-liquid-glass nav.top-nav #BingeNavButton > a.btn {
     border: 1px solid var(--accent-glow) !important;
     border-radius: var(--radius-pill) !important;
     color: var(--accent-bright) !important;
-    font-size: 0.72rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 700 !important;
     letter-spacing: 0.06em !important;
     text-transform: uppercase !important;
@@ -1331,7 +1353,7 @@ body.stash-liquid-glass .stash-scribe-secondary.is-ready {
    .stash-scribe-review-section. */
 body.stash-liquid-glass :is(.scene-tabs, .image-tabs) .stash-scribe-review-section .stash-scribe-review-heading {
     margin: 0.6rem 0 0.35rem 0 !important;
-    font-size: 0.7rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
@@ -1342,7 +1364,7 @@ body.stash-liquid-glass :is(.scene-tabs, .image-tabs) .stash-scribe-review-secti
    for our p.pre. */
 body.stash-liquid-glass :is(.scene-tabs, .image-tabs) .stash-scribe-review-section p.pre {
     color: var(--text) !important;
-    font-size: 0.85rem !important;
+    font-size: var(--fs-base) !important;
     line-height: 1.5 !important;
     margin: 0 0 0.6rem 0 !important;
     white-space: pre-wrap !important;
@@ -1372,7 +1394,7 @@ body.stash-liquid-glass :is(.scene-tabs, .image-tabs) .stash-scribe-review-headi
 body.stash-liquid-glass .stash-scribe-review-edit {
     margin-left: auto !important;
     color: var(--text-muted) !important;
-    font-size: 0.72rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 500 !important;
     padding: 0 0.4rem !important;
     text-transform: none !important;
@@ -1446,7 +1468,7 @@ body.stash-liquid-glass .edit-tags-overhaul__panel-header-info {
     min-width: 0;
 }
 body.stash-liquid-glass .edit-tags-overhaul__panel-title {
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text-muted) !important;
@@ -1455,7 +1477,7 @@ body.stash-liquid-glass .edit-tags-overhaul__panel-title {
     font-family: var(--theme-font-stack) !important;
 }
 body.stash-liquid-glass .edit-tags-overhaul__panel-summary {
-    font-size: 0.72rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     opacity: 0.75;
 }
@@ -1470,7 +1492,7 @@ body.stash-liquid-glass .edit-tags-overhaul__panel-btn {
     color: var(--text-muted);
     border-radius: var(--radius-pill);
     padding: 0.22rem 0.7rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     font-weight: 600;
@@ -1500,7 +1522,7 @@ body.stash-liquid-glass .edit-tags-overhaul__search-input {
     color: var(--text);
     border-radius: var(--radius-pill);
     padding: 0.42rem 0.95rem;
-    font-size: 0.82rem;
+    font-size: var(--fs-sm);
     line-height: 1.2;
     outline: none;
     box-shadow: none;
@@ -1619,7 +1641,7 @@ body.stash-liquid-glass .edit-tags-overhaul__subgroup-header-main {
     flex: 1 1 auto;
 }
 body.stash-liquid-glass .edit-tags-overhaul__title {
-    font-size: 0.85rem;
+    font-size: var(--fs-base);
     font-weight: 700;
     color: var(--text);
     margin: 0;
@@ -1639,7 +1661,7 @@ body.stash-liquid-glass .edit-tags-overhaul__subgroup-meta {
     display: inline-flex;
     align-items: baseline;
     gap: 0.25rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
 }
@@ -1675,7 +1697,7 @@ body.stash-liquid-glass .edit-tags-overhaul__parent-toggle-btn {
     width: 1.5rem;
     height: 1.5rem;
     line-height: 1;
-    font-size: 0.85rem;
+    font-size: var(--fs-base);
     font-weight: 700;
     display: inline-flex;
     align-items: center;
@@ -1931,7 +1953,7 @@ body.stash-liquid-glass .details-tags-overhaul__panel-header {
     flex-wrap: wrap;
 }
 body.stash-liquid-glass .details-tags-overhaul__panel-title {
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text-muted) !important;
@@ -1940,7 +1962,7 @@ body.stash-liquid-glass .details-tags-overhaul__panel-title {
     font-family: var(--theme-font-stack) !important;
 }
 body.stash-liquid-glass .details-tags-overhaul__panel-summary {
-    font-size: 0.72rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     opacity: 0.75;
     flex: 1 1 auto;
@@ -2035,13 +2057,13 @@ body.stash-liquid-glass .details-tags-overhaul__subgroup-header-main {
     flex: 1 1 auto;
 }
 body.stash-liquid-glass .details-tags-overhaul__title {
-    font-size: 0.92rem;
+    font-size: var(--fs-md);
     font-weight: 700;
     color: var(--text);
     line-height: 1.2;
 }
 body.stash-liquid-glass .details-tags-overhaul__subgroup-title {
-    font-size: 0.78rem;
+    font-size: var(--fs-sm);
     font-weight: 600;
     color: var(--text);
     line-height: 1.2;
@@ -2051,7 +2073,7 @@ body.stash-liquid-glass .details-tags-overhaul__subgroup-meta {
     display: inline-flex;
     align-items: baseline;
     gap: 0.25rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-xs);
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
 }
@@ -2158,7 +2180,7 @@ body.stash-liquid-glass .details-tags-overhaul__tag {
     border-radius: var(--radius);
     padding: 0.4rem 0.4rem 0.5rem;
     width: calc(var(--dto-image-size, 100px) + 0.8rem);
-    font-size: 0.72rem;
+    font-size: var(--fs-xs);
     line-height: 1.25;
     text-decoration: none !important;
     text-align: center;
@@ -2298,7 +2320,7 @@ body.stash-liquid-glass .tag-sidebar__header {
     margin-bottom: 0.7rem !important;
 }
 body.stash-liquid-glass .tag-sidebar__eyebrow {
-    font-size: 0.92rem !important;
+    font-size: var(--fs-md) !important;
     font-weight: 700 !important;
     color: var(--text) !important;
     letter-spacing: 0.01em !important;
@@ -2308,7 +2330,7 @@ body.stash-liquid-glass .tag-sidebar__clear {
     border: 1px solid var(--glass-border) !important;
     color: var(--text-muted) !important;
     border-radius: var(--radius-pill) !important;
-    font-size: 0.72rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 600 !important;
     padding: 0.2rem 0.7rem !important;
     transition: background 0.15s, border-color 0.15s, color 0.15s !important;
@@ -2331,7 +2353,7 @@ body.stash-liquid-glass .tag-sidebar__segmented {
     margin-bottom: 0.7rem !important;
 }
 body.stash-liquid-glass .tag-sidebar__segmented-label {
-    font-size: 0.7rem !important;
+    font-size: var(--fs-xs) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.06em !important;
     color: var(--text-muted) !important;
@@ -2350,7 +2372,7 @@ body.stash-liquid-glass .tag-sidebar__segmented-button {
     border: none !important;
     color: var(--text-muted) !important;
     border-radius: var(--radius-pill) !important;
-    font-size: 0.7rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 700 !important;
     letter-spacing: 0.04em !important;
     padding: 0.2rem 0.7rem !important;
@@ -2369,7 +2391,7 @@ body.stash-liquid-glass .tag-sidebar__search-input {
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius-pill) !important;
     color: var(--text) !important;
-    font-size: 0.82rem !important;
+    font-size: var(--fs-sm) !important;
     padding: 0.4rem 0.85rem !important;
     margin-bottom: 0.8rem !important;
     transition: border-color 0.15s, box-shadow 0.15s !important;
@@ -2389,7 +2411,7 @@ body.stash-liquid-glass .tag-sidebar__section {
     margin-top: 0.9rem !important;
 }
 body.stash-liquid-glass .tag-sidebar__section-label {
-    font-size: 0.68rem !important;
+    font-size: var(--fs-xs) !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
     font-weight: 700 !important;
@@ -2397,7 +2419,7 @@ body.stash-liquid-glass .tag-sidebar__section-label {
     margin: 0 0 0.5rem !important;
 }
 body.stash-liquid-glass .tag-sidebar__empty {
-    font-size: 0.8rem !important;
+    font-size: var(--fs-sm) !important;
     color: var(--text-muted) !important;
     padding: 0.1rem 0 0.5rem !important;
 }
@@ -2462,7 +2484,7 @@ body.stash-liquid-glass .tag-sidebar__action {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 0.78rem !important;
+    font-size: var(--fs-sm) !important;
     line-height: 1 !important;
     transition: background 0.13s, border-color 0.13s, color 0.13s !important;
 }
@@ -2498,7 +2520,7 @@ body.stash-liquid-glass .tag-sidebar__label {
     background: transparent !important;
     border: none !important;
     color: var(--text) !important;
-    font-size: 0.82rem !important;
+    font-size: var(--fs-sm) !important;
     font-weight: 500 !important;
     text-align: left !important;
     padding: 0.18rem 0.25rem !important;
@@ -2517,7 +2539,7 @@ body.stash-liquid-glass .tag-sidebar__label:hover {
 
 /* Count pill — soft accent, right-aligned, tabular */
 body.stash-liquid-glass .tag-sidebar__count {
-    font-size: 0.72rem !important;
+    font-size: var(--fs-xs) !important;
     font-weight: 600 !important;
     color: var(--accent-light) !important;
     font-variant-numeric: tabular-nums !important;
@@ -2571,4 +2593,103 @@ body.stash-liquid-glass .tag-sidebar__toggle:hover {
 body.stash-liquid-glass .tag-sidebar--open .tag-sidebar__toggle {
     left: calc(var(--tag-sidebar-panel-width, 360px) + 12px) !important;
     margin-left: 0 !important;
+}
+
+/* ── Ascension rank on the chin (non playing-card modes) ─────────────
+   Sits on the NAME's line, pinned to the right edge — the same side and
+   relationship it has in playing-card mode, where it rides the country
+   caption.
+
+   Positioned rather than in-flow: the chin is a flex COLUMN, so an
+   in-flow child takes a whole line of its own and makes the chin taller
+   (which is exactly what it used to do). refract.js keeps it a child of
+   the chin and out of the <a> that wraps the name, so the performer link
+   never swallows it.
+
+   The grounding drop-shadows are dropped here too. They exist because in
+   playing-card mode the badge sits over the card IMAGE; on the chin it is
+   over a solid panel and they just read as shading. The flame keeps its
+   warm gradient and its own tight ember glow.
+   ─────────────────────────────────────────────────────────────────── */
+body.stash-liquid-glass .performer-card .card-section.refract-chin-with-rank {
+    position: relative;
+}
+body.stash-liquid-glass .performer-card .card-section.refract-chin-with-rank > .refract-ascension-badge {
+    position: absolute !important;
+    /* matches the chin's own padding, so it aligns to the name's line */
+    top: 0.48rem !important;
+    right: 0.61rem !important;
+    margin: 0 !important;
+    font-size: var(--fs-base) !important;
+    filter: none !important;
+}
+/* ...but ONLY in Classic, where the chin really does hold the name and
+   pinning to its top edge lands on that line.
+
+   In the Refract playing-card layout the name is the banner at the TOP of
+   the card and this chin holds the STAT STRIP instead, so `top: 0.48rem`
+   pinned the rank onto the pills. Measured on a performer with no country:
+   badge 324-336, strip 329-371 — 7px into the pills, straight through their
+   labels. It only shows on performers with no country, which is why it
+   looked like it broke "in some places".
+
+   Back into flow, `order: -1` so it takes the row the country caption would
+   have had, directly above the pills. The chin is content-sized and
+   bottom-anchored, so it grows upward to fit rather than pushing anything
+   off the card. One class more specific than the rule above, so it wins. */
+body.stash-liquid-glass.refract-perf-layout-card .performer-card .card-section.refract-chin-with-rank > .refract-ascension-badge {
+    position: static !important;
+    order: -1 !important;
+    align-self: flex-end !important;
+    top: auto !important;
+    right: auto !important;
+    /* No bottom margin. It was 0.14rem here and nowhere else, and it is
+       part of why the same badge sat 8.39px above the card bottom when a
+       country was present and 13.14px when it was not. */
+    margin: 0 0 0 auto !important;
+    /* Restore the two things the Classic rule above strips. It sets
+       `font-size: 0.84rem` and `filter: none` on the stated premise that
+       on the chin the badge sits "over a solid panel" -- true in Classic,
+       false here, because 16_playing_card.css makes this chin
+       `background: transparent` so the badge floats over the raw
+       photograph. That left the no-country badge as the only text on the
+       card with no legibility treatment at all, and it is the one element
+       that cannot fall back to a text-shadow: the rank number is a
+       gradient clipped to text, so the container's filter was its only
+       protection. Also brings it back to the same size as the
+       country-nested variant (was 11.76px against 11.2px). */
+    font-size: var(--fs-sm) !important;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.62)) !important;
+}
+/* Match the country-nested variant's ember halo too — this case had a
+   wider 1.5px/5px glow against 1.2px/3.5px, so the same badge glowed
+   differently depending only on whether a country was set. */
+body.stash-liquid-glass.refract-perf-layout-card .performer-card .card-section.refract-chin-with-rank > .refract-ascension-badge .refract-ascension-icon {
+    filter:
+        drop-shadow(0 0 1.2px rgba(255, 180, 70, 0.95))
+        drop-shadow(0 0 3.5px rgba(255, 90, 20, 0.55))
+        drop-shadow(0 1px 1px rgba(0, 0, 0, 0.55)) !important;
+}
+/* The chin's first child is Stash's title link, whose h5 is display:none
+   in this layout. It is a 0px-tall flex item that still consumes one
+   2.8px column gap — and because the badge takes `order: -1`, that dead
+   gap lands ABOVE the content on a card with a country and BELOW it on a
+   card without one. Nothing is lost by removing it: the h5 inside is
+   already hidden, so the link has no height and no hit area, and the
+   card's image link is untouched. */
+body.stash-liquid-glass.refract-perf-layout-card .performer-card .card-section > a:has(> h5.card-section-title) {
+    display: none !important;
+}
+body.stash-liquid-glass .performer-card .card-section.refract-chin-with-rank > .refract-ascension-badge .refract-ascension-icon {
+    filter:
+        drop-shadow(0 0 1.5px rgba(255, 180, 70, 0.95))
+        drop-shadow(0 0 5px rgba(255, 90, 20, 0.6)) !important;
+}
+/* Keep a long name clear of the rank instead of running under it. The
+   margin goes on the TITLE, not on the link that wraps it: the title is
+   `overflow: hidden` + `nowrap`, and overflow clips at the padding edge,
+   so padding on the wrapper would not actually reserve the space —
+   shrinking the title's own box does. */
+body.stash-liquid-glass .performer-card .card-section.refract-chin-with-rank h5.card-section-title {
+    margin-right: 3.4rem !important;
 }
