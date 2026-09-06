@@ -54,6 +54,30 @@
         } catch (e) { /* ignore */ }
     }());
 
+    /* ── Boot guard ──────────────────────────────────────────────────────
+       Every top-level initialiser in this file runs through here. The
+       consolidated mutation watcher at the foot already wraps each of its
+       handlers in try/catch; the FIRST call to each of them is at module
+       scope and was not wrapped, so one initialiser throwing aborted the
+       rest of the IIFE. On an older Stash that is the whole theme: no
+       watcher, no card injection, no settings panel, no navbar work, and
+       a single console error to explain it. A failed initialiser now
+       costs only its own feature. */
+    function refractInit(fn) {
+        try { fn(); } catch (e) {
+            try {
+                /* Name the initialiser from its own source: the wrapper is an
+                   anonymous expression, so fn.name is empty and a bare message
+                   would not say which feature went. */
+                var m = /\{\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/.exec(String(fn));
+                var nm = m ? m[1] : "init";
+                if (window.console && console.warn) {
+                    console.warn("[refract] " + nm + " failed at boot: " + ((e && e.message) || e));
+                }
+            } catch (e2) { /* ignore */ }
+        }
+    }
+
     var REFRACT_PRESETS = ["blue", "pink", "red", "yellow", "purple", "green", "teal"];
     var REFRACT_PRESETS_ALL = ["orange", "blue", "pink", "red", "yellow", "purple", "green", "teal"];
     var ACCENT_STORAGE_KEY = "refract.accent";
@@ -150,7 +174,7 @@
     }
 
     function applyAccentPreset() { applyAccentClass(getStoredAccent()); }
-    applyAccentPreset();
+    refractInit(function () { applyAccentPreset(); });
 
     /* Refract's accent picker. Hooked into Stash's React tree via
        PluginApi.patch.instead("PluginSettings"), so the plugin panel for
@@ -221,8 +245,20 @@
                 var held = document.querySelector("#plugin-refract-card-preview .refract-card-preview");
                 if (held && held.offsetWidth) { refractPreviewHeldSize = { w: held.offsetWidth, h: held.offsetHeight }; }
                 setPv({ loading: true, scene: null, performer: null, failed: false });
-                var componentsReady = (PluginApi.utils && PluginApi.utils.loadComponents && PluginApi.loadableComponents && PluginApi.loadableComponents.SceneCard)
-                    ? PluginApi.utils.loadComponents([PluginApi.loadableComponents.SceneCard, PluginApi.loadableComponents.PerformerCard])
+                /* loadableComponents is a different list on every Stash:
+                   0.26 and 0.27 carry SceneCard and no PerformerCard at all.
+                   loadComponents maps fn() over whatever it is handed, so a
+                   missing entry threw inside it and rejected the whole load,
+                   which took the SceneCard half of the preview down with it.
+                   Ask only for what this server actually offers. */
+                var wanted = [];
+                var lc = PluginApi.loadableComponents;
+                if (lc) {
+                    if (lc.SceneCard) { wanted.push(lc.SceneCard); }
+                    if (lc.PerformerCard) { wanted.push(lc.PerformerCard); }
+                }
+                var componentsReady = (PluginApi.utils && PluginApi.utils.loadComponents && wanted.length)
+                    ? PluginApi.utils.loadComponents(wanted)
                     : Promise.resolve();
                 Promise.all([componentsReady, refractFetchPreviewData(shuffle)])
                     .then(function (rs) {
@@ -247,8 +283,13 @@
             refractPreviewRefresh = function () { load(false); };
             R.useEffect(function () { load(false); }, []);
 
-            var SceneCard = PluginApi.components.SceneCard;
-            var PerformerCard = PluginApi.components.PerformerCard;
+            /* `components` is a plain object on every Stash we know of, but
+               reading a property off it happens INSIDE render: if a build
+               ever ships without it, the TypeError unmounts Stash's tree and
+               the page goes blank. The mocks are the answer to "no cards". */
+            var comps = PluginApi.components || {};
+            var SceneCard = comps.SceneCard;
+            var PerformerCard = comps.PerformerCard;
             var canReal = !pv.failed && SceneCard && PerformerCard && (pv.scene || pv.performer);
 
             if (pv.loading) {
@@ -270,10 +311,21 @@
                     return R.createElement("div", { className: "refract-card-preview" },
                         R.createElement("div", { className: "sub-heading" }, "Preview unavailable. The card settings below still apply."));
                 }
-                return R.createElement("div", {
-                    className: "refract-card-preview",
-                    dangerouslySetInnerHTML: { __html: mockHtml }
-                });
+                /* The mocks go inside a `.refract-preview-cards` wrapper for
+                   the same reason the real cards do: every rule that decides
+                   which of the two cards is on stage is keyed on that class
+                   (`.refract-preview-kind-scene .refract-preview-cards
+                   .performer-card` and its mirror in 11_misc_tail.css).
+                   Without the wrapper the fallback matched none of them, so
+                   BOTH mocks drew, stacked, while the Scene card / Performer
+                   card control above them did nothing at all. Measured on a
+                   clean install with the preview query blocked: two cards,
+                   one segmented control that could not move either. */
+                return R.createElement("div", { className: "refract-card-preview" },
+                    R.createElement("div", {
+                        className: "refract-preview-cards",
+                        dangerouslySetInnerHTML: { __html: mockHtml }
+                    }));
             }
             function onCardError() {
                 setPv({ loading: false, scene: null, performer: null, failed: true });
@@ -1165,7 +1217,14 @@
                         var opts = {};
                         Object.keys(cur).forEach(function (k) { opts[k] = cur[k]; });
                         opts.type = (v === "stars") ? "stars" : "decimal";
-                        if (!opts.starPrecision) { opts.starPrecision = "tenth"; }
+                        /* Absent precision means the user never set one, so
+                           the only safe filler is Stash's own default. It
+                           filled "tenth" instead, which on a fresh install
+                           is every user: one click on this control and
+                           their stars became tenth-star, a setting they
+                           never chose and would have to find in Stash's
+                           own panel to undo. */
+                        if (!opts.starPrecision) { opts.starPrecision = "full"; }
                         return gqlWithVars(
                             'mutation($v: Any){ configureUISetting(key: "ratingSystemOptions", value: $v) }',
                             { v: opts }
@@ -3013,12 +3072,35 @@
     var refractSettingsPanelComponent = null;
     var refractSettingsMountMode = "none";
 
+    /* `instead` is not the same function on every Stash. Up to 0.26 the
+       registry held ONE function per component and a second registration
+       threw ("instead has already been called for X"); 0.27 made it a list
+       and chained them. So on a 0.26 server, any other plugin that claimed
+       one of our patch points first turned our registration into a throw at
+       module scope. Each registration is its own attempt now: losing one
+       point costs that point, not the file. */
+    function refractPatchInstead(point, fn) {
+        try {
+            PluginApi.patch.instead(point, fn);
+            return true;
+        } catch (e) {
+            try {
+                if (window.console && console.warn) {
+                    console.warn("[refract] could not patch " + point + ": " +
+                        ((e && e.message) || e));
+                }
+            } catch (e2) { /* ignore */ }
+            return false;
+        }
+    }
+
     function registerAccentPatch() {
-        if (typeof PluginApi === "undefined" || !PluginApi.patch || !PluginApi.React) {
+        if (typeof PluginApi === "undefined" || !PluginApi.patch ||
+                typeof PluginApi.patch.instead !== "function" || !PluginApi.React) {
             setTimeout(registerAccentPatch, 100);
             return;
         }
-        PluginApi.patch.instead("PluginSettings", function () {
+        refractPatchInstead("PluginSettings", function () {
             var args = Array.prototype.slice.call(arguments);
             var next = args.pop();
             var props = args[0];
@@ -3106,6 +3188,14 @@
                 return function () { clearInterval(t); };
             }, [container]);
             if (!container) { return null; }
+            /* No portal, no host. Rendering the panel inline in the navbar
+               instead would put the settings in the wrong place AND outside
+               the section they belong to, so an absent createPortal is a
+               reason to render nothing, not a reason to throw in a render
+               path (which unmounts Stash's tree and blanks the page). */
+            if (!PluginApi.ReactDOM || typeof PluginApi.ReactDOM.createPortal !== "function") {
+                return null;
+            }
             return PluginApi.ReactDOM.createPortal(
                 R3.createElement(RefractSettingsPanel, { key: "sync-" + epochSt[0] }), container);
         }
@@ -3118,7 +3208,7 @@
            it is Stash's own settings row and so renders on the very page the
            panel belongs to, with the app's providers around it. */
         ["MainNavBar.UtilityItems", "MainNavBar.MenuItems", "BooleanSetting"].forEach(function (point) {
-            PluginApi.patch.instead(point, function () {
+            refractPatchInstead(point, function () {
                 var args = Array.prototype.slice.call(arguments);
                 var next = args.pop();
                 var orig = next.apply(null, args);
@@ -3127,7 +3217,7 @@
             });
         });
     }
-    registerAccentPatch();
+    refractInit(function () { registerAccentPatch(); });
 
     var CATEGORIES_PATH = "/categories";
     var STORAGE_KEY_API = "refract.apiKey";
@@ -3170,6 +3260,11 @@
     /* Phone card grid: "2" two-up (default) or "1" one card per row.
        Toggled from the list toolbar's second tier; forum request #203. */
     var MOBILE_COLS_KEY = "refract.mobileCols";
+    /* Declared here, not beside the dock code below, because
+       REFRACT_SYNC_KEYS is built at load time before that code runs:
+       hoisted but unassigned, the key went into the sync list as
+       undefined and the dock configuration never reached the server. */
+    var DOCK_ITEMS_KEY = "refract.dockItems";
 
     /* Gender glyphs for banners Refract draws itself (the mock preview card
        and the performer page's header card). The list card CLONES Stash's
@@ -3304,14 +3399,24 @@
         " groups { group { id name front_image_path } scene_index }";
     var PREVIEW_SCENE_FIELDS_MOVIES = PREVIEW_SCENE_FIELDS_BASE +
         " movies { movie { id name front_image_path } scene_index }";
-    var PREVIEW_PERF_FIELDS =
+    /* Performer.group_count is the same 0.27 rename as Scene.groups, and it
+       needs the same second answer: on 0.26 the field is movie_count and a
+       query naming group_count is rejected whole, which left the performer
+       half of the preview empty on every reload. */
+    var PREVIEW_PERF_FIELDS_BASE =
         "id name disambiguation gender birthdate country image_path favorite " +
-        "rating100 o_counter scene_count image_count gallery_count group_count " +
+        "rating100 o_counter scene_count image_count gallery_count " +
         "performer_count tags { id name } stash_ids { endpoint stash_id } alias_list";
+    var PREVIEW_PERF_FIELDS = PREVIEW_PERF_FIELDS_BASE + " group_count";
+    var PREVIEW_PERF_FIELDS_MOVIES = PREVIEW_PERF_FIELDS_BASE + " movie_count";
     function refractGqlQuery(query) {
+        /* Same headers as the XHR transport, so a server reached with an API
+           key rather than a session cookie answers this one too. A 401 here
+           used to be indistinguishable from an empty library. */
         return fetch("/graphql", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            headers: gqlHeaders(),
             body: JSON.stringify({ query: query })
         }).then(function (r) { return r.json(); });
     }
@@ -3328,6 +3433,18 @@
                     JSON.stringify(r.errors).indexOf("groups") !== -1) {
                 refractPreviewSceneFields = PREVIEW_SCENE_FIELDS_MOVIES;
                 return refractGqlQuery(buildQuery(refractPreviewSceneFields));
+            }
+            return r;
+        });
+    }
+    /* The performer half of the same answer, for the same reason. */
+    var refractPreviewPerfFields = PREVIEW_PERF_FIELDS;
+    function refractPerfQuery(buildQuery) {
+        return refractGqlQuery(buildQuery(refractPreviewPerfFields)).then(function (r) {
+            if (r.errors && refractPreviewPerfFields !== PREVIEW_PERF_FIELDS_MOVIES &&
+                    JSON.stringify(r.errors).indexOf("group_count") !== -1) {
+                refractPreviewPerfFields = PREVIEW_PERF_FIELDS_MOVIES;
+                return refractGqlQuery(buildQuery(refractPreviewPerfFields));
             }
             return r;
         });
@@ -3349,9 +3466,14 @@
             return refractSceneQuery(function (F) {
                 return "query { findScenes(filter: { per_page: 1, sort: \"random\" }" + f + ") { scenes { " + F + " } } }";
             }).then(function (r) {
-                    var s = r.data && r.data.findScenes.scenes[0];
+                    /* A nested resolver error nulls the field but still
+                       carries `data`, so this chain has to be walked, not
+                       assumed: reaching through it threw, and the throw took
+                       the performer half of the preview down with it. */
+                    var list = r.data && r.data.findScenes && r.data.findScenes.scenes;
+                    var s = (list && list[0]) || null;
                     if (!s && filtered) { return randomScene(false); }
-                    return s || null;
+                    return s;
                 });
         }
         function randomPerformer(filtered) {
@@ -3360,16 +3482,19 @@
                     ? ", performer_filter: { rating100: { value: 0, modifier: IS_NULL }, scene_count: { value: 0, modifier: GREATER_THAN } }"
                     : ", performer_filter: { rating100: { value: 74, modifier: GREATER_THAN }, scene_count: { value: 0, modifier: GREATER_THAN } }")
                 : "";
-            return refractGqlQuery("query { findPerformers(filter: { per_page: 1, sort: \"random\" }" + f + ") { performers { " + PREVIEW_PERF_FIELDS + " } } }")
-                .then(function (r) {
-                    var p = r.data && r.data.findPerformers.performers[0];
+            return refractPerfQuery(function (F) {
+                return "query { findPerformers(filter: { per_page: 1, sort: \"random\" }" + f + ") { performers { " + F + " } } }";
+            }).then(function (r) {
+                    var list = r.data && r.data.findPerformers && r.data.findPerformers.performers;
+                    var p = (list && list[0]) || null;
                     if (!p && filtered) { return randomPerformer(false); }
-                    return p || null;
+                    return p;
                 });
         }
-        function byId(kind, id2, fields) {
-            return refractGqlQuery("query { " + kind + "(id: \"" + id2 + "\") { " + fields + " } }")
-                .then(function (r) { return (r.data && r.data[kind]) || null; });
+        function byId(kind, id2, build) {
+            return build(function (F) {
+                return "query { " + kind + "(id: \"" + id2 + "\") { " + F + " } }";
+            }).then(function (r) { return (r.data && r.data[kind]) || null; });
         }
         var storedScene = null, storedPerf = null;
         try {
@@ -3385,7 +3510,7 @@
               })
             : randomScene(true);
         var perfP = (!shuffle && storedPerf)
-            ? byId("findPerformer", storedPerf, PREVIEW_PERF_FIELDS).then(function (p) { return p || randomPerformer(true); })
+            ? byId("findPerformer", storedPerf, refractPerfQuery).then(function (p) { return p || randomPerformer(true); })
             : randomPerformer(true);
         return Promise.all([sceneP, perfP]).then(function (rs) {
             try {
@@ -4150,9 +4275,9 @@
             localStorage.removeItem("refract.showSceneRes");
         } catch (e) { /* ignore */ }
     })();
-    applyCardElemClasses();
-    applyCardSideClasses();
-    applyStudioModeClass();
+    refractInit(function () { applyCardElemClasses(); });
+    refractInit(function () { applyCardSideClasses(); });
+    refractInit(function () { applyStudioModeClass(); });
 
     /* Settings mirrored to Stash's server-side UI config (see the
        settings-sync block below). RATING_SYSTEM is deliberately excluded:
@@ -4497,7 +4622,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-lite", !!on);
     }
-    applyLiteModeClass(isLiteModeEnabled());
+    refractInit(function () { applyLiteModeClass(isLiteModeEnabled()); });
 
     /* Engine flag - true for Blink/Chromium (Chrome/Edge/Opera/Brave), false
        for Gecko (Firefox) and WebKit (Safari). backdrop-filter raster behaves
@@ -4547,8 +4672,8 @@
         document.body.classList.toggle("refract-light", !!on);
         refractApplyThemeColorMeta(!!on);
     }
-    applyLightModeClass(isLightModeEnabled());
-    applyMobileColsClass(isMobileOneCol());
+    refractInit(function () { applyLightModeClass(isLightModeEnabled()); });
+    refractInit(function () { applyMobileColsClass(isMobileOneCol()); });
 
     /* Light-mode navbar toggle visibility. Defaults to ON so users can
        discover light mode without digging into plugin settings. Stash
@@ -4564,7 +4689,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-show-light-nav", !!on);
     }
-    applyLightToggleNavbarClass(isLightToggleNavbarVisible());
+    refractInit(function () { applyLightToggleNavbarClass(isLightToggleNavbarVisible()); });
 
     /* Help button visibility. Refract hides Stash's navbar Help (?) button
        by default; this opt-in toggle re-shows it via the `refract-show-help`
@@ -4579,7 +4704,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-show-help", !!on);
     }
-    applyHelpButtonClass(isHelpButtonVisible());
+    refractInit(function () { applyHelpButtonClass(isHelpButtonVisible()); });
 
     /* Studio banner visibility. Refract shows the studio NAME as a small
        muted label above the scene title by default (the logo image is
@@ -4596,7 +4721,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-studio-banner", !!on);
     }
-    applyStudioBannerClass(isStudioBannerVisible());
+    refractInit(function () { applyStudioBannerClass(isStudioBannerVisible()); });
 
     /* Performer-card-on-hover. By default hovering a performer circle on a
        scene card shows a small name-only tooltip; this opt-in toggle swaps
@@ -4612,7 +4737,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-performer-card-hover", !!on);
     }
-    applyPerformerCardHoverClass(isPerformerCardHover());
+    refractInit(function () { applyPerformerCardHoverClass(isPerformerCardHover()); });
 
     /* Scene-player center controls hide. Refract overlays back-10 /
        play / forward-10 buttons on the scene player; this opt-in toggle
@@ -4630,7 +4755,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-hide-center-controls", !!on);
     }
-    applyCenterControlsHiddenClass(isCenterControlsHidden());
+    refractInit(function () { applyCenterControlsHiddenClass(isCenterControlsHidden()); });
 
     /* Active-filter chips row. Theme hides it by default (the filter
        button badge shows the count); this opt-in re-shows it so filters
@@ -4646,7 +4771,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-show-filter-tags", !!on);
     }
-    applyFilterTagsShownClass(isFilterTagsShown());
+    refractInit(function () { applyFilterTagsShownClass(isFilterTagsShown()); });
 
     /* Scene card style. "refract" (default) = tidier minimal layout -
        description block hidden so the grid stays consistent across
@@ -4669,7 +4794,7 @@
         if (!document.body) { return; }
         document.body.classList.toggle("refract-minimal-cards", style === "refract");
     }
-    applyCardStyleClass(getStoredCardStyle());
+    refractInit(function () { applyCardStyleClass(getStoredCardStyle()); });
 
     /* The old single "Card rating style" (intensity / tiers / playing-card)
        bundled two independent axes and is retired. It is now:
@@ -4737,7 +4862,7 @@
             localStorage.removeItem(RATING_STYLE_STORAGE_KEY);
         } catch (e) { /* ignore */ }
     })();
-    applyCardModeClasses();
+    refractInit(function () { applyCardModeClasses(); });
 
     /* View-mode minimiser feature toggle. Default enabled - Refract
        collapses Stash's row of view-mode buttons into a single icon +
@@ -4762,11 +4887,18 @@
         return "";
     }
 
-    var QUERY_ROOT_TAGS =
-        'query StashThemeRootTags { findTags(' +
-        '  filter: { per_page: -1, sort: "name", direction: ASC },' +
-        '  tag_filter: { parents: { modifier: IS_NULL } }' +
-        ') { count tags { id name sort_name scene_count children { id name sort_name scene_count } } } }';
+    /* Tag.sort_name arrived in Stash 0.28. Naming it on an older server got
+       the whole query rejected, so the Categories page rendered a raw
+       GraphQL error instead of the grid. Without sort_name the grid falls
+       back to `name`, which is what it displays anyway. */
+    var QUERY_ROOT_TAGS_SN = { narrow: false };
+    function refractRootTagsQueryText(full) {
+        var sn = full ? " sort_name" : "";
+        return 'query StashThemeRootTags { findTags(' +
+            '  filter: { per_page: -1, sort: "name", direction: ASC },' +
+            '  tag_filter: { parents: { modifier: IS_NULL } }' +
+            ') { count tags { id name' + sn + ' scene_count children { id name' + sn + ' scene_count } } } }';
+    }
 
     var PLUS_SVG =
         '<svg class="stash-injected-icon svg-inline--fa fa-icon" viewBox="0 0 448 512" aria-hidden="true">' +
@@ -4839,6 +4971,34 @@
 
     function gqlWithVars(query, variables) {
         return gqlXhr(JSON.stringify({ query: query, variables: variables }));
+    }
+
+    /* ── Asking for a field the server may not have ─────────────────────
+       Refract runs on Stash 0.26 upwards and several fields it reads
+       arrived later: Scene.groups and Performer.group_count in 0.27,
+       Performer.custom_fields and Tag.sort_name in 0.28. GraphQL rejects a
+       query naming an unknown field OUTRIGHT - no partial data, no data at
+       all - so one field the server has never heard of used to cost the
+       whole feature it sat in, not the one line it feeds.
+
+       `build(full)` returns the query with the optional fields in (true) or
+       out (false). The first rejection that names one of them narrows the
+       query, and `state.narrow` remembers the answer for the session, so
+       the cost is one wasted request per feature per page load, not one per
+       call. Anything else still rejects: a permissions or network failure
+       must not be mistaken for an old schema. */
+    function refractQueryOptional(state, fields, build, variables) {
+        if (state.narrow) { return gqlWithVars(build(false), variables); }
+        return gqlWithVars(build(true), variables)["catch"](function (err) {
+            var msg = String((err && err.message) || err || "");
+            for (var i = 0; i < fields.length; i++) {
+                if (msg.indexOf(fields[i]) !== -1) {
+                    state.narrow = true;
+                    return gqlWithVars(build(false), variables);
+                }
+            }
+            throw err;
+        });
     }
 
     /* ── Server-side settings sync ──────────────────────────────────────
@@ -4973,7 +5133,7 @@
             refractSettleSync();
         }).catch(function () { refractSettleSync(); /* no server / no auth - stay on localStorage */ });
     }
-    initSettingsSync();
+    refractInit(function () { initSettingsSync(); });
 
     /* Detect Stash's rating-system type (STARS vs DECIMAL). We can't read
        this from the rating-banner alone because Stash only writes the
@@ -4997,22 +5157,28 @@
            you can't subselect fields on it. Query the whole blob and
            read ratingSystemOptions.type from the deserialised object.
 
-           If `ratingSystemOptions.type` is missing (Stash's default,
-           decimal mode, doesn't always serialise the field), treat as
-           non-stars and clear the cached value - otherwise a previous
-           "stars" cache would stick across a switch to decimal. */
+           A MISSING `ratingSystemOptions` means the user has never
+           touched the setting, and Stash's own default for that case is
+           STARS (ui/v2.5/src/utils/rating.ts:
+           `defaultRatingSystemType = RatingSystemType.Stars`, read
+           through `config?.ui.ratingSystemOptions ?? default` by
+           RatingSystem, RatingBanner and the settings panel alike). We
+           used to read missing as decimal, which is the state of every
+           fresh install: measured on a clean 0.31.1 with 15 scenes, the
+           app drew five stars while refract's own settings row said
+           "Decimal" and the card banners kept the 0-10 scale. Stash
+           always writes an explicit type once the setting is changed,
+           so absent can only mean the default. */
         gql("query { configuration { ui } }")
             .then(function (res) {
                 var ui = res && res.data && res.data.configuration
                     && res.data.configuration.ui;
                 /* No usable config blob in a *successful* response - don't
-                   clobber the cached value with "". (An errored/auth-failed
+                   clobber the cached value. (An errored/auth-failed
                    response now rejects in gqlXhr and lands in .catch below,
-                   so it never reaches here and the cache is preserved.)
-                   When ui IS present, an empty type legitimately means
-                   decimal mode, so writing "" is correct. */
+                   so it never reaches here and the cache is preserved.) */
                 if (!ui) { return; }
-                var t = (ui.ratingSystemOptions && ui.ratingSystemOptions.type) || "";
+                var t = (ui.ratingSystemOptions && ui.ratingSystemOptions.type) || "stars";
                 try { localStorage.setItem(RATING_SYSTEM_STORAGE_KEY, t); } catch (e) { /* ignore */ }
                 applyRatingSystemClass(t);
             }).catch(function () { /* ignore - keep cached value */ });
@@ -5474,7 +5640,16 @@
        list. Independent of Stash's navbar DOM (which we hide entirely
        on mobile). Each tile is an <a> whose click triggers SPA nav via
        pushState + popstate (Stash's React Router responds to popstate). */
+    /* Home is first and `always: true`. Stash's navbar carries no Home
+       LINK - only the brand, which the phone layout hides with the rest
+       of the navbar - so before this tile there was no way to reach the
+       home page on a phone at all (forum thread 7183, post 204). It is
+       also not one of Stash's menuItems, so it can never be "disabled in
+       Stash's interface settings"; `always` exempts it from the
+       disabled-route pass below, which would otherwise hide it whenever
+       the brand anchor is not an exact href="/" match. */
     var MOBILE_NAV_ITEMS = [
+        { href: "/",               label: "Home",       icon: "home",     always: true },
         { href: "/scenes",         label: "Scenes",     icon: "scenes" },
         { href: "/images",         label: "Images",     icon: "images" },
         { href: "/groups",         label: "Movies",     icon: "movies",   aliases: ["/movies"] },
@@ -5488,6 +5663,7 @@
     ];
 
     var MOBILE_NAV_ICONS = {
+        home:       '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.2L12 3l9 7.2"/><path d="M5.6 9V20.6H18.4V9"/><path d="M9.9 20.6v-5.4h4.2v5.4z" fill="currentColor" stroke="none"/></svg>',
         scenes:     '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M10 8l6 4-6 4z" fill="currentColor" stroke="none"/></svg>',
         images:     '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="1.6" fill="currentColor" stroke="none"/><path d="M21 16l-5-5-9 9"/></svg>',
         movies:     '<svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="9" r="5"/><circle cx="15.5" cy="9" r="5"/><circle cx="12" cy="15.5" r="5"/></svg>',
@@ -5512,7 +5688,8 @@
        Refract -> Mobile dock): a click-to-select icon grid persisted as
        a JSON key array. Default: the four core routes + burger. */
     var MOBILE_DOCK_DEFAULT = ["/scenes", "/performers", "/studios", "/tags"];
-    var DOCK_ITEMS_KEY = "refract.dockItems";
+    /* DOCK_ITEMS_KEY is declared with the other storage keys near the top
+       of the file; see the note there. */
 
     function refractGetDockSelection() {
         try {
@@ -5877,6 +6054,7 @@
             html +=
                 '<a class="refract-drawer-tile" href="' + item.href + '" data-href="' + item.href + '"' +
                     ((item.aliases && item.aliases.length) ? ' data-aliases="' + item.aliases.join(" ") + '"' : '') +
+                    (item.always ? ' data-always-on="1"' : '') +
                     ' data-group="' + group + '"' +
                     ' aria-label="' + item.label + '">' +
                     '<span class="refract-drawer-tile-icon">' + icon + '</span>' +
@@ -6111,7 +6289,11 @@
        Skips /new contextual buttons - those get mirrored next to the
        burger via injectMobileNewButton instead. */
     var NATIVE_NAV_SKIP = {
-        "/": true,        // home - brand orb already covers it
+        /* Home is a hardcoded MOBILE_NAV_ITEM now, so the `known` check
+           above catches the brand anchor first and this entry never
+           fires. Kept so a navbar that renders home some other way still
+           cannot produce a second, plugin-styled Home tile. */
+        "/": true,
         "/setup": true,
         "/migrate": true
     };
@@ -6244,8 +6426,9 @@
                controls, not routes, so they have no data-href to match a live
                navbar route - without this exclusion the "disabled route" pass
                would stamp them refract-drawer-tile-off on every tick and hide
-               them. */
-            var htiles = drawer.querySelectorAll(".refract-drawer-tile:not([data-plugin-tile]):not([data-action-tile])");
+               them. Exclude data-always-on too (Home): it mirrors no menu
+               item, so its absence from menuItems is not a signal. */
+            var htiles = drawer.querySelectorAll(".refract-drawer-tile:not([data-plugin-tile]):not([data-action-tile]):not([data-always-on])");
             for (var h = 0; h < htiles.length; h++) {
                 var htile = htiles[h];
                 var hcands = [htile.getAttribute("data-href") || ""];
@@ -6756,7 +6939,15 @@
         }
         if (REFRACT_EP_COUNTS[ctx.key] === undefined) { refractEpFetchCounts(ctx); }
         var counts = REFRACT_EP_COUNTS[ctx.key];
-        if (!counts || typeof counts !== "object" || !counts.kids) {
+        /* `!counts.all` is the empty-library case, and it is the same rule
+           as the one above, applied to the other end. Measured on a clean
+           0.31.1: a tag with one sub-tag and no scenes anywhere drew a
+           two-segment control reading "This tag 0 scenes" beside "With its
+           1 sub-tag 0 scenes". Both segments were true, neither did
+           anything, and the widest thing on the page was a switch between
+           two views of nothing. `all` is never smaller than `own`, so this
+           only ever fires when both are zero. */
+        if (!counts || typeof counts !== "object" || !counts.kids || !counts.all) {
             if (existing) { existing.parentNode.removeChild(existing); }
             refractBodyClass("refract-has-scope", false);
             return false;
@@ -7192,12 +7383,23 @@
     /* One query, shared by both back styles. Everything either face needs is
        already here, which is why a scene-sourced image or a different stat
        selection costs no extra request. */
-    var REFRACT_FLIP_QUERY =
-        'query RefractFlip($id: ID!) {' +
-        '  findPerformer(id: $id) { id rating100 favorite o_counter scene_count measurements height_cm weight career_length birthdate custom_fields tags { id name } }' +
-        '  findScenes(scene_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 9, sort: "rating", direction: DESC }) { count scenes { id title rating100 paths { screenshot } } }' +
-        '  findImages(image_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 9, sort: "rating", direction: DESC }) { count images { id paths { thumbnail } } }' +
-        '}';
+    /* custom_fields is the per-performer back-image override, and it landed
+       in Stash 0.28. Before that this whole query was rejected for naming
+       it, so on 0.26 and 0.27 every card back lost its stats, its scene
+       strip and its photo strip over one optional line. */
+    var REFRACT_FLIP_CF = { narrow: false };
+    function refractFlipQueryText(full) {
+        return 'query RefractFlip($id: ID!) {' +
+            '  findPerformer(id: $id) { id rating100 favorite o_counter scene_count measurements height_cm weight career_length birthdate' +
+            (full ? ' custom_fields' : '') + ' tags { id name } }' +
+            '  findScenes(scene_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 9, sort: "rating", direction: DESC }) { count scenes { id title rating100 paths { screenshot } } }' +
+            '  findImages(image_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 9, sort: "rating", direction: DESC }) { count images { id paths { thumbnail } } }' +
+            '}';
+    }
+    function refractFlipFetch(pid) {
+        return refractQueryOptional(REFRACT_FLIP_CF, ["custom_fields"],
+            refractFlipQueryText, { id: pid });
+    }
     /* The customiser previews the back by building it onto the preview's real
        performer card and showing that face directly. No flip animation: this
        is a preview, and a card that spins every time you toggle a chip is
@@ -7276,6 +7478,16 @@
     }
 
     function refractSetBackOverride(pid, val) {
+        /* Custom fields are a Stash 0.28 feature and there is no older
+           equivalent, so the per-performer override genuinely cannot be
+           saved on 0.26 or 0.27. If the read already told us the server has
+           no custom_fields, say what is wrong in plain words rather than
+           letting the toolbar report a GraphQL type name. */
+        if (REFRACT_PB_CF.narrow || REFRACT_FLIP_CF.narrow) {
+            return Promise.reject(new Error(
+                "This Stash has no custom fields, so a per-performer back image cannot be saved. " +
+                "Stash 0.28 or newer supports it; the global back-image rule works on every version."));
+        }
         var m = "mutation RefractBackOverride($id: ID!, $cf: CustomFieldsInput!) {" +
                 "  performerUpdate(input: { id: $id, custom_fields: $cf }) { id }" +
                 "}";
@@ -7317,16 +7529,36 @@
        and, once built, the back. The stage tracks the image's box through a
        ResizeObserver, so the collapsed header and window resizes keep it in
        register. */
-    var REFRACT_PB_QUERY =
-        'query RefractPerformerBack($id: ID!) {' +
-        '  findPerformer(id: $id) { id name gender rating100 custom_fields }' +
-        '  findScenes(scene_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 12, sort: "rating", direction: DESC }) { scenes { id title paths { screenshot } } }' +
-        '  findImages(image_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 12, sort: "rating", direction: DESC }) { images { id title paths { thumbnail } } }' +
-        '}';
+    /* Same custom_fields story as the flip query: without the narrow form,
+       a Stash older than 0.28 answered nothing here, so the photo flip on
+       the performer page never appeared at all. It appears now, reading the
+       global rule; only the per-performer override is genuinely unavailable
+       on those servers, and the toolbar says so when a write fails. */
+    var REFRACT_PB_CF = { narrow: false };
+    function refractPbQueryText(full) {
+        return 'query RefractPerformerBack($id: ID!) {' +
+            '  findPerformer(id: $id) { id name gender rating100' + (full ? ' custom_fields' : '') + ' }' +
+            '  findScenes(scene_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 12, sort: "rating", direction: DESC }) { scenes { id title paths { screenshot } } }' +
+            '  findImages(image_filter: { performers: { value: [$id], modifier: INCLUDES } }, filter: { per_page: 12, sort: "rating", direction: DESC }) { images { id title paths { thumbnail } } }' +
+            '}';
+    }
 
     function refractPerformerIdFromUrl() {
         var m = String(location.pathname).match(/^\/performers\/(\d+)/);
         return m ? m[1] : null;
+    }
+
+    /* The placeholder recolour in 03_cards.css matches on the img's src, and
+       the front face of this stage is not an img: it is a div carrying the
+       same URL as a background, with the real img left visibility:hidden
+       underneath it. So the attribute selector could never see it, and on a
+       performer with no picture the page painted Stash's raw white
+       silhouette while every card in the library painted the accent one.
+       Measured on a clean install, light mode: the white shape on the white
+       header plate read 255,255,255 against a 255,255,255 ground. The class
+       is what CSS can match; the src question is answered here. */
+    function refractMarkDefaultFace(el, src) {
+        refractSetClass(el, "refract-pp-default", /[?&]default=true/.test(String(src || "")));
     }
 
     function applyPerformerBackControl() {
@@ -7379,6 +7611,7 @@
         var stage = root.querySelector(".refract-pp-stage");
         var frontCopy = root.querySelector(".refract-pp-front");
         var lastSrc = img.getAttribute("src") || "";
+        refractMarkDefaultFace(frontCopy, lastSrc);
         /* React owns the <img> and replaces it -- Stash's own "Set image
            (front)" swaps the node. fit() re-resolves it every pass instead of
            closing over a node that may be detached, and the front copy
@@ -7401,6 +7634,7 @@
             if (src && src !== lastSrc) {
                 lastSrc = src;
                 frontCopy.style.backgroundImage = "url('" + src.replace(/'/g, "%27") + "')";
+                refractMarkDefaultFace(frontCopy, src);
             }
             /* The anchor travels with the box: the front copy and the back
                read it from the stage. */
@@ -7426,7 +7660,7 @@
             if (b) { b.click(); }
         });
 
-        gqlWithVars(REFRACT_PB_QUERY, { id: pid }).then(function (res) {
+        refractQueryOptional(REFRACT_PB_CF, ["custom_fields"], refractPbQueryText, { id: pid }).then(function (res) {
             var d = res && res.data;
             if (!d) { return; }
             refractRenderPageCard(root, host, img, pid, d);
@@ -8004,7 +8238,7 @@
         card.appendChild(back);
         refractPaintBack(back, portrait, null);
 
-        gqlWithVars(REFRACT_FLIP_QUERY, { id: pid }).then(function (res) {
+        refractFlipFetch(pid).then(function (res) {
             var d = res && res.data;
             refractPaintBack(back, portrait, d);
         }).catch(function () { /* the portrait fallback is already painted */ });
@@ -8285,7 +8519,7 @@
             titleEl2.insertBefore(gIcon, nameEl2);
         }
 
-        gqlWithVars(REFRACT_FLIP_QUERY, { id: pid }).then(function (res) {
+        refractFlipFetch(pid).then(function (res) {
             var d = res && res.data;
             var p = d && d.findPerformer;
             var scenes = d && d.findScenes && d.findScenes.scenes;
@@ -8845,7 +9079,7 @@
 
     function loadAndShow() {
         renderLoading();
-        gql(QUERY_ROOT_TAGS)
+        refractQueryOptional(QUERY_ROOT_TAGS_SN, ["sort_name"], refractRootTagsQueryText)
             .then(function (data) {
                 if (data.errors && data.errors.length) {
                     renderError(data.errors[0].message || "GraphQL error");
@@ -12375,7 +12609,7 @@
             if (trigger) { trigger.click(); }
         }, { passive: true, capture: true });
     }
-    bindPageJumpScrollDismiss();
+    refractInit(function () { bindPageJumpScrollDismiss(); });
 
     /* ── Table list view: strip overflowable so hover-popup never fires ── */
 
@@ -12931,8 +13165,8 @@
 
                 /* Try Slick jQuery API first, fall back to clicking nav buttons */
                 try {
-                    if (window.$ && $(slider).slick) {
-                        $(slider).slick(dir > 0 ? "slickNext" : "slickPrev");
+                    if (window.$ && window.$(slider).slick) {
+                        window.$(slider).slick(dir > 0 ? "slickNext" : "slickPrev");
                         return;
                     }
                 } catch (err) { /* no jQuery slick */ }
@@ -13139,7 +13373,7 @@
 
     /* Initial fixSceneTaggerDetails pass - subsequent passes run via the
        consolidated mutation watcher at the end of this file. */
-    fixSceneTaggerDetails();
+    refractInit(function () { fixSceneTaggerDetails(); });
 
     /* ── Performer Tagger: relocate batch buttons into header ──────────
        The PerformerTagger page renders three action buttons (Batch Add,
@@ -13169,7 +13403,7 @@
             header.dataset.refractBatchMoved = "1";
         });
     }
-    relocateTaggerBatchButtons();
+    refractInit(function () { relocateTaggerBatchButtons(); });
 
     /* PerformerTagger search results - inject a close X button so the
        user can dismiss the result overlay without picking a match.
@@ -13199,7 +13433,7 @@
             results.appendChild(btn);
         });
     }
-    injectTaggerSearchClose();
+    refractInit(function () { injectTaggerSearchClose(); });
 
     /* Global capture-phase listener: when the user clicks the
        "Search" button inside a PerformerTagger card, un-hide any
@@ -14390,6 +14624,7 @@
         });
     }
 
+    var REFRACT_TAGEDIT_SN = { narrow: false };
     function refractLoadTagEditorData(pid) {
         if (refractTagEditorState.loaded || refractTagEditorState.loading) return;
         refractTagEditorState.loading = true;
@@ -14398,15 +14633,19 @@
             'query FindPerformerForTagEditor($id: ID!) {' +
             '  findPerformer(id: $id) { id tags { id name } }' +
             '}';
-        var tagsQ =
-            'query FindAllTagsForTagEditor {' +
-            '  findTags(filter: { per_page: -1, sort: "name", direction: ASC }) {' +
-            '    tags { id name sort_name description image_path parents { id name } children { id } }' +
-            '  }' +
-            '}';
+        /* sort_name again (Stash 0.28). The editor already falls back to
+           `name` for every tag that has no sort name, so the narrow form
+           costs nothing but the grouping order on an older server. */
+        function tagsQ(full) {
+            return 'query FindAllTagsForTagEditor {' +
+                '  findTags(filter: { per_page: -1, sort: "name", direction: ASC }) {' +
+                '    tags { id name' + (full ? ' sort_name' : '') + ' description image_path parents { id name } children { id } }' +
+                '  }' +
+                '}';
+        }
         Promise.all([
             gqlWithVars(perfQ, { id: pid }),
-            gql(tagsQ),
+            refractQueryOptional(REFRACT_TAGEDIT_SN, ["sort_name"], tagsQ),
         ]).then(function (results) {
             var pdata = results[0] && results[0].data && results[0].data.findPerformer;
             var tdata = results[1] && results[1].data && results[1].data.findTags;
@@ -16570,7 +16809,7 @@
         injectPerformerCarouselChevrons();
     }
 
-    applyScenePlayerFixes(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { applyScenePlayerFixes(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Replace home-page "View All" anchor text with an empty content so CSS can
     // overlay a chevron via ::after without fighting other rules' specificity.
@@ -16592,7 +16831,7 @@
             a.textContent = "";
         }
     }
-    tagViewAllLinks(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { tagViewAllLinks(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Lightbox consolidation: move the page indicator + header buttons (gear,
     // slideshow, fullscreen, close) from the top header bar into the bottom
@@ -16639,7 +16878,7 @@
             indicator.__refractCountObs = obs;
         }
     }
-    consolidateLightbox(); /* initial pass - bridge runs idempotently */
+    refractInit(function () { consolidateLightbox(); }); /* initial pass - bridge runs idempotently */
 
     // Scene header studio name: Stash renders only the studio logo as an
     // <img> inside <h1.studio-logo><a><img alt="…"></a></h1>; the visible
@@ -16827,7 +17066,7 @@
             a.dataset.stStudioInjected = "1";
         }
     }
-    injectStudioName(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { injectStudioName(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Settings → Plugins page: replace each plugin's native
     // [Enable]/[Disable] btn-sm with a Bootstrap custom-switch toggle so
@@ -16905,7 +17144,7 @@
             safeInsertBefore(rightSide, wrap, rightSide.firstChild);
         }
     }
-    injectPluginToggles(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { injectPluginToggles(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Settings → Plugins page: sort the installed-plugin list alphabetically
     // (A→Z), regardless of enabled/disabled state. This matches the native
@@ -17046,7 +17285,7 @@
             })(moved);
         }
     }
-    sortPluginList(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { sortPluginList(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Settings → Plugins page: each plugin renders its inline settings,
     // hooks, etc. always-expanded, which makes the list very long. Inject
@@ -17106,7 +17345,7 @@
             group.dataset.stCollapsibleInjected = "1";
         }
     }
-    makePluginSettingsCollapsible(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { makePluginSettingsCollapsible(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Settings → Plugins page: take over the "Reload plugins" .setting
     // row - replace its h3 title with a live search input, and strip
@@ -17203,7 +17442,7 @@
         reloadRow.classList.add("st-plugin-reload-row");
         reloadRow.dataset.stSearchInjected = "1";
     }
-    injectPluginSearch(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { injectPluginSearch(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Settings → Tasks page: mirrors makePluginSettingsCollapsible + injectPluginSearch
     // for the Plugin Tasks card. Identical chevron (st-plugin-chevron) and collapse
@@ -17326,7 +17565,7 @@
             group.dataset.stTaskChevronDone = "1";
         }
     }
-    setupTaskPluginGroups(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { setupTaskPluginGroups(); }); /* initial pass; re-runs via consolidated watcher */
 
     // Settings → Tasks page: native task groups (Scan / Auto Tag / Generate /
     // Clean / Identify / Migrate). Mirrors setupTaskPluginGroups but anchored
@@ -17386,7 +17625,7 @@
             group.dataset.stTaskChevronDone = "1";
         }
     }
-    setupNativeTaskGroups(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { setupNativeTaskGroups(); }); /* initial pass; re-runs via consolidated watcher */
 
     /* Task Queue progress - inline percentage next to the title.
        Bootstrap renders the percentage as text INSIDE .progress-bar; the
@@ -17427,7 +17666,7 @@
             }
         }
     }
-    setupTaskQueuePercent(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { setupTaskQueuePercent(); }); /* initial pass; re-runs via consolidated watcher */
 
     /* Task Queue per-row expand: each job row is fixed at 110px so
        the card grows with job count not subtask churn. A chevron in
@@ -17511,7 +17750,7 @@
         }, true);
     }
 
-    setupTaskJobChevrons();
+    refractInit(function () { setupTaskJobChevrons(); });
 
     /* Inject a sun/moon light-mode toggle into the navbar utility cluster
        (right side, next to the burger / settings cog). Idempotent -
@@ -17564,7 +17803,7 @@
         });
         buttons.appendChild(btn);
     }
-    injectNavLightToggle();
+    refractInit(function () { injectNavLightToggle(); });
 
     /* Inject a "Show light-mode toggle in navbar" switch row into Stash's
        Interface tab, alongside the other menu-item visibility toggles.
@@ -17618,7 +17857,7 @@
 
         target.appendChild(row);
     }
-    injectInterfaceLightToggleSetting();
+    refractInit(function () { injectInterfaceLightToggleSetting(); });
 
     /* Inject a "Help button" switch row into Stash's Interface tab Menu
        Items section, alongside the other menu-item visibility toggles.
@@ -17672,7 +17911,7 @@
 
         target.appendChild(row);
     }
-    injectInterfaceHelpToggleSetting();
+    refractInit(function () { injectInterfaceHelpToggleSetting(); });
 
     /* Relocated Refract settings: a full "Refract" section appended to
        Settings -> Interface, so theme settings live with the rest of the
@@ -17798,7 +18037,7 @@
             setTimeout(function () { section.scrollIntoView({ block: "start" }); }, 60);
         }
     }
-    injectInterfaceRefractSection();
+    refractInit(function () { injectInterfaceRefractSection(); });
 
     /* ── Navbar drag-to-reorder (iOS-style) ─────────────────────────────
        Pointer-events + FLIP animation so icons slide out of the way live.
@@ -18183,7 +18422,7 @@
             }).observe(navRow, { childList: true });
         }
     }
-    setupNavbarReorder(); /* initial pass; re-runs via consolidated watcher */
+    refractInit(function () { setupNavbarReorder(); }); /* initial pass; re-runs via consolidated watcher */
 
     /* ── Scene video-filter swatches ─────────────────────────────────────
        Replace the numeric read-out at the end of each colour/tonal filter
