@@ -50,7 +50,12 @@
             body: JSON.stringify({ query: '{ configuration { plugins } }' })
         });
         const j = await r.json();
-        const raw = j?.data?.configuration?.plugins?.multiView?.queue;
+        const plugins = j?.data?.configuration?.plugins;
+        // A failed read must not look like an empty queue: callers write
+        // their change on top of it (wiping the queue) or render it (an
+        // empty wall). Throw so they keep the cache and skip the write.
+        if (!r.ok || j?.errors?.length || !plugins) throw new Error('multiView: config read failed');
+        const raw = plugins.multiView?.queue;
         try { const a = JSON.parse(raw || '[]'); return Array.isArray(a) ? a : []; }
         catch { return []; }
     }
@@ -299,11 +304,13 @@
         btn.title = isQueued(id) ? 'Remove from Multiview' : 'Add to Multiview';
         btn.innerHTML = GRID_ICON_SVG;
 
+        // Read the scene id at click time: Stash keeps the scene page (and
+        // this button) mounted when going from one scene to another, so an
+        // id captured at creation would toggle the previous scene.
         btn.addEventListener('click', () => {
-            toggleScene(id);
-            const queued = isQueued(id);
-            btn.classList.toggle('active', queued);
-            btn.title = queued ? 'Remove from Multiview' : 'Add to Multiview';
+            const m = window.location.pathname.match(/^\/scenes\/(\d+)/);
+            if (!m) return;
+            toggleScene(m[1]);   // reflectQueue() refreshes this button
         });
 
         toolbar.appendChild(btn);
@@ -463,7 +470,7 @@
 
     // ?"??"? SVG icon ?"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"?
 
-    const GRID_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>`;
+    const GRID_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="10" height="12" rx="2.25"></rect><rect x="14.5" y="2.5" width="7" height="7" rx="2"></rect><rect x="14.5" y="11.5" width="7" height="10" rx="2"></rect><rect x="2.5" y="16.5" width="10" height="5" rx="2"></rect></svg>`;
 
     const PLUS_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12H18M12 6V18"/></svg>`;
 
