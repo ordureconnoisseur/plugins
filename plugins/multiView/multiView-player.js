@@ -136,7 +136,7 @@
     // �"?�"? Web Audio �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
     let audioCtx = null;
-    const cellGains = new Map(); // id ��' GainNode
+    const cellGains = new Map(); // id -> { video, gain }
 
     function getAudioCtx() {
         if (!audioCtx) {
@@ -148,7 +148,9 @@
     }
 
     function connectAudio(id, video) {
-        if (cellGains.has(id)) return; // already connected
+        if (cellGains.get(id)?.video === video) return; // already connected
+        // One for a video before it, whose tile is gone, goes.
+        disconnectAudio(id);
         try {
             const ctx = getAudioCtx();
             const source = ctx.createMediaElementSource(video);
@@ -156,7 +158,7 @@
             gain.gain.value = playerSettings.defaultVolume;
             source.connect(gain);
             gain.connect(ctx.destination);
-            cellGains.set(id, gain);
+            cellGains.set(id, { video, gain });
         } catch (e) {
             // Silently ignore �?" audio still works via video.volume fallback
         }
@@ -164,16 +166,17 @@
 
     function setGain(id, value) {
         getAudioCtx(); // ensure context is resumed
-        const gain = cellGains.get(id);
-        if (gain) gain.gain.value = value;
+        const entry = cellGains.get(id);
+        if (entry) entry.gain.gain.value = value;
     }
 
-    function disconnectAudio(id) {
-        const gain = cellGains.get(id);
-        if (gain) {
-            try { gain.disconnect(); } catch {}
-            cellGains.delete(id);
-        }
+    // Scene id's Web Audio let go: only if it is `video`'s, when one is given
+    // (a tile going while another for the same scene may have it).
+    function disconnectAudio(id, video) {
+        const entry = cellGains.get(id);
+        if (!entry || (video && entry.video !== video)) return;
+        try { entry.gain.disconnect(); } catch {}
+        cellGains.delete(id);
     }
 
     // �"?�"? Queue �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
@@ -693,7 +696,7 @@
     // seek fires after a short idle so rapid scrolling on transcoded streams
     // doesn't trigger one reload per tick. `extraDelay` staggers a grid-wide
     // seek so 16 cells don't all re-request their transcode on the same tick.
-    const wheelPending = new Map(); // id -> { delta, timeout }
+    const wheelPending = new Map(); // id -> { delta, timeout, video }
 
     function scheduleWheelSeek(id, video, delta, extraDelay = 0) {
         let pending = wheelPending.get(id);
@@ -704,6 +707,7 @@
             pending = { delta };
             wheelPending.set(id, pending);
         }
+        pending.video = video;
         pending.timeout = setTimeout(() => {
             const d = pending.delta;
             wheelPending.delete(id);
@@ -1564,15 +1568,26 @@
         const tracker = { sceneId: id, accumulated: 0, sessionStart: null, addPlaySent: false };
         playTrackers.set(video, tracker);
 
+        // The clock runs only while it plays: from `play` (or `playing` after
+        // a stall) to `pause`, `ended`, a stall (`waiting`), an error, or its
+        // stream going (`emptied`). An error needs its own stop: Firefox
+        // doesn't pause on one, so a tile that froze on it would go on
+        // counting.
+        const start = () => { if (tracker.sessionStart == null) tracker.sessionStart = performance.now(); };
+        const stop = () => { accumulatePlay(tracker); tracker.sessionStart = null; };
         video.addEventListener('play', () => {
-            if (tracker.sessionStart == null) tracker.sessionStart = performance.now();
+            start();
             if (!tracker.addPlaySent) {
                 tracker.addPlaySent = true;
                 sceneAddPlay(id);
             }
         });
-        video.addEventListener('pause', () => accumulatePlay(tracker));
-        video.addEventListener('ended', () => accumulatePlay(tracker));
+        video.addEventListener('playing', start);
+        video.addEventListener('pause', stop);
+        video.addEventListener('ended', stop);
+        video.addEventListener('waiting', stop);
+        video.addEventListener('error', stop);
+        video.addEventListener('emptied', stop);
 
         if (!activityFlushTimer) {
             activityFlushTimer = setInterval(flushAllTrackers, ACTIVITY_FLUSH_MS);
@@ -1651,10 +1666,252 @@
     // time one is made for it, as a resume position does. t seconds in, or
     // 0 for the top.
     window.multiViewStartAt = (id, t) => {
-        if (t > 0) setResumeTime(id, t); else clearResumeTime(id);
+        // Under PROGRESS_MIN_SAVE a resume position isn't kept, so that is
+        // the top too (rather than leaving an older position standing).
+        if (t >= PROGRESS_MIN_SAVE) setResumeTime(id, t); else clearResumeTime(id);
         flushProgressMap();
         return true;
     };
+
+    // Where a new tile for a scene starts: at A of its loop (inside a loop,
+    // "where I left off" means nothing), else where it was left off (never
+    // for a filter slot), unless that is at or past the end (the scene
+    // re-encoded shorter, or saved right at the end): then the top, rather
+    // than a ?start= past the end of the file.
+    function startTimeFor(id, isFilterBacked) {
+        const loop = isFilterBacked ? null : getLoop(id);
+        if (loop) return loop.a;
+        let t = isFilterBacked ? 0 : getResumeTime(id);
+        const dur = scenes[id]?.duration;
+        if (t > 0 && dur && t > dur - PROGRESS_END_MARGIN) {
+            t = 0;
+            clearResumeTime(id);
+        }
+        return t;
+    }
+
+    // ── A scene got ready ahead ────────────────────────────────────────────
+    // For a remote that knows what comes next (the multiview-wall service's
+    // binge, one scene at a time): window.multiViewPreload(id, t) opens that
+    // scene's stream now, t seconds in, in a hidden paused video. The next
+    // tile made for it takes that video over when it would open the same
+    // stream at the same place, so it starts at once instead of waiting for
+    // a transcode to start. One at a time; a new call replaces it, and
+    // multiViewPreload(null) drops it.
+    let warm = null;      // { id, t, key, video, timer, home }
+    const WARM_RATE = 0.0625;   // the slowest a <video> plays
+    // Crept on further than this when taken over, it goes back (takeWarm).
+    const WARM_DRIFT_S = 0.5;
+    // Not asked for again in this long (the same multiViewPreload call),
+    // it is dropped: the remote has stopped wanting it (it crashed, or moved
+    // on without saying), and its stream holds a transcode open.
+    const WARM_LIFE_MS = 2 * 60 * 1000;
+    let warmCalls = 0;
+    const warmKey = (src, t) => src + '|' + t;
+
+    const warmLife = v => setTimeout(() => { if (warm?.video === v) dropWarm(); }, WARM_LIFE_MS);
+
+    // Whether t, in the video's own time, is in these ranges (its buffered
+    // or seekable).
+    function within(ranges, t) {
+        for (let i = 0; i < ranges.length; i++) if (ranges.start(i) <= t + 0.1 && t <= ranges.end(i)) return true;
+        return false;
+    }
+
+    function dropWarm() {
+        if (!warm) return;
+        const v = warm.video;
+        clearTimeout(warm.timer);
+        warm = null;
+        try { v.pause(); v.removeAttribute('src'); v.load(); } catch {}
+        v.remove();
+    }
+
+    // The ready video for this tile, if it is the same stream and place; any
+    // other is dropped, since this tile is what it was got ready for.
+    function takeWarm(id, src, t) {
+        if (!warm) return null;
+        if (warm.id !== id || warm.key !== warmKey(src, t) || warm.video.error) {
+            if (warm.id === id) dropWarm();
+            return null;
+        }
+        const v = warm.video;
+        const home = warm.home;
+        clearTimeout(warm.timer);
+        warm = null;
+        // Paused, so the tile's own play() gives the events a new video
+        // gives: `play` (the play count), then `playing`, or `waiting` (stall
+        // recovery) if it stalled while it waited.
+        v.pause();
+        // Crept on while it waited (a few seconds a minute): back to where
+        // it was asked for, if that is still buffered and the browser can
+        // seek there (as jumpToLoopStart asks). If not, on from here rather
+        // than a new stream.
+        if (v.currentTime - home > WARM_DRIFT_S && within(v.buffered, home) && within(v.seekable, home)) {
+            try { v.currentTime = home; } catch {}
+        }
+        v.removeAttribute('style');
+        v.preload = 'auto';
+        v.defaultPlaybackRate = 1;
+        v.playbackRate = 1;
+        return v;
+    }
+
+    window.multiViewPreload = async (id, t = 0) => {
+        const call = ++warmCalls;
+        if (id === null || id === undefined) { dropWarm(); return true; }
+        id = String(id);
+        const asked = Number(t) || 0;
+        const onWall = () => [...document.querySelectorAll('.mv-cell')].some(c => c.dataset.sceneId === id);
+        // Where its tile starts, as a resume position does. Not while a tile
+        // for it is up (that one's own position stands), and not again for
+        // the same ask (a remote asks every second or so while it wants it).
+        if (!onWall() && !(warm?.id === id && warm.t === asked)) window.multiViewStartAt(id, t);
+        await loadSceneMeta([id]);
+        if (call !== warmCalls) return false;
+        // Already on the wall (it went up meanwhile), or nothing to play.
+        if (onWall() || scenes[id]?.noFile) { dropWarm(); return false; }
+        const src = pickStream(id);
+        const start = startTimeFor(id, filterBackedCells.has(id));
+        if (warm?.id === id && warm.key === warmKey(src, start) && !warm.video.error) {
+            // Still wanted: it lives on, as what was asked for now (another t
+            // can be the same stream: under 5 s is the top, a loop starts at
+            // its A).
+            warm.t = asked;
+            clearTimeout(warm.timer);
+            warm.timer = warmLife(warm.video);
+            return true;
+        }
+        dropWarm();
+        const v = document.createElement('video');
+        v.muted = true;
+        v.playsInline = true;
+        v.disablePictureInPicture = true;
+        v.preload = 'auto';
+        // Out of sight but in the page, so its first frame is decoded too.
+        v.style.cssText = 'position:fixed;left:0;top:0;width:16px;height:9px;opacity:0;pointer-events:none;z-index:-1';
+        // Where it was asked for, in its own time, the time base the player
+        // uses for it (see effectivePlayhead): a ?start= stream counts from
+        // its start.
+        let home = start;
+        if (start > 0 && isTranscodeUrl(src)) {
+            v.src = withStart(src, start);
+            home = 0;
+        } else {
+            v.src = src;
+            if (start > 0) v.addEventListener('loadedmetadata', () => { try { v.currentTime = start; } catch {} }, { once: true });
+        }
+        v.addEventListener('error', () => { if (warm?.video === v) dropWarm(); }, { once: true });
+        // Kept creeping forward rather than paused: the browser closes a
+        // paused video's stream after some seconds of not reading it, and a
+        // transcode can't carry on from where it stopped, so the tile would
+        // wait for a new one. At 1/16 speed it moves on a few seconds a
+        // minute, and the stream stays open.
+        v.addEventListener('canplay', () => {
+            if (warm?.video !== v) return;
+            v.playbackRate = WARM_RATE;
+            v.play().catch(() => {});
+        }, { once: true });
+        document.body.appendChild(v);
+        warm = { id, t: asked, key: warmKey(src, start), video: v, timer: warmLife(v), home };
+        return true;
+    };
+    // What is ready: { id, t } as asked for (t as given), and how far its
+    // video got (readyState), or null.
+    window.multiViewPreloaded = () => warm && { id: warm.id, t: warm.t, ready: warm.video.readyState };
+
+    // ── Crossfade ─────────────────────────────────────────────────────────
+    // For a remote showing one scene at a time (the multiview-wall service's
+    // binge): with window.multiViewCrossfade = ms, a scene that replaces the
+    // only one on the wall comes in underneath it, and the old one, moved to
+    // a layer in the new tile over its picture, plays on until the new one
+    // has put a frame on screen, then fades out over ms, its sound with it.
+    // So no cut, and no black tile with a spinner while the new one loads.
+    // The layer sits under the new tile's controls and is its size whatever
+    // the layout does (see .mv-leaving). Unset or 0: a cut.
+    const FADE_WAIT_MS = 8000;   // the longest the old one waits for a new one's picture
+    // The old video's events that would act for its tile, which is gone:
+    // stall recovery, the A/B loop, the full scene after a partial pass, a
+    // filter tile moving on. `play` and `pause` still get through, for the
+    // play count and the Play/Pause All button. So at its end it stops on
+    // its last frame.
+    const LEAVING_BLOCKED = ['abort', 'canplay', 'canplaythrough', 'durationchange', 'emptied', 'ended',
+        'error', 'loadeddata', 'loadedmetadata', 'loadstart', 'playing', 'progress', 'ratechange', 'seeked',
+        'seeking', 'stalled', 'suspend', 'timeupdate', 'volumechange', 'waiting'];
+    let leaving = null;          // { el, video, id, ms, incoming, started, cap, done, raf, gain }
+
+    function crossfadeMs() {
+        const n = Number(window.multiViewCrossfade);
+        return n > 0 ? Math.min(n, 5000) : 0;
+    }
+
+    function finishLeaving() {
+        if (!leaving) return;
+        const l = leaving;
+        leaving = null;
+        clearTimeout(l.cap);
+        clearTimeout(l.done);
+        cancelAnimationFrame(l.raf);
+        teardownPlayTracking(l.video);
+        l.video._mvCleanup?.();
+        if (l.gain) try { l.gain.disconnect(); } catch {}
+        l.el.remove();
+    }
+
+    function startFade(l) {
+        if (leaving !== l || l.started) return;
+        l.started = true;
+        clearTimeout(l.cap);
+        void l.el.offsetWidth;   // its opacity 1 computed, so the change transitions
+        l.el.classList.add('mv-gone');
+        // The sound goes down with the picture.
+        const v0 = l.video.volume;
+        const step = () => {
+            if (leaving !== l) return;
+            const o = Number(getComputedStyle(l.el).opacity);
+            l.video.volume = Math.min(1, Math.max(0, v0 * o)) || 0;
+            if (o > 0) l.raf = requestAnimationFrame(step);
+        };
+        l.raf = requestAnimationFrame(step);
+        l.done = setTimeout(() => { if (leaving === l) finishLeaving(); }, l.ms + 100);
+    }
+
+    // Into `incoming`'s tile, over its picture, and fade once that presents
+    // a frame (where frames can't be watched, once it plays), or after
+    // FADE_WAIT_MS at the latest.
+    function fadeWhenReady(l, incoming) {
+        l.incoming = incoming;
+        // Straight from one tile to the other, so the video stays in the
+        // page and isn't paused on the way.
+        incoming.after(l.el);
+        const go = () => { if (l.incoming === incoming) startFade(l); };
+        if (incoming.requestVideoFrameCallback) incoming.requestVideoFrameCallback(go);
+        else incoming.addEventListener('playing', go, { once: true });
+        clearTimeout(l.cap);
+        l.cap = setTimeout(() => startFade(l), FADE_WAIT_MS);
+    }
+
+    // Scene `id`'s video, still playing, leaves its tile for a layer in
+    // `incoming`'s.
+    function crossfadeOut(id, video, incoming, ms) {
+        finishLeaving();
+        video._mvRetire?.();
+        const el = document.createElement('div');
+        el.className = 'mv-leaving';
+        el.style.transitionDuration = ms + 'ms';
+        for (const type of LEAVING_BLOCKED) el.addEventListener(type, e => e.stopPropagation(), true);
+        // Its Web Audio goes with it, so a tile for the same scene coming
+        // back meanwhile gets its own.
+        const audio = cellGains.get(id);
+        const gain = audio?.video === video ? audio.gain : null;
+        if (gain) cellGains.delete(id);
+        const l = { el, video, id, ms, incoming: null, started: false, cap: 0, done: 0, raf: 0, gain };
+        leaving = l;
+        fadeWhenReady(l, incoming);
+        // The layer in the page first, so the video goes from one place in
+        // it to another and isn't paused on the way.
+        el.appendChild(video);
+    }
 
     // Snapshot every non-filter cell's effective playhead into the map.
     function snapshotAllProgress() {
@@ -1957,7 +2214,8 @@
             applyJustifiedLayout();
             return;
         }
-        const videos = [...document.querySelectorAll('.mv-cell video')];
+        // The tiles' own videos: not a crossfade's old one, in a tile's layer.
+        const videos = [...document.querySelectorAll('.mv-cell > video')];
         const loaded = videos.filter(v => v.videoWidth > 0 && v.videoHeight > 0);
         if (!loaded.length) return;
 
@@ -2157,6 +2415,7 @@
 
     // �"?�"? Play / Pause All �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 
+    // Every video in a tile, a crossfade's old one included.
     function playPauseAll() {
         const videos = [...document.querySelectorAll('.mv-cell video')];
         const anyPlaying = videos.some(v => !v.paused);
@@ -2228,6 +2487,8 @@
             queue.forEach(id => typeof id === 'string' && !scenes[id]?.noFile && unmutedIds.add(id));
         }
         document.querySelectorAll('.mv-cell').forEach(applyAudioCell);
+        // A crossfade's old scene too, which no longer has a tile.
+        if (leaving && !unmutedIds.has(leaving.id)) leaving.video.muted = true;
         updateMuteAllBtn();
     }
 
@@ -2411,12 +2672,26 @@
         cell.append(msg, overlay);
     }
 
+    // A tile going: its play time sent, its stream and timers stopped, its
+    // Web Audio let go.
+    function removeCell(cell) {
+        const v = cell.querySelector('video');
+        if (v) {
+            teardownPlayTracking(v);
+            v._mvCleanup?.();
+            disconnectAudio(cell.dataset.sceneId, v);
+        }
+        cell.remove();
+    }
+
     function render() {
         const grid = document.getElementById('mv-grid');
         const empty = document.getElementById('mv-empty');
         const titleEl = document.getElementById('mv-title');
 
         if (queue.length === 0) {
+            finishLeaving();
+            for (const cell of Array.from(grid.children)) removeCell(cell);
             grid.innerHTML = '';
             grid.className = 'layout-1x1';
             empty.style.display = 'flex';
@@ -2442,6 +2717,10 @@
             if (cid && !existing.has(cid)) existing.set(cid, cell); // canonical = first cell per id
         }
         const queueSet = new Set(queue);
+        // The only tile, for a crossfade into the one replacing it.
+        const soleOld = crossfadeMs() > 0 && grid.children.length === 1 ? grid.children[0] : null;
+        const created = [];   // this pass's new videos
+        let addedCells = 0;
 
         // Insert at correct queue position instead of appending to end, and
         // register the new cell so a duplicate of this id later in the same
@@ -2457,6 +2736,7 @@
             }
             grid.insertBefore(cell, refCell);
             existing.set(id, cell);
+            addedCells++;
         };
 
         // Add new cells at their correct queue position (before removal to avoid layout flash)
@@ -2485,19 +2765,13 @@
             const staggerSlot = newCellOrdinal++;
 
 
-            const video = document.createElement('video');
             const baseSrc = pickStream(id);
-            // A looped scene opens at A instead of wherever it was left off:
-            // inside a loop, "where I left off" has no meaning.
             const cellLoop = isFilterBacked ? null : getLoop(id);
-            let resumeTime = cellLoop ? cellLoop.a : (isFilterBacked ? 0 : getResumeTime(id));
-            const dur = scenes[id]?.duration;
-            if (!cellLoop && resumeTime > 0 && dur && resumeTime > dur - PROGRESS_END_MARGIN) {
-                // Stale/at-or-past-end offset (scene re-encoded shorter, or saved
-                // right at the end). Start fresh rather than ?start= past EOF.
-                resumeTime = 0;
-                clearResumeTime(id);
-            }
+            const resumeTime = startTimeFor(id, isFilterBacked);
+            // A video got ready ahead for this same stream and place
+            // (multiViewPreload) is taken over: the tile starts at once.
+            const warmVideo = takeWarm(id, baseSrc, resumeTime);
+            const video = warmVideo || document.createElement('video');
             const isTranscodeSrc = isTranscodeUrl(baseSrc);
             // A transcode resumed via ?start= only contains [resumeTime, end], so
             // native loop would replay just that tail forever. Start it unlooped
@@ -2507,6 +2781,16 @@
             // (invoked from the staggered start below) so a full grid doesn't
             // fire every transcode request at the same instant.
             const applyInitialSrc = () => {
+                if (warmVideo) {
+                    // Its stream is open at resumeTime already. Replay what it
+                    // has been through for the handlers wired above, then play
+                    // (takeWarm paused it, so `play` and the rest follow).
+                    if (resumeTime > 0 && isTranscodeSrc) seekBases.set(id, resumeTime);
+                    if (video.readyState >= 1) video.dispatchEvent(new Event('loadedmetadata'));
+                    if (video.readyState >= 3) video.dispatchEvent(new Event('canplay'));
+                    video.play().catch(() => {});
+                    return;
+                }
                 if (resumeTime > 0 && isTranscodeSrc) {
                     // Transcode resume is reliable via ?start=; currentTime seeking
                     // on a live transcode is not.
@@ -2615,15 +2899,22 @@
                 }, SUSTAINED_PLAY_MS);
             });
             video.addEventListener('error', recoverVideo);
-            video._mvCleanup = () => {
+            // The tile's timers stop, and no recovery starts; the video plays
+            // on (a crossfade's old one, see crossfadeOut).
+            video._mvRetire = () => {
                 cellTornDown = true;
                 clearStallWatchdog();
                 clearTimeout(sustainedPlayTimer);
                 clearTimeout(seekingSpinnerTimer); // declared below in the same cell scope; only ever called on a later render's teardown
                 // Cancel any queued wheel-seek so it can't fire applyWheelSeek on
-                // this now-detached video and resurrect a seekBases entry.
+                // this now-detached video and resurrect a seekBases entry. Only
+                // this video's: by the end of a crossfade a new tile for the
+                // same scene can have one of its own.
                 const pw = wheelPending.get(id);
-                if (pw) { clearTimeout(pw.timeout); wheelPending.delete(id); }
+                if (pw && pw.video === video) { clearTimeout(pw.timeout); wheelPending.delete(id); }
+            };
+            video._mvCleanup = () => {
+                video._mvRetire();
                 try { video.pause(); video.removeAttribute('src'); video.load(); } catch {}
             };
 
@@ -2982,6 +3273,7 @@
             if (unmutedIds.has(id)) cell.classList.add('audio-active');
 
             insertCell(cell, id, idx);
+            created.push(video);
 
             // Start the stream, staggered. The cell is in the DOM and fully
             // wired by now; if it's torn down during its delay (queue changed),
@@ -2994,18 +3286,33 @@
             }
         });
 
+        // A scene went up that a video got ready ahead (multiViewPreload)
+        // wasn't for (that one takes it over above): it is no use now.
+        if (warm && addedCells) dropWarm();
+
         // Remove cells no longer in queue. Walk the real DOM (not the id-keyed
         // `existing` map) so any stray duplicate-id cell is also torn down and
         // can't leak its <video>/watchdog. Keep only the canonical cell per id.
+        // One scene replacing the only one, with a picture to fade from:
+        // a crossfade (see crossfadeOut).
+        const incoming = created.length === 1 && grid.children.length === 2 ? created[0] : null;
+        const fadeMs = crossfadeMs();
         for (const cell of Array.from(grid.children)) {
             const cid = cell.dataset.sceneId;
             if (cid && queueSet.has(cid) && existing.get(cid) === cell) continue;
             const v = cell.querySelector('video');
-            if (v) {
-                teardownPlayTracking(v);
-                v._mvCleanup?.();
+            if (fadeMs && incoming && cell === soleOld && v && v.readyState >= 2) {
+                crossfadeOut(cid, v, incoming, fadeMs);
+                cell.remove();
+                continue;
             }
-            cell.remove();
+            // The tile a crossfade is fading into, going before it showed:
+            // on into the one replacing it, waiting for that one now. Else
+            // the crossfade ends with it.
+            if (leaving && leaving.el.parentNode === cell) {
+                if (incoming && !leaving.started) fadeWhenReady(leaving, incoming); else finishLeaving();
+            }
+            removeCell(cell);
         }
 
         refreshPlayPauseAllBtn();
