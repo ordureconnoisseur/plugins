@@ -1,21 +1,21 @@
 # Refract Theme
 
-Liquid-glass theme for [Stash](https://github.com/stashapp/stash). Frosted glass panels, floating navbar, dark base, configurable accent — plus a rating-driven card system that turns high scores into glowing collectibles.
+Liquid-glass theme for [Stash](https://github.com/stashapp/stash). Frosted glass panels, floating navbar, dark base and a configurable accent, plus a rating-driven card system that turns high scores into glowing collectibles.
 
-![Refract — accent cycle on the homepage](https://github.com/ordureconnoisseur/stash-refract/releases/download/media-assets/gif-accent-cycle.gif)
+![Refract: accent cycle on the homepage](https://github.com/ordureconnoisseur/stash-refract/releases/download/media-assets/gif-accent-cycle.gif)
 
-> *The GIF above cycles through all eight accents back-to-back to show the range — in normal use you pick one swatch in the plugin settings panel and the theme stays in that accent. Nothing flashes, nothing cycles.*
+> *The GIF above cycles through all eight accents back-to-back to show the range. In normal use you pick one swatch in the plugin settings panel and the theme stays in that accent. Nothing flashes, nothing cycles.*
 
-![Accent picker — Settings → Plugins → Refract Theme](./screenshots/accent-picker.png)
+![Accent picker in Settings → Plugins → Refract Theme](./screenshots/accent-picker.png)
 
 ## Features
 
-- **8 accent presets** (plus custom CSS override) — pick one, applies live to every surface
-- **Three rating-display styles** — *Minimal* (accent halo), *Extravagant* (six-tier collectible-card frame from Bronze to Perfect with escalating animations), *Playing card* (trading-card layout for performer cards)
-- **Refract scene cards** — title overlay on thumbnail, glass spec pills, performer / tag / O-count pills with hover popovers, watched-progress + hover-scrubber layered as one bar
-- **Scene player upgrades** — controls fade after inactivity (windowed + fullscreen), restored sprite-thumbnail scrubber preview, no more seekbar flicker
-- **Tag editor + duplicate checker overhauls** — alphabetical tag taxonomy with image-and-description hover popovers; comparison-card redesign with highest-res / largest-file callouts
-- **Lite mode** — strips blur, shadows, and animations for older or integrated GPUs
+- **8 accent presets** (plus custom CSS override): pick one, and it applies live to every surface
+- **Three rating-display styles**: *Minimal* (accent halo), *Extravagant* (six-tier collectible-card frame from Bronze to Perfect with escalating animations), *Playing card* (trading-card layout for performer cards)
+- **Refract scene cards**: title overlay on thumbnail, glass spec pills, performer / tag / O-count pills with hover popovers, watched-progress + hover-scrubber layered as one bar
+- **Scene player upgrades**: controls fade after inactivity (windowed + fullscreen), restored sprite-thumbnail scrubber preview, no more seekbar flicker
+- **Tag editor + duplicate checker overhauls**: alphabetical tag taxonomy with image-and-description hover popovers; comparison-card redesign with highest-res / largest-file callouts
+- **Lite mode**: strips blur, shadows, and animations for older or integrated GPUs
 
 Small niceties: horizontally-scrollable navbar at narrow widths · drag-to-reorder navbar icons (order persists across sessions) · [stash-multiview](https://github.com/ordureconnoisseur/stash-multiview) accent integration via localStorage handoff · auto-detection of STARS vs DECIMAL rating system.
 
@@ -43,7 +43,7 @@ The **Card rating style** setting changes how rated cards present themselves. Ap
 
 ### Minimal (default)
 
-An accent-coloured halo glows around the rating banner; halo brightness scales with the score, so a 9.2 glows noticeably brighter than a 5.5. Cards otherwise look the same as unrated ones — the rating is informational, not the centrepiece.
+An accent-coloured halo glows around the rating banner; halo brightness scales with the score, so a 9.2 glows noticeably brighter than a 5.5. Cards otherwise look the same as unrated ones. The rating is informational, not the centrepiece.
 
 ### Extravagant
 
@@ -58,7 +58,7 @@ Rated cards earn a tier-coloured frame, glow, and animation that escalates with 
 | Legendary | 9.5–9.9 | Dual-colour neon tube + subtle float                               |
 | Perfect   | 10.0    | White-hot core, rainbow halo, hue-cycling text, ribbon + float     |
 
-Below 5.0 the card stays default-glass. Long grids with many high-tier cards can be GPU-heavy — flip **Lite mode** on if you notice scroll jank.
+Below 5.0 the card stays default-glass. Long grids with many high-tier cards can be GPU-heavy, so flip **Lite mode** on if you notice scroll jank.
 
 ![Scene cards across rating tiers](https://github.com/ordureconnoisseur/stash-refract/releases/download/media-assets/gif-hq-3.gif)
 
@@ -66,10 +66,10 @@ Below 5.0 the card stays default-glass. Long grids with many high-tier cards can
 
 Performer cards switch to a trading-card layout:
 
-- Top — name banner with tier-coloured glow (a gender icon sits to the left like a type symbol)
-- Bottom — a neon stat strip overlaying the image: rating, age, scene count, O count, country flag
+- Top: name banner with tier-coloured glow (a gender icon sits to the left like a type symbol)
+- Bottom: a neon stat strip overlaying the image with rating, age, scene count, O count, country flag
 
-Scene cards keep their normal Refract chin in this mode — the trading-card layout only applies to performer cards.
+Scene cards keep their normal Refract chin in this mode. The trading-card layout only applies to performer cards.
 
 ![Playing-card performer mode](https://github.com/ordureconnoisseur/stash-refract/releases/download/media-assets/gif-hq-1.gif)
 
@@ -81,15 +81,15 @@ The Refract scene-card layout overlays the title on the thumbnail and reduces me
 
 ## Settings
 
-Every option saves per browser and applies instantly — no refresh needed. Open **Settings → Plugins → Refract Theme** and expand the panel.
+Every option saves per browser and applies instantly, with no refresh needed. Open **Settings → Plugins → Refract Theme** and expand the panel.
 
-- **Accent colour** — 8 swatches: orange (default), blue, pink, red, yellow, purple, green, teal.
-- **Card rating style** — Minimal / Extravagant / Playing card (see [Rating styles](#rating-styles)).
-- **Scene card style** — **Refract** (default) overlay layout, or **Classic** Stash's original row with description, file path, and details.
-- **Lite mode** — strips blur, glow, animations, and hover-tilt. Use it if scrolling long grids feels heavy.
-- **Show performer names** — comma-separated names line under avatar circles on scene cards.
-- **Custom logo** — image URL for the navbar home button. Accepts hosted URLs and inline `data:image/...` URIs.
-- **View-mode minimiser** — collapses Stash's row of view-mode buttons into one icon + chevron.
+- **Accent colour**: 8 swatches (orange by default, then blue, pink, red, yellow, purple, green and teal).
+- **Card rating style**: Minimal / Extravagant / Playing card (see [Rating styles](#rating-styles)).
+- **Scene card style**: **Refract** (default) overlay layout, or **Classic**, Stash's original row with description, file path, and details.
+- **Lite mode**: strips blur, glow, animations, and hover-tilt. Use it if scrolling long grids feels heavy.
+- **Show performer names**: comma-separated names line under avatar circles on scene cards.
+- **Custom logo**: image URL for the navbar home button. Accepts hosted URLs and inline `data:image/...` URIs.
+- **View-mode minimiser**: collapses Stash's row of view-mode buttons into one icon + chevron.
 
 ## Customisation
 
@@ -114,27 +114,27 @@ body.stash-liquid-glass {
 
 ## Supported plugins
 
-Refract themes the UIs of these plugins so they sit naturally inside the glass aesthetic. None are required — the theme works fine without them — but if you install any, you'll see them re-skinned automatically.
+Refract themes the UIs of these plugins so they sit naturally inside the glass aesthetic. None are required (the theme works fine without them), but if you install any, you'll see them re-skinned automatically.
 
 **Deep integration** (themed UI + custom touches)
 
-- [**stash-multiview**](https://github.com/ordureconnoisseur/stash-multiview) — multi-scene player. The accent picked in Refract flows through to the multiview player page via a localStorage handoff. Multiview's navbar button, picking toggle, queue badge, scene-card add buttons, and floating launcher are all themed.
-- [**stash-advanced-rating**](https://github.com/ordureconnoisseur/stash-advanced-rating) — the ★+ rating trigger, favourite-heart toggle, and the criterion-rating modal are all re-skinned in accent glass (both scene and performer rating).
+- [**stash-multiview**](https://github.com/ordureconnoisseur/stash-multiview): multi-scene player. The accent picked in Refract flows through to the multiview player page via a localStorage handoff. Multiview's navbar button, picking toggle, queue badge, scene-card add buttons, and floating launcher are all themed.
+- [**stash-advanced-rating**](https://github.com/ordureconnoisseur/stash-advanced-rating): the ★+ rating trigger, favourite-heart toggle, and the criterion-rating modal are all re-skinned in accent glass (both scene and performer rating).
 
 **Themed compatibility** (CSS-only re-skin)
 
-- **Binge** — navbar button restyled as an accent-glass pill so it sits naturally alongside the built-in nav icons.
-- **flexibleDateInput** — react-datepicker calendar fully restyled: header pills, day cells, month/year dropdown panels, prev/next nav arrows.
-- **stashGlobalSearch** — focus colour swapped to accent so search inputs match the rest of the theme.
+- **Binge**: navbar button restyled as an accent-glass pill so it sits naturally alongside the built-in nav icons.
+- **flexibleDateInput**: react-datepicker calendar fully restyled, including header pills, day cells, month/year dropdown panels, prev/next nav arrows.
+- **stashGlobalSearch**: focus colour swapped to accent so search inputs match the rest of the theme.
 
 **Work in progress**
 
-- **FastTagger** — initial compat fix landed (tag-pill dropdowns no longer get clipped by FastTagger's card overflow); broader visual integration is in progress.
+- **FastTagger**: initial compat fix landed (tag-pill dropdowns no longer get clipped by FastTagger's card overflow); broader visual integration is in progress.
 
 ## Known limitations
 
 - **Older Stash / older browsers**: Refract relies on `:has()` for context-aware styling. Stash 0.26 and earlier, or browsers older than the versions in [Compatibility](#compatibility), will get only partial styling.
-- **`backdrop-filter` cost**: the frosted-glass look uses `backdrop-filter` heavily. Low-end GPUs and integrated graphics may notice scroll/animation jank, especially with the lightbox open over a busy page — **Lite mode** is the off-switch.
+- **`backdrop-filter` cost**: the frosted-glass look uses `backdrop-filter` heavily. Low-end GPUs and integrated graphics may notice scroll/animation jank, especially with the lightbox open over a busy page. **Lite mode** is the off-switch.
 - **Extravagant on long grids**: tier animations multiply with card count. A page of 60+ rated cards can feel heavy on integrated graphics; Lite mode strips the animations while keeping the tier colours.
 - **Third-party plugin UIs**: plugins that inject their own modals or panels (and don't reuse Stash's standard Bootstrap classes) won't be themed until Refract gets a rule for them. File an issue with the plugin name if you want one added.
 
@@ -150,7 +150,7 @@ longer than seven days on someone else's phone.
 
 ## Credits
 
-- Performer **Edit Tags** tab — image + description hover popup inspired by [Performer Tags Overhaul](https://github.com/RollainKraus/stash-plugins) by RollainKraus.
+- Performer **Edit Tags** tab: image + description hover popup inspired by [Performer Tags Overhaul](https://github.com/RollainKraus/stash-plugins) by RollainKraus.
 
 ## License
 

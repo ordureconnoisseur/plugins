@@ -1,21 +1,344 @@
-/* ── O-Count / increment-only button group ────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   THE CHIP RECIPE (6.7)
+   ═══════════════════════════════════════════════════════════════════
+   One silhouette, one recipe. The cohesion audit of 2026-09-03 found
+   twelve chips sharing --radius-pill and agreeing on nothing else: five
+   fills (0.04, 0.05, 0.06, 0.08, 0.10), three rims (0.12, 0.14, 0.22),
+   four type weights (400, 500, 600, 700) and a backdrop blur on three
+   of them, against 6.5's "never blur the many small ones". The one a
+   user actually catches is the band's alias chip wearing its HOVER rim
+   at rest, 60px from the scene panel's chips on a performer-to-scene
+   click.
+
+   There are two kinds and the difference is what the chip does, not
+   where it lives:
+
+   READ-OUT chip -- it states a fact and does nothing. Glass fill, hairline
+   rim, --fs-sm at 500, no blur, 24px tall. Aliases, endpoints, tags,
+   summaries, counts.
+
+   CONTROL chip -- clicking it changes something. Accent tint and an accent
+   rim, which is what the advanced-rating pill and the card counters
+   already do, so it reads as pressable next to a read-out that does not.
+
+   NO BRANCH IN THESE LISTS MAY CARRY MORE WEIGHT THAN THE CONTROL RULE
+   CAN BEAT. That is the whole discipline of this file, it was got wrong
+   twice, and both times the symptom was a control chip silently wearing
+   read-out material.
+
+   An :is() takes the specificity of its STRONGEST branch, and there are
+   two ways to inflate one. IDs: a single `#performer-page ...` branch
+   lifted the read-out rule to (1,5,2) against the control rule's
+   (0,2,1). DEPTH: with the IDs wrapped, `.refract-ph .detail-group
+   .detail-item.stash_ids a` -- four classes and an element -- still put
+   it at (0,5,2). Same fault, no ID in sight.
+
+   So every branch is wrapped down to its last compound, which leaves
+   every branch at one class and both rules at (0,2,1). They tie, the
+   control rule is written second, and source order decides it -- which
+   is the intended reading of the file rather than an accident of
+   arithmetic. When you add a selector here, wrap everything but its
+   final compound in :where() whatever it looks like. An :is() takes the specificity of its strongest branch, so a
+   single `#performer-page ...` branch lifted the WHOLE read-out rule to
+   (1,5,2) while the control rule, all classes, sat at (0,2,1). Both
+   match a control chip, and the read-out won regardless of source
+   order: measured on the advanced-rating pill, the fill stayed
+   --fill-3, the accent never landed, and `box-shadow: none` never
+   landed either, so the pill kept a shadow from a generic button rule.
+   The same weight also beat every per-chip deviation written in a
+   lane's own file, including the tab badge's height, which is how the
+   entity strips came out 36 tall against the scene panel's 28.8 after
+   joining. :where() contributes zero, so the ID branches keep their
+   reach and lose their weight (7.9).
+
+   HOW TO JOIN. Add your selector to the :is() list on the matching rule
+   below; do not restate the recipe in your own file. That is the whole
+   point of it being here rather than five times over. A chip that needs
+   to differ states WHY at its own selector, after this rule, and takes
+   the ledger row with it.
+
+   Every lane's chips are listed by name so the list itself is the
+   inventory: if a chip is not here it is either not a chip or it is
+   drift. */
+body.stash-liquid-glass :is(
+    .refract-chip,
+
+    /* performer lane -- read-out */
+    :where(#performer-page) .refract-ph-alias__n,
+    :where(#performer-page .refract-ph .detail-group .detail-item.stash_ids) a,
+    :where(#performer-page .refract-ph-tags) .tag-item,
+
+    /* ascension lane -- read-out. The match chip is addressed
+       structurally on purpose: it names no Ascension class, so the
+       selector survives that plugin renaming its own markup, which it
+       has already done once (#190). Joining costs it the state-coloured
+       rim it used to wear; win and loss stay in the ink, measured 7.6:1,
+       which is where a read-out's meaning belongs anyway. */
+    :where(#performer-page .custom-fields .detail-item.custom-field-performer_record .detail-item-value > * > *) > *,
+
+    /* ascension lane -- read-out silhouette, control material below: the
+       advanced-rating pill. Joining removes its resting box-shadow glow,
+       and that is a visible change worth attributing rather than
+       discovering. 6.5 is explicit and the recipe has no shadow: a
+       control chip is told apart by its accent tint and rim, not by a
+       halo, and a halo at rest is the same mistake the alias chip was
+       making with its hover rim. */
+    .adv-rating-btn,
+
+    /* scene lane -- read-out: the duplicate checker's spec pills
+       (duration, filesize, resolution, bitrate, codec) and the tab count
+       badges. The badges are counters rather than controls under 6.5,
+       which is why they take the read-out material even though they sit
+       inside things you click. */
+    .refract-dup-spec,
+    :where(.nav-tabs .nav-link) .badge,
+
+    /* scene lane -- read-out silhouette, control material below: the
+       favourite and count buttons, and the tier chip. */
+    .adv-favourite-btn,
+    .count-button,
+    .st-tier-chip,
+
+    /* owned group page -- read-out silhouette, control material below:
+       the sleeve flip, which turns the cover over. It is the only
+       control on that page that changes what you see and it wore the
+       read-out plate's own fill at a muted ink (G5). */
+    .refract-gr-sleeve-flip,
+
+    /* owned group page -- read-out: the band's tag chips, Stash's own
+       TagLink badge, the sibling of the tag page's entry below. They
+       were T8 one page over and were left out of that pass on purpose;
+       measured against the tag band in the same build they came out at a
+       0.08 fill, 2.464px by 7.84px of padding, a 15.68px line-height,
+       26.58 tall and `cursor: auto`, with the anchor covering 55 to 61
+       per cent of the pill and a real-pointer hover changing nothing. So
+       two fifths of every chip looked like a link and did nothing, and a
+       link that navigates to a filtered group list gave no feedback. The
+       exclusions in 04_filters and 08_misc_mid now name this band as
+       well as the tag one; the anchor pays the padding in
+       pages-group/src/styles/cascade.css, the way the tag page's does.
+       The compound has no space in it: the id and the class are on one
+       element. */
+    :where(#group-page.refract-gr) .tag-item,
+
+    /* owned tag page -- read-out: the sub-tag run and the lineage run,
+       both of them Stash's own TagLink badge. They were the review's T8:
+       aliases in this same band took `.refract-chip` and these took a
+       restatement in the bundle's own sheet that never applied, because
+       08's blanket badge fill and 04's detail-pill block both carry
+       !important. Two chip vocabularies, 40px apart, in one band. The
+       exclusions in both of those files are what let this branch reach
+       them; see the note beside each. The compound has no space in it:
+       the id and the class are on one element, and the descendant form
+       matches nothing. */
+    :where(#tag-page.refract-tr) .tag-item,
+
+    /* owned studio page -- read-out: the band's tag row, Stash's own
+       TagLink badge again, in the same position the tag page's was.
+       Measured on a develop fixture (no studio in the author's library
+       carries a tag): 26.6px on rgba(255,255,255,0.08) with 2.464px
+       7.84px of padding, against the alias chips 293px above it at 24px
+       on rgba(255,255,255,0.05) with 0 10px. Two attempts at one object
+       in one band, which is 6.7. `.refract-sr-band` rather than the page id,
+       because this band mounts under `#studio-page` through a portal on
+       v0.31.1 and IS `#studio-page` on a Stash that has the page patch
+       point; the band's own class is the one thing true of both doors,
+       and it is narrower than the page root: on a Stash that HAS the
+       page patch point the tab panels are inside `.refract-sr` too, so
+       scoping to the root would have reached every chip in every list
+       below. Measured on the fixture, zero `.tag-item` sit between the
+       two, but a selector should be the size of its claim. */
+    :where(.refract-sr-band) .tag-item,
+
+    /* owned performer page -- read-out: the band's tag row, Stash's own
+       TagLink badge, the fourth of the same object and the last owned
+       band that was not here. Measured on performer 46 at 570 before
+       joining: 26.6 tall on 04_filters' 0.22em by 0.7em padding and a
+       1.4 line-height, carrying Stash's own `margin: 5px`, against the
+       alias chips 860px above it at 24 tall on `--fill-3` with 0 10px.
+       Two vocabularies in one band again, and the margin is what put
+       15.6px of column gap and 10px of row pitch into a list that
+       declares `gap: var(--gap-sm)`. The chip's anchor covered 57.6 per
+       cent of the pill with `cursor: pointer` while the pill itself
+       reported `auto`, which is the group band's defect to the decimal;
+       the anchor pays the recipe's padding in the bundle's own
+       `cascade.css`, the way the group and tag pages do. The list class
+       rather than the page id: the owned band is the only thing under
+       `#performer-page` that may take this, and the tab panels below it
+       are full of other people's `.tag-item`. */
+    :where(.refract-pr-tag-list) .tag-item
+) {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    /* A chip in a gapped container never carries its own margin. The
+       recipe owned every box property of a chip except this one, which
+       is how Stash's own `.tag-item { margin: 5px 0 }` walked straight
+       through it: the performer tags row measured 34 tall on a single
+       row of 24px chips, and 15.6 between wrapped rows against a
+       declared 5.6 gap. Fixing the instance was already done once in
+       07; this closes the class instead.
+
+       A chip whose container is NOT gapped keeps its margin as a stated
+       deviation - see the tab count badge below, which is the only one
+       on any surface measured. */
+    margin: 0;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--glass-border);
+    background: var(--fill-3);
+    font-size: var(--fs-sm) !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    color: var(--text);
+    /* No blur. 6.5: the many small ones are the wrong place for it, and
+       three chip kinds were each paying for a backdrop pass. */
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+/* The bright rim is what hover is FOR. It was the alias chip's resting
+   state, which left hover with nothing to say and made one chip louder
+   than every other chip on the page. */
+body.stash-liquid-glass :is(
+    .refract-chip,
+    :where(#performer-page) .refract-ph-alias__n,
+    :where(#performer-page .refract-ph-tags) .tag-item,
+    :where(#tag-page.refract-tr) .tag-item,
+    :where(.refract-sr-band) .tag-item,
+    :where(#group-page.refract-gr) .tag-item,
+    :where(.refract-pr-tag-list) .tag-item
+):hover {
+    border-color: var(--glass-border-bright);
+    background: var(--fill-4);
+}
+/* A chip that mutates something wears the accent, so pressable and
+   not-pressable are told apart by material rather than by memory. */
+body.stash-liquid-glass :is(
+    .refract-chip-control,
+
+    /* ascension lane: the advanced-rating pill opens the rating drawer,
+       so it takes the control material over the read-out box above. */
+    .adv-rating-btn,
+
+    /* scene lane: all three mutate something -- favourite, o-count, and
+       the tier chip, which is the rating drawer's trigger. */
+    .adv-favourite-btn,
+    .count-button,
+    .st-tier-chip,
+
+    /* owned group page: the sleeve flip turns the cover over, which is
+       the one thing on that page that changes what is on screen. */
+    .refract-gr-sleeve-flip
+) {
+    box-shadow: none;
+    border-color: rgba(var(--accent-rgb), 0.28);
+    background: rgba(var(--accent-rgb), 0.12);
+    /* Restated for a control chip that does not also carry .refract-chip
+       and so takes no box from the read-out rule above. */
+    margin: 0;
+}
+
+/* ── Deviations, each with the box it has to fit ────────────────────
+   Both of these are the same shape and worth stating together: a chip
+   whose CONTAINER has a height, where the recipe's 24px would set that
+   height instead of fitting inside it. The material is the recipe's in
+   both cases; only the box is the container's.
+
+   The tab count badge sits in a 28.8px tab item whose text line is
+   16.8. At 24 it became the tallest thing in the item and pushed the
+   entity strips to 36 against the scene panel's 28.8 -- which is the gap
+   D2 exists to close, reopened by the fix for D4. 16.8px, the tab's own text line, fits the item
+   and leaves the strips identical. */
+body.stash-liquid-glass .nav-tabs .nav-link .badge {
+    height: 16.8px;
+    padding: 0 7px;
+    /* The one margin the recipe does not zero, and it is the ruling's own
+       test that keeps it: "a chip in a GAPPED container". This container
+       is not gapped. The link is display:block holding a bare text node
+       and the badge, so Bootstrap's .left-spacing margin is the only
+       thing between "Scenes" and "325" - at margin 0 they touch. Stated
+       here rather than fixed by giving the link a flex gap, because the
+       link's display belongs to the tab anatomy in 09 and this is one
+       declaration in the file that already owns the badge's box. */
+    margin-left: 5.6px;
+}
+
+/* The favourite button's MATERIAL is a deviation and its GEOMETRY is
+   not, which is why the inventory listed it as a plain member and was
+   lying about half of it.
+
+   Material deviates, ruled: .adv-favourite-btn keeps its glass resting
+   plate and its red favourited state, because on this chip the COLOUR
+   IS THE DATUM. An accent tint at rest would compete with the one thing
+   the control exists to say. It is still a control -- it is in the
+   control list, and the list is the inventory -- it simply answers "is
+   she a favourite" with colour rather than with the accent every other
+   control uses to mean "pressable".
+
+   Geometry does NOT deviate: height 24, pill radius and margin 0 are
+   the recipe's and it takes them. Measured today it does not yet --
+   rgba(0,0,0,0.55) fill and a 0.14 rim, which is the ruled material,
+   but radius 12px and 28x28, which is not the ruled geometry -- because
+   thirteen overrides still hold it there. The Ascension lane is
+   removing them; this note describes the ruling, and the measurement
+   above is what it looked like on 2026-09-05 so the next person can
+   tell whether it has landed.
+
+   Also measured: the plate is a literal rgba(0,0,0,0.55), not a --fill
+   token. That follows from the ruling rather than contradicting it --
+   the plate is there to carry a colour, not to be a surface -- but it
+   is worth someone deciding rather than inheriting.
+
+   Before appending to either list, run the recipe audit
+   (scratchpad/recipe-audit.py, moving to tools/measure): it lists every
+   rule that redeclares a recipe property on a bare member and says
+   whether it wins by source order or by !important. The O counter's
+   plate was exactly that, and it was found by looking rather than by
+   reading. */
+
+/* The tier chip's height deviation was WITHDRAWN on measurement: it is a
+   single row of two spans, not two lines, and it renders DIAMOND | 4.5
+   inside the recipe's 24px cleanly. It takes the 24. Its data-tier
+   colour treatments are its own and stay. Filed as a deviation on a
+   description of the markup and closed once someone looked at the
+   markup; ruled 2026-09-04. */
+
+/* ── O-Count / increment-only button group ──────────────────────────────
+
+   The O counter is a CONTROL chip -- you press it and the count goes up
+   -- so the recipe above already says what it looks like: accent tint,
+   accent rim, no shadow, no blur. It is in both lists.
+
+   This block used to overrule all of that with a bespoke glass plate:
+   --glass-bg-strong, --glass-border, a backdrop blur and two box-shadows,
+   every one of them !important. That is why a user asked why the o
+   counter is styled differently from everything around it -- on an image
+   card it painted as a dark rimmed plate beside a sibling counter that
+   is bare purple, which is the one thing the recipe exists to prevent.
+
+   The declarations are removed rather than just their !important flags:
+   this selector is (0,3,1) against the recipe's (0,2,1), so anything it
+   sets wins on specificity alone. What is left is the one thing the
+   recipe cannot know -- the group is two inner buttons and needs its
+   corners clipped -- and a hover that brightens its own accent rim
+   instead of painting a white glow over it.
+
+   6.5 also applies and was being broken here: never blur the many small
+   ones. This is a grid card's chip, and there can be forty on screen. */
 body.stash-liquid-glass .count-button.increment-only {
-    border-radius: var(--radius-pill) !important;
     overflow: hidden;
-    background: var(--glass-bg-strong) !important;
-    border: 1px solid var(--glass-border) !important;
-    -webkit-backdrop-filter: var(--glass-blur-md);
-    backdrop-filter: var(--glass-blur-md);
-    box-shadow:
-        0 2px 10px rgba(0, 0, 0, 0.25),
-        0 0 12px 2px rgba(255, 255, 255, 0.07) !important;
-    transition: box-shadow 0.2s ease, border-color 0.15s !important;
+    /* One gap between the icon and the number. Stash builds this as a
+       two-part btn-group, so each part carried its own padding on top of
+       the chip's -- 0 10px outside plus 4.9 9.1 inside each half, which
+       is how a chip holding an icon and a "1" came to be 72px wide with
+       its ink adrift in it. The chip's own padding is the box; the parts
+       inside it get none and are spaced by this. */
+    gap: var(--gap-xs);
+    transition: border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
 }
 body.stash-liquid-glass .count-button.increment-only:hover {
-    border-color: rgba(255, 255, 255, 0.18) !important;
-    box-shadow:
-        0 2px 10px rgba(0, 0, 0, 0.3),
-        0 0 20px 5px rgba(255, 255, 255, 0.13) !important;
+    border-color: rgba(var(--accent-rgb), 0.42) !important;
 }
 body.stash-liquid-glass .count-button.increment-only .count-icon,
 body.stash-liquid-glass .count-button.increment-only .count-value {
@@ -27,7 +350,9 @@ body.stash-liquid-glass .count-button.increment-only .count-value {
     box-shadow: none !important;
     font-size: var(--fs-sm);
     font-weight: 600;
-    padding: 0.35rem 0.65rem !important;
+    /* Zero: the chip's own 0 10px is the box. See the gap above. */
+    padding: 0 !important;
+    margin: 0 !important;
     color: var(--text) !important;
     line-height: 1 !important;
 }
@@ -62,7 +387,7 @@ body.stash-liquid-glass .stash-id-pill {
     -webkit-backdrop-filter: var(--glass-blur-sm);
     backdrop-filter: var(--glass-blur-sm);
 }
-/* Source label chip — orange-tinted left half */
+/* Source label chip - orange-tinted left half */
 body.stash-liquid-glass .stash-id-pill > span:first-child {
     padding: 0.3rem 0.6rem !important;
     margin: 0 !important;
@@ -72,7 +397,7 @@ body.stash-liquid-glass .stash-id-pill > span:first-child {
     font-weight: 700 !important;
     font-size: var(--fs-xs) !important;
     line-height: 1 !important;
-    letter-spacing: 0.04em !important;
+    letter-spacing: var(--track-tight) !important;
     white-space: nowrap;
     flex-shrink: 0;
     flex-grow: 0;
@@ -82,7 +407,7 @@ body.stash-liquid-glass .stash-id-pill > span:first-child {
     box-sizing: border-box !important;
     min-height: 0 !important;
 }
-/* UUID link — neutral glass right half (force-clear of any
+/* UUID link - neutral glass right half (force-clear of any
    default/blue background bleeding from Stash native rules). */
 body.stash-liquid-glass .stash-id-pill a,
 body.stash-liquid-glass .stash-id-pill a:link,
@@ -109,13 +434,13 @@ body.stash-liquid-glass .stash-id-pill a:visited {
     align-items: center !important;
     box-sizing: border-box !important;
     min-height: 0 !important;
-    transition: color 0.15s, background 0.15s;
+    transition: color var(--dur-fast), background var(--dur-fast);
 }
 body.stash-liquid-glass .stash-id-pill a:hover {
     background: rgba(255, 255, 255, 0.06) !important;
     color: #fff !important;
 }
-/* Stash IDs <ul> reset — kill the no-gutters bullet/spacing artefacts.
+/* Stash IDs <ul> reset - kill the no-gutters bullet/spacing artefacts.
    <li class="row"> would otherwise stretch the pill via Bootstrap's
    `.row { display: flex }`; force the <li> back to inline-block so the
    pill sizes to its content. */
@@ -126,7 +451,7 @@ body.stash-liquid-glass .detail-item-value.stash-ids ul {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.35rem;
+    gap: var(--gap-sm);
 }
 body.stash-liquid-glass .detail-item-value.stash-ids li,
 body.stash-liquid-glass .detail-item-value.stash-ids li.row {
@@ -138,7 +463,7 @@ body.stash-liquid-glass .detail-item-value.stash-ids li.row {
 }
 
 /* The pill sets its own size; its two children were inheriting em-derived
-   sizes of 9.52px (the source label) and 9.24px (the uuid) — 0.28px apart,
+   sizes of 9.52px (the source label) and 9.24px (the uuid) - 0.28px apart,
    which is noise, not a hierarchy. Both take the pill's size. */
 body.stash-liquid-glass .detail-item-value.stash-ids .stash-id-pill > span,
 body.stash-liquid-glass .detail-item-value.stash-ids .stash-id-pill > a {
@@ -149,12 +474,42 @@ body.stash-liquid-glass .detail-item-value.stash-ids .stash-id-pill > a {
    it was setting the width of the whole document: measured 821px of page
    inside a 700px viewport, with the uuid the widest thing on the page.
    It wraps now instead of pushing the layout. */
-body.stash-liquid-glass .detail-item-value.stash-ids .stash-id-pill {
-    max-width: 100% !important;
-    flex-wrap: wrap !important;
+/* That wrap never reached the uuid itself: the link kept the pill's
+   `white-space: nowrap`, so `overflow-wrap` had nothing to act on, the
+   pill's narrowest size was still the whole 232px token, and the list
+   took that as its own minimum. On a tag page at 390 the value column is
+   187px; the list measured 233.6, ran 46px past it, and the band's
+   `overflow: hidden` cut both ids mid-uuid with no ellipsis. The studio
+   page did the same at 390, and the scene panel's File Info cut its
+   ids at 1440 as well as 390: the link is `display: flex`, and a flex
+   container never draws `text-overflow`, so the ellipsis the base rule
+   asks for was never painted anywhere.
+
+   So the pill no longer truncates at all. The list and its rows may be
+   narrower than a pill, the label stays a chip on the left at full
+   height, and the uuid takes the rest and breaks where it can, at a
+   hyphen when line breaking allows one there and between any two
+   characters when it does not: the whole id is always on screen and
+   still one link. Line height stays at the recipe's 1, so where the
+   column is wide enough nothing changes, one line at the same height;
+   a uuid is lowercase hex and hyphens, with no descenders to collide. */
+body.stash-liquid-glass .detail-item-value.stash-ids ul,
+body.stash-liquid-glass .detail-item-value.stash-ids li,
+body.stash-liquid-glass .detail-item-value.stash-ids li.row {
+    min-width: 0;
+    max-width: 100%;
 }
-body.stash-liquid-glass .detail-item-value.stash-ids .stash-id-pill > a {
+body.stash-liquid-glass .stash-id-pill {
+    max-width: 100% !important;
+    flex-wrap: nowrap !important;
+}
+body.stash-liquid-glass .stash-id-pill > a,
+body.stash-liquid-glass .stash-id-pill > a:link,
+body.stash-liquid-glass .stash-id-pill > a:visited {
+    flex: 0 1 auto;
+    white-space: normal !important;
     overflow-wrap: anywhere !important;
+    text-align: left;
     min-width: 0 !important;
 }
 
@@ -165,7 +520,7 @@ body.stash-liquid-glass .search-result {
     border-radius: var(--radius-sm);
     padding: 1rem 1.25rem;
     margin-bottom: 0.75rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color var(--dur-move), box-shadow var(--dur-move);
     list-style: none;
 }
 body.stash-liquid-glass .search-result:hover {
@@ -185,4 +540,21 @@ body.stash-liquid-glass .scene-image-container img {
     display: block;
     max-width: 100%;
 }
+
+/* The performer scrape modal used to be styled from here: the image
+   frame was made to hug its picture, and the text column was centred
+   against it. Both were answers to a ROW layout. 05_list_views.css turns
+   that list into a contact sheet, where the caption sits under the photo
+   and the well is a fixed 3:4 filled by object-fit, so neither applies
+   any more -- and the centring one actively fought the new caption from
+   a later file. The sheet owns that modal now; the rule above stays for
+   the tagger, which is still rows.
+
+   Merging main brought back an OLDER answer to the same report (799f8b8,
+   17:56 on 2026-08-27): zero the border outright, from this file. It was
+   superseded ten minutes later by the fit-the-frame version, and then by
+   the contact sheet, which sets `border: 0 !important` on the same
+   element from 05_list_views.css. Re-adding it here would be dead code
+   that also picked a fight it loses, so the merge keeps this side. The
+   bug it fixed is fixed. */
 

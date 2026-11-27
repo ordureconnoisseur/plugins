@@ -1,0 +1,1945 @@
+/*
+   The owned performer create page (/performers/new).
+
+   Everything is scoped under the host this bundle appends to
+   #performer-page.new-view, and the one rule that reaches outside it hides
+   Stash's own create form while the body carries refract-owned-create.
+   Hidden, not moved: the form stays mounted where React put it, and
+   "Use Stash's form" drops the class to bring it back untouched.
+
+   Tokens only (DESIGN_SYSTEM 3): every colour is a token or a channel
+   token with an alpha, so the eight accents and lite resolve through the
+   token file. The page spends its boldness in one place, the
+   card and the ringed face under it; the rest is quiet glass.
+*/
+
+/* ---------- the stand-down ---------- */
+
+body.refract-owned-create #performer-page.new-view > :not(.refract-oc-host) {
+    display: none !important;
+}
+
+#performer-page.new-view > .refract-oc-host {
+    /* First in the row by flex order, not by moving the node: after a
+       hand-back the way back to this page sits above Stash's form. */
+    order: -1;
+    flex: 0 0 100%;
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+}
+
+.refract-oc-host {
+    --roc-ink: var(--text, rgba(255, 255, 255, 0.92));
+    --roc-muted: var(--text-muted, rgba(255, 255, 255, 0.55));
+    --roc-rim: var(--glass-border, rgba(255, 255, 255, 0.12));
+    --roc-rim-hi: var(--glass-border-bright, rgba(255, 255, 255, 0.22));
+    --roc-ring: 0 0 0 2px var(--accent-bright), 0 0 0 5px rgba(var(--accent-rgb), 0.22);
+    color: var(--roc-ink);
+    font-size: var(--fs-body);
+}
+
+.refract-oc-host *,
+.refract-oc-host *::before,
+.refract-oc-host *::after {
+    box-sizing: border-box;
+}
+
+.refract-oc-host .roc-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.refract-oc-host .roc-quiet,
+.refract-oc-host .roc-muted {
+    color: var(--roc-muted);
+}
+
+.refract-oc-host .roc-page {
+    /* As tall as the screen allows without a scrollbar. The theme paints its
+       field on <body> and pins <html> to --bg-1, and a 28px margin collapses
+       out of the bottom of <body>, so every Refract page ends on a 28px
+       band of --bg-1 (ledger row, create-mint build log). A body that ran to
+       the screen edge would only push that band 28px below the fold and add
+       a scroll to an empty stage (measured: document 928 in a 900 window),
+       so the page stops where the band starts. 105px is the main
+       container's offset above this page plus that margin, at every
+       desktop width (both are in rem). */
+    min-height: calc(100vh - 105px - var(--refract-dock-footprint, 0px));
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 12px 16px 64px;
+}
+
+/* ---------- controls ---------- */
+
+.refract-oc-host .roc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap-xs);
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--roc-rim);
+    background: var(--fill-3);
+    color: var(--roc-ink);
+    font: inherit;
+    font-size: var(--fs-base);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+.refract-oc-host .roc-btn:hover {
+    background: var(--fill-4);
+    border-color: var(--roc-rim-hi);
+}
+.refract-oc-host .roc-btn.is-primary {
+    background: var(--accent-tint);
+    border-color: var(--accent-glow);
+    color: var(--accent-ink);
+}
+.refract-oc-host .roc-btn.is-primary:hover {
+    background: rgba(var(--accent-rgb), 0.22);
+    color: var(--roc-ink);
+}
+.refract-oc-host .roc-btn.is-big {
+    min-height: 48px;
+    padding: 0 26px;
+    font-size: var(--fs-body);
+}
+.refract-oc-host .roc-btn.is-small {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: var(--fs-sm);
+    align-self: flex-start;
+}
+.refract-oc-host .roc-btn:disabled,
+.refract-oc-host .roc-btn[aria-disabled="true"],
+.refract-oc-host .roc-link[aria-disabled="true"],
+.refract-oc-host .roc-menu-item[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: default;
+}
+
+.refract-oc-host .roc-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--accent-ink);
+    font: inherit;
+    font-size: var(--fs-base);
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+}
+/* An anchor wearing the link recipe out-ranks the theme's page-wide link
+   ink (body.stash-liquid-glass a:not(.btn) and three more :not()s, 0,5,2),
+   which would paint it as body text; the class is repeated to clear it. */
+body.stash-liquid-glass .refract-oc-host a.roc-link.roc-link.roc-link.roc-link {
+    color: var(--accent-ink);
+}
+body.stash-liquid-glass .refract-oc-host a.roc-link.roc-link.roc-link.roc-link:hover {
+    color: var(--roc-ink);
+}
+.refract-oc-host .roc-link:hover {
+    color: var(--roc-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.refract-oc-host .roc-link.is-quiet {
+    color: var(--roc-muted);
+    font-weight: 500;
+}
+
+.refract-oc-host .roc-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--roc-rim);
+    background: var(--fill-2);
+    color: var(--roc-muted);
+    cursor: pointer;
+}
+.refract-oc-host .roc-icon-btn:hover {
+    color: var(--danger-bright);
+    border-color: rgba(var(--danger-rgb), 0.45);
+}
+
+/* Keyboard focus wears the house ring (09_buttons.css: a 2px accent
+   outline on :focus-visible, tripled for specificity). Two places here
+   need it placed differently, so they out-rank it by one class: the
+   search field, whose frame carries the focus, and the read-out cells,
+   which sit flush inside a clipped grid and take the ring inset. */
+body.stash-liquid-glass.stash-liquid-glass.stash-liquid-glass .refract-oc-host .roc-field .roc-field-input:focus-visible {
+    outline: none !important;
+}
+body.stash-liquid-glass.stash-liquid-glass.stash-liquid-glass .refract-oc-host .roc-readouts .roc-cell:focus-visible {
+    outline-offset: -3px !important;
+}
+.refract-oc-host .roc-right-head:focus {
+    outline: none;
+}
+
+.refract-oc-host .roc-eyebrow {
+    display: block;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: var(--track-eyebrow);
+    text-transform: uppercase;
+    color: var(--roc-muted);
+}
+
+.refract-oc-host .roc-field-err,
+.refract-oc-host .roc-save-err {
+    margin: 6px 0 0;
+    color: var(--danger-ink, var(--danger-bright));
+    font-size: var(--fs-md);
+}
+
+.refract-oc-host .roc-warn {
+    color: var(--danger-ink, var(--danger-bright));
+}
+
+/* ---------- the stage ---------- */
+
+.refract-oc-host .roc-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--gap-xl);
+    padding-top: 8px;
+}
+/* Arrival: the field is the only object on the stage, set a little above
+   the middle of the screen (the Mint: centred, board A). */
+.refract-oc-host .roc-stage:not(.has-answer) {
+    justify-content: center;
+    /* The page's own height less its 12px and 64px padding. */
+    min-height: calc(100vh - 181px - var(--refract-dock-footprint, 0px));
+    padding-top: 0;
+    padding-bottom: 12vh;
+}
+/* With an answer the field steps down to 56px and goes to the top. */
+.refract-oc-host .roc-stage.has-answer .roc-field {
+    height: 56px;
+}
+.refract-oc-host .roc-stage.has-answer .roc-field-input {
+    font-size: var(--fs-xl);
+}
+
+.refract-oc-host .roc-field-wrap {
+    width: 100%;
+    max-width: 720px;
+}
+
+.refract-oc-host .roc-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 64px;
+    border-radius: var(--radius);
+    border: 1px solid var(--roc-rim);
+    background: var(--fill-2);
+    box-shadow: var(--shadow-lg);
+    transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+.refract-oc-host .roc-field:focus-within {
+    border-color: var(--accent-glow);
+    background: var(--fill-4);
+    box-shadow: var(--shadow-lg), 0 0 0 2px rgba(var(--accent-rgb), 0.15);
+}
+
+.refract-oc-host .roc-field-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    padding: 0 20px;
+    border: 0;
+    background: transparent;
+    color: var(--roc-ink);
+    font: inherit;
+    /* The Mint drew 24px in the 64px field on arrival and 20px in the 56px
+       field once there is an answer. Neither is a rung (DESIGN_SYSTEM 3.5
+       rule 1: reach for a step), so each takes the nearest one that keeps
+       the Mint's step down: 20 goes to --fs-xl (21, one pixel off), and 24,
+       which sits between 21 and 28, goes UP to --fs-2xl (28) on arrival,
+       because 21 would make both states one size and lose the step the
+       Mint draws, and the arrival field is the page's one object, sized to
+       be read across a room (review2-create N8). */
+    font-size: var(--fs-2xl);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    outline: none;
+}
+/* The theme's input focus ring belongs to a lone input; here the field's
+   frame carries the focus (:focus-within above), so the inner input stays
+   bare in every state. */
+body.stash-liquid-glass .refract-oc-host .roc-field .roc-field-input,
+body.stash-liquid-glass .refract-oc-host .roc-field .roc-field-input:focus {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    outline: none !important;
+}
+.refract-oc-host .roc-field-input::placeholder {
+    color: var(--roc-muted);
+    font-weight: 400;
+}
+
+.refract-oc-host .roc-source {
+    position: relative;
+    flex: none;
+    margin-right: 8px;
+}
+
+.refract-oc-host .roc-source-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 44px;
+    max-width: 200px;
+    padding: 0 12px 0 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background: var(--fill-3);
+    color: var(--roc-muted);
+    font: inherit;
+    font-size: var(--fs-base);
+    font-weight: 600;
+    cursor: pointer;
+}
+.refract-oc-host .roc-source-btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.refract-oc-host .roc-source-btn:hover,
+.refract-oc-host .roc-source-btn[aria-expanded="true"] {
+    color: var(--roc-ink);
+    border-color: var(--roc-rim);
+}
+
+.refract-oc-host .roc-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    min-width: 220px;
+    max-height: min(60vh, 420px);
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--roc-rim);
+    background: rgba(var(--surface-rgb), 0.97);
+    box-shadow: var(--shadow-xl);
+}
+.refract-oc-host .roc-menu-head {
+    padding: 8px 10px 4px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: var(--track-eyebrow);
+    text-transform: uppercase;
+    color: var(--roc-muted);
+}
+.refract-oc-host .roc-menu-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 9px; /* 12px menu minus 3px inset */
+    background: none;
+    color: var(--roc-ink);
+    font: inherit;
+    font-size: var(--fs-base);
+    text-align: left;
+    cursor: pointer;
+}
+.refract-oc-host .roc-menu-item:hover,
+.refract-oc-host .roc-menu-item:focus-visible {
+    background: var(--fill-4);
+}
+.refract-oc-host .roc-menu-item[aria-checked="true"] {
+    color: var(--accent-ink);
+    font-weight: 600;
+}
+.refract-oc-host .roc-menu-item.is-quiet {
+    color: var(--roc-muted);
+}
+.refract-oc-host .roc-menu-rule {
+    height: 1px;
+    margin: 6px 4px;
+    background: var(--roc-rim);
+}
+
+.refract-oc-host .roc-status {
+    min-height: 1.5em;
+    margin: 10px 4px 0;
+    color: var(--roc-muted);
+    font-size: var(--fs-md);
+    text-align: center;
+}
+
+/* Plates: the library's answer, and the empty and failed states. */
+.refract-oc-host .roc-plate {
+    width: 100%;
+    max-width: 720px;
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--roc-rim);
+    background: var(--glass-bg-strong);
+}
+.refract-oc-host .roc-plate p {
+    margin: 0;
+}
+.refract-oc-host .roc-plate-line {
+    font-size: var(--fs-body);
+    font-weight: 600;
+}
+.refract-oc-host .roc-plate-note {
+    margin-top: 4px !important;
+    color: var(--roc-muted);
+    font-size: var(--fs-md);
+}
+.refract-oc-host .roc-plate-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gap-sm) var(--gap-lg);
+    margin-top: 6px !important;
+}
+.refract-oc-host .roc-plate-actions .roc-link {
+    padding: 0;
+}
+.refract-oc-host .roc-plate-actions .roc-btn {
+    margin-top: 6px;
+}
+/* The library's answer is a fact about the name, stated in one band (the
+   Mint board B): the sentence and its two ways out on one line, the why
+   under it. */
+.refract-oc-host .roc-plate.is-library {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px var(--gap-lg);
+    padding: 10px 18px;
+}
+.refract-oc-host .roc-plate.is-library .roc-plate-line {
+    flex: 0 1 auto;
+}
+.refract-oc-host .roc-plate.is-library .roc-plate-actions {
+    margin-top: 0 !important;
+}
+.refract-oc-host .roc-plate.is-library .roc-plate-actions .roc-link {
+    min-height: 32px;
+}
+.refract-oc-host .roc-plate.is-library .roc-plate-note {
+    flex: 1 0 100%;
+    margin-top: 0 !important;
+}
+.refract-oc-host .roc-plate.is-clash {
+    border-color: rgba(var(--accent-rgb), 0.45);
+    background: linear-gradient(rgba(var(--accent-rgb), 0.08), rgba(var(--accent-rgb), 0.08)), var(--glass-bg-strong);
+}
+/* The absent-state plate (the Mint board B2b): a dashed rim over a faint
+   hatch, which says "nothing here" without saying "error". */
+.refract-oc-host .roc-plate.is-empty {
+    border-style: dashed;
+    border-color: var(--roc-rim-hi);
+    background: repeating-linear-gradient(135deg, rgba(var(--fg-rgb), 0.035) 0 6px, transparent 6px 12px);
+    text-align: center;
+    padding: 26px 24px;
+}
+.refract-oc-host .roc-plate.is-empty .roc-plate-line {
+    font-size: var(--fs-lg);
+}
+.refract-oc-host .roc-plate.is-empty .roc-plate-note {
+    margin-top: 6px !important;
+}
+.refract-oc-host .roc-plate.is-empty .roc-plate-actions {
+    justify-content: center;
+}
+.refract-oc-host .roc-plate.is-error {
+    border-color: rgba(var(--danger-rgb), 0.45);
+}
+
+/* ---------- candidates ---------- */
+
+.refract-oc-host .roc-cands {
+    list-style: none;
+    margin: 0;
+    padding: 12px 0 0;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 28px 22px;
+    transition: opacity var(--dur-fast) ease;
+}
+.refract-oc-host .roc-cands.is-fan {
+    flex-wrap: nowrap;
+    gap: 22px;
+    padding-top: 24px;
+}
+.refract-oc-host .roc-cands.is-stale {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.refract-oc-host .roc-cand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.refract-oc-host .roc-cands.is-fan .roc-cand {
+    transform: translateY(var(--roc-lift, 0)) rotate(var(--roc-tilt, 0deg));
+    transform-origin: 50% 90%;
+    transition: transform var(--dur-move) var(--ease-glide);
+}
+.refract-oc-host .roc-cands.is-fan .roc-cand:hover,
+.refract-oc-host .roc-cands.is-fan .roc-cand:focus-within {
+    transform: translateY(calc(var(--roc-lift, 0px) - 6px)) rotate(0deg);
+    z-index: 2;
+}
+
+.refract-oc-host .roc-cand-frame {
+    position: relative;
+    border-radius: var(--radius);
+}
+.refract-oc-host .roc-cand-hit {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+.refract-oc-host .roc-cand.is-ringed .roc-cand-hit {
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.55);
+}
+.refract-oc-host .roc-cand-hit:hover {
+    box-shadow: 0 0 0 1px var(--roc-rim-hi);
+}
+.refract-oc-host .roc-cand.is-reading .roc-cand-frame {
+    opacity: 0.7;
+}
+.refract-oc-host .roc-cand-reading {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 4;
+    transform: translate(-50%, -50%);
+    padding: 8px 14px;
+    border-radius: var(--radius-pill);
+    background: rgba(var(--scrim-rgb), 0.82);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.refract-oc-host .roc-cand-cap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    max-width: 200px;
+    font-size: var(--fs-sm);
+    line-height: 1.35;
+    text-align: center;
+}
+.refract-oc-host .roc-cand-dis {
+    font-weight: 600;
+}
+
+/* Stash's card, held still: the theme's hover lift and tilt belong to a
+   card in a grid, and this one is a picture of an outcome. */
+.refract-oc-host .roc-card {
+    position: relative;
+    flex: none;
+}
+.refract-oc-host .roc-card .performer-card {
+    margin: 0 !important;
+}
+.refract-oc-host .roc-card-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 2 / 3;
+    border-radius: var(--radius);
+    border: 1px dashed var(--roc-rim-hi);
+    color: var(--roc-muted);
+}
+
+/* A name-only answer (a site scraper's search): the Mint's name chips
+   under the field. Each is a 44px pill, the name in body ink and what
+   tells two of the same name apart in muted ink after it; the ringed one
+   is the one Enter takes, ringed the way the ringed card is. */
+.refract-oc-host .roc-namechips {
+    list-style: none;
+    margin: 0;
+    padding: 4px 0 0;
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    transition: opacity var(--dur-fast) ease;
+}
+.refract-oc-host .roc-namechips.is-stale {
+    opacity: 0.55;
+    pointer-events: none;
+}
+.refract-oc-host .roc-namechip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 11px 18px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--roc-rim);
+    background: var(--fill-3);
+    color: var(--roc-ink);
+    font: inherit;
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.refract-oc-host .roc-namechip:hover {
+    background: var(--fill-4);
+    border-color: var(--roc-rim-hi);
+}
+.refract-oc-host .roc-namechip.is-ringed {
+    border-color: transparent;
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.55);
+}
+/* Reading: the chip keeps its size and says so over itself, at full
+   strength (review2-create N9: the old 0.8 opacity took the muted words
+   to 4.14:1, and swapping the facts for "Reading <source>" widened the
+   chip from 118 to 233px, so the centred row moved under the pointer).
+   The name and facts stay in the flow, hidden, to hold the width. */
+.refract-oc-host .roc-namechip.is-reading {
+    position: relative;
+    cursor: default;
+}
+.refract-oc-host .roc-namechip.is-reading > .roc-namechip-name,
+.refract-oc-host .roc-namechip.is-reading > .roc-namechip-facts {
+    visibility: hidden;
+}
+.refract-oc-host .roc-namechip-reading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--roc-ink);
+    font-size: var(--fs-md);
+    font-weight: 600;
+}
+.refract-oc-host .roc-namechip-name {
+    font-size: var(--fs-body);
+    font-weight: 600;
+}
+.refract-oc-host .roc-namechip-facts {
+    color: var(--roc-muted);
+    font-size: var(--fs-md);
+}
+
+/* "Back to search" keeps the draft; the stage says so, once, with the way
+   back to it. */
+.refract-oc-host .roc-kept {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 var(--gap-md);
+    margin: 0;
+    font-size: var(--fs-md);
+    color: var(--roc-muted);
+}
+.refract-oc-host .roc-kept .roc-link {
+    padding: 0;
+}
+
+.refract-oc-host .roc-exits {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap-sm) var(--gap-lg);
+    width: 100%;
+    max-width: 720px;
+    padding-top: 8px;
+}
+.refract-oc-host .roc-exits-copy {
+    flex: 1 0 100%;
+    margin: 0;
+    font-size: var(--fs-md);
+    text-align: center;
+}
+
+/* ---------- composed: the Mint's stage ---------- */
+
+/* No title, no toolbar, no form column: the card, its back, its faces,
+   on a stage that takes the chosen picture's colour. The pair is centred;
+   the faces strip runs under it as wide as the stage (1120px, the Mint's
+   stage column), so a record's fifteen pictures sit in one row. */
+.refract-oc-host .roc-composed {
+    position: relative;
+    max-width: 1152px;
+    padding-top: 20px;
+    /* Room for the theme's dock where it is drawn (up to 900px wide). */
+    padding-bottom: calc(var(--refract-dock-footprint, 0px) + 64px);
+}
+
+.refract-oc-host .roc-mint {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    outline: none;
+}
+
+.refract-oc-host .roc-mint > .roc-plate {
+    max-width: 796px;
+}
+
+.refract-oc-host .roc-pair {
+    display: grid;
+    grid-template-columns: 340px 400px;
+    justify-content: center;
+    /* Each side sizes to its content: the back is as tall as the record it
+       carries and the actions follow it in flow (the Mint board C), so a
+       name-only performer has no hole between its one line and "Add to
+       library" (review-create F1). */
+    align-items: start;
+    gap: 56px;
+}
+
+.refract-oc-host .roc-card-stage {
+    position: relative;
+    align-self: start;
+}
+.refract-oc-host .roc-card-saving {
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    z-index: 4;
+    transform: translateX(-50%);
+    padding: 10px 18px;
+    border-radius: var(--radius-pill);
+    background: rgba(var(--scrim-rgb), 0.85);
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* The stat strip on this card is NOT the list's (the author's ruling,
+   create-strip, overruling the earlier "the list's exact strip" rule this
+   comment used to state). A performer being created has no scenes, no O
+   count and no rating (the form has no rating field), and no images,
+   galleries or groups, so those slots could only ever be dashes: the
+   default list strip (Rating, Age, O count, Scenes) drew three dashes
+   beside an age, on every new performer, for good.
+
+   So the preview carries the pills the form can fill and that have a value
+   now: Age (Birthdate), Height, Career (the career dates, as Stash derives
+   career_length from them), Stats (Measurements), Weight, and Tags only
+   when the author's slots carry Tags (it is a count of labels, like the
+   other counts, not a fact about the performer, so it does not join
+   uninvited). Order: the author's slot order for any of these it holds,
+   then the rest in the theme's catalogue order; at most the strip's six;
+   no strip at all while none has a value. The pills fill as the form
+   changes (the page draws a fresh card when a value changes).
+
+   The page hands the values over on its own wrapper
+   (`data-refract-draft-stats`, parts.tsx LiveCard) and refract.js
+   (`initPerformerCards`) builds the strip from them for a card inside that
+   wrapper only; every list and performer page keeps the list's strip. The
+   search results pass their scraped record's values the same way, kept to
+   one row (trailing pills dropped, `data-refract-draft-fit="row"`). Same pill component, icons and type as the list's.
+
+   Layout is the card BACK's rule (`16_playing_card.css`,
+   `.refract-mb-stats`), because this is a chosen selection, not a fixed
+   row: centred, a fixed gap, empties left out, the back's size steps (1,
+   0.85, 0.7). One departure: where the values still do not fit at 0.7
+   the back drops its trailing pills, which here would hide what the
+   author just typed (all five on the phone's 250px card kept three,
+   measured), so the strip wraps to two centred rows at 0.85 instead
+   (0.7 if two rows need it; refract.js `refractFitDraftStrip`). Classic (no playing card) keeps
+   its own quiet chin pills, centred, wrapping the same way. */
+body.stash-liquid-glass.refract-perf-layout-card .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen {
+    justify-content: center !important;
+    /* The back's 2.6cqw of the card, as a share of the strip. */
+    gap: 2.6% !important;
+}
+/* Nothing in a pill wraps (the back's rule and its reason): a wrapped
+   "168 cm" makes a two-line pill, and a pill that wraps never overflows,
+   so the fit pass would never step down or wrap. Measured before this:
+   five pills at 1440 stood 36 to 62px tall, "34C-24-35" on three lines. */
+body.stash-liquid-glass .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen > *,
+body.stash-liquid-glass .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen > * > span {
+    white-space: nowrap !important;
+}
+body.stash-liquid-glass .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen > [hidden] {
+    display: none !important;
+}
+body.stash-liquid-glass.refract-perf-layout-card .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen.refract-pc-stats-wrap {
+    flex-wrap: wrap !important;
+    row-gap: calc(0.4rem * var(--pc-badge-scale, 1)) !important;
+}
+body.stash-liquid-glass:not(.refract-perf-layout-card) .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--gap-2xs) var(--gap-lg);
+}
+body.stash-liquid-glass:not(.refract-perf-layout-card) .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen > * {
+    margin: 0;
+    white-space: nowrap;
+}
+/* The four record pills and Tags have no Classic style of their own (the
+   list's Classic strip never carries them); they take the Scenes pill's. */
+body.stash-liquid-glass:not(.refract-perf-layout-card) .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen > :is(.stash-perf-height, .stash-perf-career, .stash-perf-measure, .stash-perf-weight, .stash-perf-tags) {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--gap-2xs);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1;
+}
+body.stash-liquid-glass:not(.refract-perf-layout-card) .refract-oc-host .performer-card .stash-perf-stats.refract-pc-stats-chosen svg {
+    flex-shrink: 0;
+}
+
+/* ---------- the back ---------- */
+
+.refract-oc-host .roc-back {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-lg);
+    min-width: 0;
+}
+
+/* The record as the card's reverse: the card's radius and the panel
+   fill, a hairline between rows, no rule down the middle and no box
+   around each value. */
+.refract-oc-host .roc-back-lines {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: var(--radius);
+    border: 1px solid var(--roc-rim);
+    background: var(--glass-bg-strong);
+}
+.refract-oc-host .roc-back-li {
+    position: relative;
+    min-width: 0;
+}
+.refract-oc-host .roc-back-li.is-wide {
+    grid-column: 1 / -1;
+}
+.refract-oc-host .roc-back-li::before {
+    content: "";
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    top: 0;
+    height: 1px;
+    background: var(--roc-rim);
+}
+/* No rule above the first row: the first line, and the second when it
+   shares the first row. */
+.refract-oc-host .roc-back-li:first-child::before,
+.refract-oc-host .roc-back-li:first-child:not(.is-wide) + .roc-back-li:not(.is-wide)::before {
+    display: none;
+}
+.refract-oc-host .roc-line {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    min-height: 50px;
+    padding: 7px 16px 8px;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--roc-ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--dur-fast) ease;
+}
+/* The Mint's hover: accent tint .08 and an accent outline drawn inside the
+   cell, so the line says it is a door before it is clicked. */
+.refract-oc-host .roc-line:hover {
+    background: rgba(var(--accent-rgb), 0.08);
+    outline: 1px solid rgba(var(--accent-rgb), 0.4);
+    outline-offset: -1px;
+}
+.refract-oc-host .roc-line-label {
+    color: var(--roc-muted);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    line-height: 1.35;
+}
+.refract-oc-host .roc-line:hover .roc-line-label {
+    color: var(--accent-ink);
+}
+.refract-oc-host .roc-line-value {
+    font-size: var(--fs-body);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.refract-oc-host .roc-back-clamp {
+    display: -webkit-inline-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+.refract-oc-host .roc-back-clamp.is-three {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+}
+.refract-oc-host .roc-back-note {
+    display: block;
+    margin-top: 6px;
+    color: var(--roc-muted);
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+}
+.refract-oc-host .roc-back-empty {
+    margin: 0;
+    padding: 18px;
+    border-radius: var(--radius);
+    border: 1px dashed var(--roc-rim-hi);
+    color: var(--roc-muted);
+    font-size: var(--fs-md);
+}
+
+.refract-oc-host .roc-correct {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--gap-md);
+    margin: -4px 0 0;
+    font-size: var(--fs-md);
+}
+.refract-oc-host .roc-correct .roc-link {
+    padding: 0;
+}
+
+.refract-oc-host .roc-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.refract-oc-host .roc-chips.is-static {
+    margin-top: 4px;
+}
+.refract-oc-host .roc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--roc-rim);
+    background: var(--fill-3);
+    color: var(--roc-ink);
+    font-size: var(--fs-sm);
+    font-weight: 500;
+}
+/* The stash ID chip is drawn on the panel itself, no fill of its own:
+   accent ink on the chip fill measured 4.38:1, on the bare panel it
+   clears 4.5. */
+.refract-oc-host .roc-chip.is-id {
+    border-color: var(--accent-glow);
+    background: transparent;
+    color: var(--accent-ink);
+}
+.refract-oc-host .roc-chip.is-more {
+    color: var(--roc-muted);
+}
+.refract-oc-host button.roc-chip {
+    min-height: 36px;
+    font: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+}
+.refract-oc-host .roc-chip.is-add {
+    border-style: dashed;
+    border-color: rgba(var(--accent-rgb), 0.5);
+    background: none;
+    color: var(--accent-ink);
+}
+.refract-oc-host button.roc-chip.is-add:hover {
+    border-color: var(--accent-glow);
+    background: var(--accent-tint);
+}
+
+/* ---------- actions: one primary ---------- */
+
+.refract-oc-host .roc-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.refract-oc-host .roc-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gap-sm) var(--gap-lg);
+}
+/* Back to search: navigation, not an action, so it sits above the pair
+   at its left edge, out of the action row. */
+.refract-oc-host .roc-mint-top {
+    width: 796px;
+    max-width: 100%;
+    margin: -12px 0 -16px;
+}
+.refract-oc-host .roc-back-to {
+    gap: 6px;
+    min-height: 32px;
+    padding: 0;
+    font-size: var(--fs-md);
+}
+.refract-oc-host .roc-back-glyph {
+    width: 7px;
+    height: 7px;
+    border-left: 1.6px solid currentColor;
+    border-bottom: 1.6px solid currentColor;
+    transform: rotate(45deg);
+}
+/* The one filled control on the page, with the Mint's glow: the house
+   primary recipe (6.5) at 48px, plus an accent halo composed onto the
+   depth token. */
+.refract-oc-host .roc-btn.roc-add-btn {
+    min-width: 176px;
+    box-shadow: var(--shadow-sm), 0 0 18px rgba(var(--accent-rgb), 0.28);
+}
+.refract-oc-host .roc-btn.roc-add-btn:hover {
+    box-shadow: var(--shadow-sm), 0 0 24px rgba(var(--accent-rgb), 0.42);
+}
+.refract-oc-host .roc-composed.is-saving .roc-mint {
+    pointer-events: none;
+}
+
+.refract-oc-host .roc-handback {
+    margin: 4px 0 0;
+    font-size: var(--fs-md);
+    text-align: center;
+}
+.refract-oc-host .roc-handback .roc-link {
+    min-height: 32px;
+    padding: 0;
+}
+
+/* ---------- the faces ---------- */
+
+.refract-oc-host .roc-faces {
+    position: relative;
+    width: 100%;
+    max-width: 1120px;
+}
+/* One row at every width (the Mint). The row is centred while its frames
+   fit and scrolls sideways when they do not; the "+" sits beside it,
+   outside the scroller, so it is always in reach. The row's padding is
+   room for the chosen frame's lift and 14px glow, which a scroller would
+   otherwise clip; the negative margin keeps the frames where they were. */
+.refract-oc-host .roc-faces-strip {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 10px;
+}
+.refract-oc-host .roc-faces-row {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: nowrap;
+    gap: 10px;
+    min-width: 0;
+    margin: -8px -12px 0;
+    padding: 12px 12px 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    /* 6.10: the thin accent thumb, handed back to ::-webkit. */
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+}
+.refract-oc-host .roc-faces-row::-webkit-scrollbar {
+    height: 8px;
+}
+.refract-oc-host .roc-faces-row::-webkit-scrollbar-track {
+    background: transparent;
+}
+.refract-oc-host .roc-faces-row::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-pill);
+    background: rgba(var(--accent-rgb), 0.35);
+}
+.refract-oc-host .roc-faces-row::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--accent-rgb), 0.6);
+}
+/* The edge that hides frames fades out, so the overflow reads as "more
+   this way", not as a frame cut in half. */
+.refract-oc-host .roc-faces-row.fade-end {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent);
+}
+.refract-oc-host .roc-faces-row.fade-start {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 56px);
+    mask-image: linear-gradient(to right, transparent, #000 56px);
+}
+.refract-oc-host .roc-faces-row.fade-start.fade-end {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent);
+}
+.refract-oc-host .roc-faces-strip > .roc-face.is-add {
+    margin-top: 4px;
+}
+/* No pictures: no row, so the "+" alone sits centred under the card at
+   every width (review2-create N11: on a phone the empty row took the width
+   and pushed it to the right end). */
+.refract-oc-host .roc-faces-strip.is-empty {
+    justify-content: center;
+}
+.refract-oc-host .roc-faces-strip.is-empty > .roc-faces-row {
+    display: none;
+}
+.refract-oc-host .roc-face {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 10px; /* the Mint's 8px frame, a step rounder beside the 16px card */
+    border: 1px solid var(--roc-rim);
+    background: var(--fill-2);
+    color: var(--roc-muted);
+    cursor: pointer;
+    transition: box-shadow var(--dur-fast) ease, transform var(--dur-move) var(--ease-glide), opacity var(--dur-fast) ease;
+}
+.refract-oc-host .roc-face img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.refract-oc-host .roc-faces-row:hover .roc-face:not(.is-chosen):not(.is-add) {
+    opacity: 0.8;
+}
+.refract-oc-host .roc-faces-row .roc-face:not(.is-add):hover {
+    opacity: 1;
+    transform: translateY(-2px);
+}
+/* The chosen frame: accent rim, the Mint's 14px glow, lifted, and a check
+   so it reads apart from a keyboard focus ring on a neighbour. */
+.refract-oc-host .roc-face.is-chosen {
+    border-color: transparent;
+    transform: translateY(-3px);
+    box-shadow: 0 0 0 2px var(--accent-bright), 0 0 14px rgba(var(--accent-rgb), 0.5);
+}
+.refract-oc-host .roc-face.is-chosen::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2 7 10.6l4.6-5' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+    box-shadow: var(--shadow-xs);
+}
+.refract-oc-host .roc-face.is-add {
+    border-style: dashed;
+    border-color: var(--roc-rim-hi);
+    background: transparent;
+}
+.refract-oc-host .roc-face.is-add:hover,
+.refract-oc-host .roc-face.is-add.is-open {
+    color: var(--accent-ink);
+    border-color: var(--accent-glow);
+}
+/* On its way: a slow glass sweep across the frame until the picture
+   arrives (a still, faintly lit tile under reduced motion), so a frame
+   that is loading never reads as empty or broken. */
+.refract-oc-host .roc-face.is-loading {
+    background: linear-gradient(110deg, var(--fill-2) 30%, var(--fill-4) 50%, var(--fill-2) 70%) 0 0 / 250% 100%;
+    animation: roc-face-wait 1.6s ease-in-out infinite;
+}
+/* The picture is never hidden: it paints over the sweep the moment it
+   has pixels, whatever the class says. */
+@keyframes roc-face-wait {
+    from { background-position: 100% 0; }
+    to { background-position: -150% 0; }
+}
+/* Did not load: the frame keeps its slot, dashed like an absent plate,
+   and says so in words. */
+.refract-oc-host .roc-face.is-broken {
+    border-style: dashed;
+    border-color: var(--roc-rim-hi);
+    background: transparent;
+}
+.refract-oc-host .roc-face.is-broken img {
+    opacity: 0;
+}
+.refract-oc-host .roc-face-broken {
+    position: absolute;
+    inset: 0 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--fs-xs);
+    line-height: 1.25;
+    color: var(--roc-muted);
+    text-align: center;
+}
+.refract-oc-host .roc-faces-cap {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0 var(--gap-md);
+    margin: 12px 0 0;
+    font-size: var(--fs-md);
+    text-align: center;
+}
+.refract-oc-host .roc-faces-which {
+    font-weight: 600;
+}
+.refract-oc-host .roc-faces-cap .roc-link {
+    min-height: 32px;
+    padding: 0;
+    font-size: var(--fs-md);
+}
+
+/* "+": a small panel ABOVE the strip, so adding a picture never happens
+   below the fold. The near-opaque overlay surface (3.2). */
+.refract-oc-host .roc-add {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 12px);
+    z-index: 6;
+    width: min(420px, 100%);
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+    padding: 14px;
+    border-radius: var(--radius);
+    border: 1px solid var(--roc-rim);
+    background: rgba(var(--surface-rgb), 0.97);
+    box-shadow: var(--shadow-xl);
+}
+.refract-oc-host .roc-add-label {
+    margin: 0;
+    color: var(--roc-muted);
+    font-size: var(--fs-md);
+    font-weight: 500;
+}
+.refract-oc-host .roc-add-row {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+}
+.refract-oc-host .roc-add-row.is-file {
+    flex-wrap: wrap;
+    font-size: var(--fs-md);
+}
+.refract-oc-host .roc-add-row .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 44px;
+}
+.refract-oc-host .roc-file {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ---------- the room takes her colour ---------- */
+
+/* The Mint's ambient: a 22 percent radial of the chosen picture's capped
+   colour behind the card, two layers crossfading. Fixed to the viewport
+   under the stage; off in lite. */
+.refract-oc-host .roc-ambient {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+.refract-oc-host .roc-ambient > i {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: radial-gradient(55% 45% at 36% 52%, rgba(var(--roc-amb, 0, 0, 0), 0.22), transparent 70%);
+    transition: opacity var(--dur-settle) ease;
+}
+.refract-oc-host .roc-ambient > i.is-on {
+    opacity: 1;
+}
+body.refract-lite .refract-oc-host .roc-ambient {
+    display: none;
+}
+.refract-oc-host .roc-composed > .roc-mint {
+    z-index: 1;
+}
+
+/* ---------- the drawer ---------- */
+
+/* Refract's own panel from the right, holding Refract's own form. The
+   opaque composite (bg-1 plus one glass-bg-strong, 3.2), so nothing on the
+   stage reads through it; the Mint review measured ghosting at 0.94.
+   z-index 1 in the page's order: above the stage, below the navbar, the
+   toasts and the menus Stash's selects portal to the end of <body>. */
+.refract-oc-host .roc-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: rgba(var(--scrim-rgb), 0.3);
+    animation: roc-fade var(--dur-enter) ease;
+}
+.refract-oc-host .roc-drawer {
+    position: fixed;
+    top: var(--roc-drawer-top, 72px);
+    right: 12px;
+    /* Above the theme's dock wherever it is drawn, so the foot and its
+       Add to library are never under it (measured at 900: they were). */
+    bottom: calc(var(--refract-dock-footprint, 0px) + 12px);
+    z-index: 1;
+    width: min(560px, calc(100vw - 24px));
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius);
+    border: 1px solid var(--roc-rim);
+    background: linear-gradient(var(--glass-bg-strong), var(--glass-bg-strong)), var(--bg-1);
+    box-shadow: var(--shadow-2xl);
+    animation: roc-drawer-in var(--dur-slow) var(--ease-glide);
+}
+@keyframes roc-drawer-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+@keyframes roc-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+.refract-oc-host .roc-drawer-head {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-lg);
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--roc-rim);
+}
+.refract-oc-host .roc-drawer-note {
+    margin: 0;
+    color: var(--roc-muted);
+    font-size: var(--fs-md);
+}
+.refract-oc-host .roc-drawer-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px 20px 24px;
+    /* 6.10: the thin accent thumb, handed back to ::-webkit. */
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+}
+.refract-oc-host .roc-drawer-body::-webkit-scrollbar {
+    width: 8px;
+}
+.refract-oc-host .roc-drawer-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.refract-oc-host .roc-drawer-body::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-pill);
+    background: rgba(var(--accent-rgb), 0.35);
+}
+.refract-oc-host .roc-drawer-foot {
+    padding: 14px 20px;
+    border-top: 1px solid var(--roc-rim);
+}
+
+/* The form: the edit page's grouping on a six-track grid. */
+.refract-oc-host .roc-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xl);
+}
+.refract-oc-host .roc-sec {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+.refract-oc-host .roc-sec > legend {
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 0 0 6px;
+    border-bottom: 1px solid var(--roc-rim);
+    color: var(--accent-ink);
+}
+.refract-oc-host .roc-sec-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px 14px;
+}
+.refract-oc-host .roc-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.refract-oc-host .roc-row.is-full {
+    grid-column: span 6;
+}
+.refract-oc-host .roc-row.is-half {
+    grid-column: span 3;
+}
+.refract-oc-host .roc-row.is-third {
+    grid-column: span 2;
+}
+/* Two thirds: the country, whose longest common names ("United States of
+   America", with a flag, a clear control and a chevron) need about 290px. */
+.refract-oc-host .roc-row.is-wide {
+    grid-column: span 4;
+}
+.refract-oc-host .roc-row-label {
+    margin: 0;
+    color: var(--roc-muted);
+    font-size: var(--fs-md);
+    font-weight: 500;
+}
+/* The drawer body is the scroller now, with its own head and foot outside
+   it, so a focused field only needs a little air at either edge. */
+.refract-oc-host .roc-form :is(input, select, textarea, button) {
+    scroll-margin-top: 16px;
+    scroll-margin-bottom: 16px;
+}
+.refract-oc-host .roc-row .form-control {
+    width: 100%;
+    min-height: 40px;
+}
+/* Stash's DateInput is a Bootstrap input group (field plus the picker
+   button); the full-width rule above must not reach its field, or the
+   button wraps under it. */
+.refract-oc-host .roc-row .input-group {
+    flex-wrap: nowrap;
+}
+.refract-oc-host .roc-row .input-group > .form-control {
+    width: 1%;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.refract-oc-host .roc-row textarea.form-control {
+    min-height: 76px;
+    resize: vertical;
+}
+.refract-oc-host .roc-row.has-problem .form-control {
+    border-color: rgba(var(--danger-rgb), 0.6);
+}
+.refract-oc-host .roc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.refract-oc-host .roc-list-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.refract-oc-host .roc-list-row.is-id select.form-control {
+    flex: 0 0 36%;
+}
+.refract-oc-host .roc-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    margin: 0;
+    cursor: pointer;
+}
+.refract-oc-host .roc-check input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+}
+.refract-oc-host .roc-stash-control {
+    min-width: 0;
+}
+.refract-oc-host .roc-stash-control .form-group {
+    margin-bottom: 0;
+}
+.refract-oc-host .roc-unmatched {
+    margin-top: 10px;
+}
+.refract-oc-host .roc-unmatched p {
+    margin: 0 0 8px;
+    font-size: var(--fs-md);
+}
+
+
+/* ---------- fields: the Refract field recipe ---------- */
+
+/* Refract's own selects: the theme's chevron instead of the browser's
+   arrows, in a fixed ink, since a background-image cannot read
+   currentColor. */
+.refract-oc-host select.roc-select {
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='rgba(255,255,255,0.6)' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    cursor: pointer;
+}
+.refract-oc-host select.roc-select option {
+    background: rgb(var(--surface-rgb));
+    color: var(--roc-ink);
+}
+
+/* Stash's own controls embedded in this form (CountrySelect and TagSelect
+   are react-select; DateInput is an input group), dressed in the same
+   recipe from this bundle's scoped CSS: the field's fill, rim and radius,
+   the house focus ring, 40px tall like every other field here, indicator
+   glyphs in muted ink. Nothing outside .refract-oc-host. */
+.refract-oc-host .roc-stash-control .react-select__control {
+    min-height: 40px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background-color: var(--fill-2);
+    box-shadow: none;
+    cursor: pointer;
+}
+.refract-oc-host .roc-stash-control .react-select__control:hover {
+    border-color: var(--roc-rim-hi);
+}
+.refract-oc-host .roc-stash-control .react-select__control--is-focused {
+    border-color: var(--accent-glow);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+.refract-oc-host .roc-stash-control .react-select__single-value,
+.refract-oc-host .roc-stash-control .react-select__input-container {
+    color: var(--roc-ink);
+}
+.refract-oc-host .roc-stash-control .react-select__placeholder {
+    color: var(--roc-muted);
+}
+.refract-oc-host .roc-stash-control .react-select__indicator {
+    padding: 6px;
+    color: var(--roc-muted);
+}
+.refract-oc-host .roc-stash-control .react-select__indicator:hover {
+    color: var(--roc-ink);
+}
+.refract-oc-host .roc-stash-control .react-select__multi-value {
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--roc-rim);
+    background: var(--fill-3);
+}
+.refract-oc-host .roc-stash-control .react-select__multi-value__label {
+    color: var(--roc-ink);
+}
+
+/* Stash's DateInput: the field and its calendar button read as one pill
+   (6.6: the seam edges flatten). Its input also carries Stash's own
+   `.text-input` inset shadow (a 1px rgba(16,22,26,0.3) ring and a 1px
+   drop); no other field here has it (review-create F8). The house focus
+   ring takes its place. */
+.refract-oc-host .roc-stash-control .date-input.form-control {
+    box-shadow: none;
+}
+.refract-oc-host .roc-stash-control .date-input.form-control:focus {
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+.refract-oc-host .roc-stash-control .input-group > .form-control {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.refract-oc-host .roc-stash-control .input-group > .input-group-append > .btn {
+    min-height: 40px;
+    border: 1px solid var(--glass-border);
+    border-left: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    background: var(--fill-3);
+    color: var(--roc-muted);
+}
+.refract-oc-host .roc-stash-control .input-group > .input-group-append > .btn:hover {
+    background: var(--fill-4);
+    color: var(--roc-ink);
+}
+/* The theme paints every input-group button with the glass surface, with
+   !important (08_misc_mid: `.input-group .btn`, and the date group's own
+   rim on the left), which reads as a separate box beside fields filled
+   --fill-2 (review2-create N11). On this page the calendar button takes
+   the field's own fill and rim and no seam rim of its own, so field and
+   button read as one pill. */
+body.stash-liquid-glass .refract-oc-host .roc-stash-control .date-input-group > .input-group-append .btn {
+    background: var(--fill-2) !important;
+    border-color: var(--glass-border) !important;
+    border-left: 0 !important;
+    color: var(--roc-muted) !important;
+}
+body.stash-liquid-glass .refract-oc-host .roc-stash-control .date-input-group > .input-group-append .btn:hover {
+    background: var(--fill-4) !important;
+    color: var(--roc-ink) !important;
+}
+
+/* The way back from Stash's own form, in that form's own column (Stash's
+   create page is a col-md-4 image column and a col-md-8 form column), so it
+   sits above the form's title where the eye already is, not alone at the
+   far right of the page (review-create F11). */
+.refract-oc-host .roc-return {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 var(--gap-md);
+    padding: 0 15px 4px;
+    font-size: var(--fs-md);
+}
+.refract-oc-host .roc-return .roc-link {
+    gap: 6px;
+    padding: 0;
+}
+@media (min-width: 768px) {
+    .refract-oc-host .roc-return {
+        padding-left: calc(100% / 3 + 15px);
+    }
+}
+
+/* ---------- narrower desktops ---------- */
+
+@media (max-width: 1000px) {
+    .refract-oc-host .roc-pair {
+        gap: 32px;
+    }
+}
+
+/* With the drawer open below 1100px the centred pair would put the card
+   under the panel (at 968: card 98 to 438, panel from 396; review-create
+   F10). The pair steps to the page's left edge while the panel is open,
+   and the panel gives up width down to 400px, so the card stays whole
+   beside the form it follows. The Mint's panel is 560px; it narrows only
+   where keeping 560 would hide the card. */
+@media (min-width: 769px) and (max-width: 1100px) {
+    .refract-oc-host .roc-composed.has-drawer .roc-pair {
+        justify-content: start;
+    }
+    .refract-oc-host .roc-composed.has-drawer .roc-mint {
+        align-items: flex-start;
+    }
+    .refract-oc-host .roc-drawer {
+        /* 416 = the card's left edge (28) + the card (340) + a 24px gap +
+           the panel's 12px inset + 12px of air: at 807 the panel is 400
+           wide and clears the card by 27px, at 968 it is 552. */
+        width: min(560px, max(400px, calc(100vw - 416px)));
+    }
+}
+
+/* The empty stage centres its field in the window on desktop, and the
+   dock layout runs to 900, so at 769-900 the field sat at y 340 while
+   at 768 it sat at 50 (WB7). The whole dock band starts at the top. */
+@media (max-width: 900px) {
+    .refract-oc-host .roc-stage {
+        padding-top: 28px;
+    }
+    .refract-oc-host .roc-stage:not(.has-answer) {
+        min-height: 0;
+        justify-content: flex-start;
+        padding-bottom: 0;
+    }
+}
+
+/* ---------- phone ---------- */
+
+@media (max-width: 768px) {
+    .refract-oc-host .roc-page {
+        padding: 4px 16px 40px;
+    }
+    .refract-oc-host .roc-stage {
+        padding-top: 28px;
+        gap: var(--gap-lg);
+    }
+    .refract-oc-host .roc-stage:not(.has-answer) {
+        min-height: 0;
+        justify-content: flex-start;
+        padding-bottom: 0;
+    }
+    .refract-oc-host .roc-field,
+    .refract-oc-host .roc-stage.has-answer .roc-field {
+        height: 56px;
+    }
+    .refract-oc-host .roc-field-input,
+    .refract-oc-host .roc-stage.has-answer .roc-field-input {
+        padding: 0 14px;
+        font-size: var(--fs-lg);
+    }
+    .refract-oc-host .roc-source-btn {
+        max-width: 120px;
+        padding: 0 8px 0 10px;
+    }
+    .refract-oc-host .roc-cands,
+    .refract-oc-host .roc-cands.is-fan {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px 18px;
+        justify-items: center;
+    }
+    .refract-oc-host .roc-cands.is-fan .roc-cand {
+        transform: none;
+    }
+    .refract-oc-host .roc-cand-cap {
+        max-width: 100%;
+    }
+
+    /* Composed: card 250, the faces beneath it, the back under that, the
+       primary in a bar above the dock (the Mint's board G3). */
+    .refract-oc-host .roc-composed {
+        padding-top: 8px;
+        padding-bottom: calc(var(--refract-dock-footprint, 0px) + 110px);
+    }
+    .refract-oc-host .roc-mint {
+        gap: 20px;
+    }
+    .refract-oc-host .roc-pair {
+        display: contents;
+    }
+    .refract-oc-host .roc-mint > .roc-plate {
+        order: 0;
+    }
+    .refract-oc-host .roc-card-stage {
+        order: 1;
+        align-self: center;
+    }
+    .refract-oc-host .roc-faces {
+        order: 2;
+    }
+    .refract-oc-host .roc-back {
+        order: 3;
+        width: 100%;
+    }
+    .refract-oc-host .roc-handback {
+        order: 4;
+    }
+    /* The strip stays one row on a phone and scrolls sideways, the
+       platform's own idiom for a filmstrip: fifteen frames wrapped into
+       three rows ran under the action bar (measured: the "+" at y 716
+       under the bar from 646, so a tap on it added the performer). The
+       chosen frame is scrolled into view by the component.
+       The row is only as wide as its frames, so the "+" follows the last
+       one and the pair sits centred under the card, the way it does on
+       the desktop; a growing row pushed the "+" to the screen's right
+       edge with nothing between. Once the frames outgrow the width the
+       row shrinks to fit and scrolls, and the "+" stays in reach. The
+       negative margins mirror the padding on both sides, so the centring
+       is not skewed by the scroller's bleed room. */
+    .refract-oc-host .roc-faces-strip {
+        justify-content: center;
+        gap: 8px;
+    }
+    .refract-oc-host .roc-faces-row {
+        flex: 0 1 auto;
+        gap: 8px;
+        margin: -4px -8px 0 -16px;
+        padding: 10px 8px 10px 16px;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+    }
+    .refract-oc-host .roc-faces-row::-webkit-scrollbar {
+        display: none;
+    }
+    .refract-oc-host .roc-faces-row > .roc-face {
+        scroll-snap-align: center;
+    }
+    .refract-oc-host .roc-add {
+        position: static;
+        transform: none;
+        width: 100%;
+        margin-bottom: 12px;
+    }
+    /* On a phone the theme makes <body> overflow-x hidden, which makes it
+       the scroll container a sticky element measures against while the
+       document scrolls, so sticky never engages (owned-create measured
+       it). The bar is fixed above the dock on the opaque composite, with
+       room kept for it at the end of the page. */
+    .refract-oc-host .roc-actions.is-stage {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: calc(var(--refract-dock-footprint, 0px) + 8px);
+        z-index: 1;
+        margin: 0;
+        padding: 10px;
+        border-radius: var(--radius);
+        border: 1px solid var(--roc-rim);
+        background: linear-gradient(var(--glass-bg-strong), var(--glass-bg-strong)), var(--bg-1);
+        box-shadow: var(--shadow-xl);
+    }
+    .refract-oc-host .roc-actions.is-stage .roc-actions-row {
+        flex-wrap: nowrap;
+        gap: var(--gap-md);
+    }
+    .refract-oc-host .roc-actions.is-stage .roc-btn.is-big {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0 16px;
+    }
+    .refract-oc-host .roc-mint-top {
+        order: -1;
+        margin: 0 0 -8px;
+    }
+    /* The drawer becomes a full-height sheet above the dock. */
+    .refract-oc-host .roc-drawer {
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        bottom: calc(var(--refract-dock-footprint, 0px) + 8px);
+        width: auto;
+        animation-name: roc-sheet-in;
+    }
+    .refract-oc-host .roc-drawer-head {
+        flex-wrap: wrap;
+        padding: 10px 14px;
+    }
+    .refract-oc-host .roc-drawer-body {
+        padding: 14px 14px 20px;
+    }
+    .refract-oc-host .roc-drawer-foot {
+        padding: 10px 14px;
+    }
+    .refract-oc-host .roc-row.is-half,
+    .refract-oc-host .roc-row.is-third,
+    .refract-oc-host .roc-row.is-wide {
+        grid-column: span 6;
+    }
+}
+/* The house touch floor: on a phone, and on any coarse pointer, every text
+   action on this page is a 44px target (review-create F6 measured "Back to
+   search", "Use no picture" and the hand-back at 32px at 390 and 600). The
+   desktop keeps the tighter line height those links sit in. */
+@media (max-width: 768px), (pointer: coarse) {
+    .refract-oc-host .roc-back-to,
+    .refract-oc-host .roc-faces-cap .roc-link,
+    .refract-oc-host .roc-plate.is-library .roc-plate-actions .roc-link,
+    .refract-oc-host .roc-correct .roc-link,
+    .refract-oc-host .roc-kept .roc-link,
+    .refract-oc-host .roc-return .roc-link {
+        min-height: 44px;
+    }
+    /* The source menu's items (review2-create N5 measured 40). */
+    .refract-oc-host .roc-menu-item {
+        min-height: 44px;
+    }
+    /* The hand-back line reads as one sentence when it wraps on a phone
+       (review2-create N11): the link flows inline with its note, and the
+       44px target is the whole line, through a cover on the link. */
+    .refract-oc-host .roc-handback {
+        position: relative;
+        min-height: 44px;
+        padding: 11px 0;
+        line-height: 1.5;
+    }
+    .refract-oc-host .roc-handback .roc-link {
+        display: inline;
+        min-height: 0;
+        line-height: inherit;
+        vertical-align: baseline;
+    }
+    .refract-oc-host .roc-handback .roc-link::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+    /* The drawer's form too: fields, Stash's pickers and date button, the
+       small add buttons, the remove crosses and the tag chips. */
+    .refract-oc-host .roc-row .form-control,
+    .refract-oc-host .roc-stash-control .react-select__control,
+    .refract-oc-host .roc-stash-control .input-group > .input-group-append > .btn,
+    .refract-oc-host .roc-btn.is-small,
+    .refract-oc-host button.roc-chip,
+    .refract-oc-host .roc-form .collapse-button {
+        min-height: 44px;
+    }
+    .refract-oc-host .roc-icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+@keyframes roc-sheet-in {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@media (max-width: 420px) {
+    .refract-oc-host .roc-back-lines {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .refract-oc-host .roc-back-li:first-child:not(.is-wide) + .roc-back-li:not(.is-wide)::before {
+        display: block;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .refract-oc-host .roc-cands.is-fan .roc-cand,
+    .refract-oc-host .roc-face,
+    .refract-oc-host .roc-cands,
+    .refract-oc-host .roc-ambient > i,
+    .refract-oc-host .roc-line {
+        transition: none;
+    }
+    .refract-oc-host .roc-drawer,
+    .refract-oc-host .roc-scrim {
+        animation: none;
+    }
+    .refract-oc-host .roc-face.is-loading {
+        animation: none;
+        background: var(--fill-3);
+    }
+    .refract-oc-host .roc-faces-row .roc-face:not(.is-add):hover,
+    .refract-oc-host .roc-face.is-chosen {
+        transform: none;
+    }
+}

@@ -1,0 +1,1600 @@
+/*
+   The owned scene panel.
+
+   What this sheet does NOT contain is as deliberate as what it does. The
+   panel keeps `.scene-tabs` on its root, `.scene-toolbar` on its control
+   strip and Bootstrap's own tab classes on its strip, so the theme's
+   `07_scene_details.css` and `09_buttons.css` continue to draw the
+   container's glass, the control pill, the tier chip and the tab
+   segments exactly as they draw them on the patched panel. Restating
+   three hundred lines of that here would be a second implementation to
+   keep in step, and the first thing to fall out of step.
+
+   What is here is the panel's own content: the marquee, the record, the
+   tags, the credit row, and the rhythm between them. One rule per
+   selector, no `!important` (the two declarations that genuinely lost a
+   cascade live in cascade.css with the reason written above them), and
+   every size, gap, colour and duration from a token.
+
+   Type: seven size and weight pairs, which is the budget section 3.5
+   sets for a surface.
+     eyebrow   --fs-xs  / 700 / uppercase / --track-eyebrow
+     title     --fs-xl  / 700
+     specs     --fs-sm  / 500
+     label     --fs-xs  / 700 / uppercase / --track-eyebrow
+     body      --fs-md  / 400
+     chip      --fs-sm  / 600
+     figure    --fs-xs  / 600 / tabular
+*/
+
+/* ── The marquee ─────────────────────────────────────────────────── */
+
+.refract-sp .refract-sp-marquee {
+    display: flex;
+    flex-direction: column;
+}
+
+.refract-sp .refract-sp-head {
+    display: flex;
+    flex-direction: column;
+}
+
+/* The eyebrow labels the title, so it is never louder than the title
+   (P1, 6.13). It carries the accent only on hover, where it is a link
+   answering a pointer rather than a standing colour. */
+.refract-sp .refract-sp-studio {
+    align-self: flex-start;
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: var(--track-eyebrow);
+    /* 1.46, measured: the eyebrow's line box is 14.7px on the shipped
+       panel and every landmark below it inherits the difference. */
+    line-height: 1.46;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    transition: color var(--dur-fast) ease;
+    white-space: nowrap;
+}
+
+.refract-sp .refract-sp-studio:hover,
+.refract-sp .refract-sp-studio:focus-visible {
+    color: var(--accent-light);
+}
+
+.refract-sp .refract-sp-studio-logo {
+    display: block;
+    height: 2.75rem;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: left center;
+    width: auto;
+}
+
+/* The one display-sized thing in the column. Titles here are often file
+   names, which have no spaces to break on, so the wrap is forced rather
+   than left to chance. */
+.refract-sp .refract-sp-title {
+    color: var(--text);
+    font-size: var(--fs-xl);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.22;
+    /* 1rem, not the gap scale, and measured rather than chosen: the
+       shipped panel puts 13.9px between the eyebrow's ink and the
+       title's, and this is what reproduces it to a tenth. Padding and
+       margins are not on the token scale yet (3.6). */
+    margin: 1rem 0 0 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* With no studio there is no eyebrow to sit under, so the title is the
+   first ink in the panel and takes the marquee's own inset instead. */
+.refract-sp .refract-sp-title-lead {
+    margin-top: 0.7rem;
+}
+
+/* Stash's truncator inherits the title, rather than resetting it. */
+.refract-sp .refract-sp-title .TruncatedText {
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+}
+
+/* The hook the theme's marker injector reads, kept out of sight and out
+   of the layout. Not `display: none`: the injector reads `textContent`,
+   which survives either way, but a zero box is the honest statement that
+   this carries no visual weight, and a removed box could not be measured
+   to prove it carries none. */
+.refract-sp .refract-sp-hook {
+    border: 0;
+    clip-path: inset(50%);
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+/* The specification line: a date and what the file is. Each part is
+   omitted rather than drawn empty when the file has no such fact.
+
+   It is 4.5:1 rather than 3:1 that this line is held to. The comment
+   here used to call it secondary support text; on the Details tab this
+   is the only place the date, the frame rate and the resolution appear,
+   which is 3.9's "sole carrier of its information" clause. */
+.refract-sp .refract-sp-specs {
+    align-items: baseline;
+    color: rgba(var(--fg-rgb), 0.45);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    margin: 0.5rem 0 0 0;
+}
+
+.refract-sp .refract-sp-sep::before {
+    color: rgba(var(--fg-rgb), 0.42);
+    content: "\00b7";
+    margin: 0 7px;
+}
+
+/* ── The control strip ───────────────────────────────────────────── */
+
+/* The strip is the theme's, drawn by 07's state-row rules against
+   `.scene-toolbar`. The one thing this sheet adds is the top inset,
+   because the marquee above it is ours and 07 measures that gap from
+   Stash's own subheader margin. */
+.refract-sp .refract-sp-strip {
+    margin-top: 0.85rem;
+}
+
+/* ── The Details tab ─────────────────────────────────────────────── */
+
+/* The tab pane is a column and the credit row is pinned to its foot, so
+   the tag fold has a known amount of room and the panel has no dead
+   band under it at any cast size. */
+.refract-sp .refract-sp-details {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--gap-xl);
+    min-height: 0;
+}
+
+.refract-sp .refract-sp-credit-slot {
+    margin-top: auto;
+}
+
+/* The pin only holds while there is something to pin against. Measured
+   on 17783 it was opening 445px of empty panel between the record and
+   the credit row, and on a fully sparse scene 616px, with nothing to say
+   the lower island was a foot. Dropped, the content runs together and
+   the empty space is one contiguous run at the bottom, which reads as
+   "that is all there is" rather than as a layout fault (6.22 rule 1).
+   The condition is measured in the component, because no selector can
+   ask how much slack a flex column has. */
+.refract-sp .refract-sp-details.is-loose .refract-sp-credit-slot {
+    margin-top: 0;
+}
+
+/* The invitation, for a scene with no description, no tags, no
+   performers and no custom fields: 14,509 of them on this instance. One
+   line saying what would fill the tab and the action that does it, in
+   the panel's own quiet register rather than as a call to action (P3).
+   The action is named for the tab it opens, so the word the user reads
+   here is the word they land on (6.21). */
+.refract-sp .refract-sp-invite {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+.refract-sp .refract-sp-invite p {
+    color: rgba(var(--fg-rgb), 0.62);
+    font-size: var(--fs-md);
+    line-height: 1.55;
+    margin: 0;
+    max-width: 64ch;
+}
+
+/* Section labels. The count sits with the label rather than in the
+   content, so a section says how much it holds before it is read. */
+.refract-sp .refract-sp-label {
+    align-items: baseline;
+    color: rgba(var(--fg-rgb), 0.42);
+    display: flex;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    gap: var(--gap-xs);
+    letter-spacing: var(--track-eyebrow);
+    margin: 0 0 var(--gap-md) 0;
+    text-transform: uppercase;
+}
+
+/* The count takes the label's own ink rather than a second dimming of
+   it, and the arithmetic is why.
+
+   `opacity: 0.75` on the label's `rgba(var(--fg-rgb), 0.42)` composites
+   to an effective 0.315, and measured from rendered pixels on 103836 at
+   1600 that is exactly what lands: 107 grey on 39, which is 2.80:1.
+   That is under 3.9's 3:1 floor for secondary text, and the round-2
+   reading that the anti-aliased core never reaches the declared value
+   is not what the pixels say: 39 + 0.315 x 216 is 107, to the grey
+   level. The nominal figure was computed against the panel's nominal
+   surface rather than against the ground the count actually stands on.
+
+   So the second dimming goes and the count takes the label's own 0.42:
+   the count is quieter than its label because it is 600 against 700 and
+   sentence figures against tracked uppercase, which is the type doing
+   the work rather than the alpha. Measured after, 129 on 39 is 3.83:1,
+   the same as the label beside it. */
+.refract-sp .refract-sp-count {
+    font-feature-settings: "tnum" 1;
+    font-weight: 600;
+}
+
+/* The one control this panel repeats: a quiet disclosure. It is a text
+   button, not a pill, because a pill that mutates nothing and a pill
+   that does would then look alike (6.7). */
+/* `--accent-ink`: the accent in its INK role (3.1 rule 5). */
+.refract-sp .refract-sp-more {
+    background: none;
+    border: 0;
+    border-radius: var(--radius-sm);
+    color: var(--accent-ink);
+    cursor: pointer;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    /* The plate the hover paints, reserved at rest. The padding and the
+       margin cancel, so the INK sits where it always did and the plate
+       bleeds 6px each side into the panel's own inset; measured, every
+       landmark is unmoved. */
+    margin: -2px -6px;
+    padding: 2px 6px;
+    text-align: left;
+    transition: background var(--dur-fast) ease, box-shadow var(--dur-fast) ease,
+        color var(--dur-fast) ease;
+    width: fit-content;
+}
+
+/* Hovered and unhovered measured IDENTICAL on every property: colour,
+   decoration, background, opacity and border. The rule was
+   `color: var(--accent-bright)` over `color: var(--accent-ink)`, and
+   `--accent-ink` IS `--accent-bright` (01_tokens:254), so the one
+   property it changed could not change.
+
+   The hover now speaks the panel's own language rather than a colour
+   nudge: the same accent-tint fill and accent-glow rim the tag chip
+   takes, as an inset shadow so the box does not move, plus the ink
+   lifting to the high-key text shade. Three properties, none of which
+   can resolve to what it already was. */
+.refract-sp .refract-sp-more:hover {
+    background: var(--accent-tint);
+    box-shadow: inset 0 0 0 1px var(--accent-glow);
+}
+
+/* The ink lift, `--accent-light`, the accent's high-key text shade
+   (3.1 rule 5). Written at this weight, with the body class doubled, so
+   a rule that pegs a hovered control to `--accent-bright` cannot pull
+   it back. */
+body.stash-liquid-glass.stash-liquid-glass .refract-sp .refract-sp-more:hover {
+    color: var(--accent-light);
+}
+
+/* ── Description ─────────────────────────────────────────────────── */
+
+.refract-sp .refract-sp-description {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+/* Free user text gets a budget, not the panel's whole height (6.4).
+   Four lines, and the disclosure only appears when four were not
+   enough, which is measured on the rendered box. */
+.refract-sp .refract-sp-desc {
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    color: rgba(var(--fg-rgb), 0.62);
+    display: -webkit-box;
+    font-size: var(--fs-md);
+    line-height: 1.55;
+    margin: 0;
+    max-width: 64ch;
+    overflow: hidden;
+    white-space: pre-line;
+}
+
+.refract-sp .refract-sp-desc.is-open {
+    -webkit-line-clamp: unset;
+    display: block;
+    overflow: visible;
+}
+
+/* ── Tags ────────────────────────────────────────────────────────── */
+
+.refract-sp .refract-sp-tags {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+.refract-sp .refract-sp-tag-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-xs);
+}
+
+/* A tag chip carries its own rarity. The number is the reason the row
+   is ordered the way it is, so it is drawn rather than left implicit,
+   and it is quieter than the name it qualifies. */
+.refract-sp .refract-sp-tag {
+    align-items: center;
+    /* The chip recipe (6.7): --fill-3 under the glass rim at rest, --fill-4
+       on hover. It rested on --fill-4 under a 0.14 rim, which is the
+       recipe's hover step, so the hover below changed only the rim. */
+    background: var(--fill-3);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    gap: var(--gap-2xs);
+    line-height: 1.5;
+    padding: 2px 8px;
+    transition: border-color var(--dur-fast) ease, background var(--dur-fast) ease;
+}
+
+.refract-sp .refract-sp-tag:hover {
+    background: var(--fill-4);
+    border-color: var(--glass-border-bright);
+}
+
+/* 0.5, not the theme's ruled 0.42 for its own tag counts: this count
+   sits on a chip rather than the panel ground. The figure is
+   the reason the row is ordered as it is, so it clears the 3:1
+   secondary floor rather than being quieter. */
+.refract-sp .refract-sp-tag-n {
+    color: rgba(var(--fg-rgb), 0.5);
+    font-feature-settings: "tnum" 1;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+}
+
+/* The remainder is prose, not more chips. Forty chips in a scrolling box
+   is P7's failure; forty names in a sentence is a sentence. */
+.refract-sp .refract-sp-tag-run {
+    color: var(--text-muted);
+    font-size: var(--fs-sm);
+    line-height: 1.62;
+    margin: 0;
+}
+
+/* ── The credit row ──────────────────────────────────────────────── */
+
+.refract-sp .refract-sp-credit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+.refract-sp .refract-sp-faces {
+    align-items: center;
+    display: flex;
+    padding-left: 9px;
+}
+
+/* Overlapping discs, in cast order. The image is the subject, so the
+   crop favours the upper third of the frame where a face is. */
+.refract-sp .refract-sp-face {
+    background: var(--fill-3);
+    border: 2px solid rgba(var(--fg-rgb), 0.14);
+    border-radius: 50%;
+    display: block;
+    flex: 0 0 auto;
+    height: 34px;
+    margin-left: -9px;
+    overflow: hidden;
+    transition: transform var(--dur-move) var(--ease-glide),
+        border-color var(--dur-fast) ease;
+    width: 34px;
+}
+
+.refract-sp .refract-sp-face:hover,
+.refract-sp .refract-sp-face:focus-visible {
+    border-color: var(--accent-glow);
+    transform: translateY(-2px);
+}
+
+.refract-sp .refract-sp-face img {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    object-fit: cover;
+    object-position: 50% 30%;
+    width: 100%;
+}
+
+.refract-sp .refract-sp-face-initial {
+    align-items: center;
+    color: var(--text-muted);
+    display: flex;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    height: 100%;
+    justify-content: center;
+    width: 100%;
+}
+
+.refract-sp .refract-sp-face-more {
+    color: var(--text-muted);
+    font-feature-settings: "tnum" 1;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    margin-left: var(--gap-sm);
+}
+
+.refract-sp .refract-sp-credit-foot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-2xs);
+}
+
+.refract-sp .refract-sp-names {
+    color: rgba(var(--fg-rgb), 0.62);
+    font-size: var(--fs-md);
+    line-height: 1.45;
+    margin: 0;
+}
+
+/*
+   One row that scrolls sideways, not a grid that grows downwards.
+
+   The expanded credit row was the only part of this pane whose height
+   was a function of the data with nothing over it. As a two-up grid,
+   seven performers made four rows of 238.3px: measured on 186179 the
+   cards came to 328 x 1024.5, the tag fold went all the way to its
+   documented floor of eight chips trying to pay for it, and the pane
+   still overflowed by 763px with the credit row 742px below the panel's
+   own bottom edge. Three performers already overflowed by 180.
+
+   6.4's rule is that free user input does not set a panel's height and
+   the budget comes from the layout. An unbounded list of cards is that
+   rule's case as much as unbounded text is, and the theme's own panel
+   already answers it the same way: it expands the same seven performers
+   into ONE horizontal row that scrolls, 320px of pane overflow at any
+   performer count.
+
+   So the row is one card tall whatever the cast, and the cast is
+   reached sideways. The track is half the visible width less the gap,
+   which is exactly the width the two-up grid gave a card before, so no
+   card is redrawn and two are visible at rest at every width: the
+   second one cut by the row's edge is the affordance that says there
+   are more. `overflow-y: hidden` is deliberate and not decoration, it
+   is what makes the height a budget rather than a suggestion.
+*/
+.refract-sp .refract-sp-cards {
+    display: flex;
+    gap: var(--gap-lg);
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+}
+
+/* Two visible at rest, the rest one swipe away. */
+.refract-sp .refract-sp-cards > .performer-card {
+    flex: 0 0 calc((100% - var(--gap-lg)) / 2);
+    scroll-snap-align: start;
+}
+
+/* The row's own affordance, on the house recipe (6.10, and the
+   `.tab-content` bar 07 already draws): 8px, an accent thumb, a
+   transparent track, and the gutter reserved so the bar appearing never
+   reflows the card under it. Without this the row drew the 15px browser
+   default, which is the one thing on this surface that would not be
+   themed and the only place a card could be clipped by its own
+   scrollbar. */
+.refract-sp .refract-sp-cards::-webkit-scrollbar {
+    height: 8px;
+}
+
+.refract-sp .refract-sp-cards::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.refract-sp .refract-sp-cards::-webkit-scrollbar-thumb {
+    background: rgba(var(--accent-rgb), 0.35);
+    border-radius: var(--radius-pill);
+}
+
+.refract-sp .refract-sp-cards::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--accent-rgb), 0.6);
+}
+
+/* A cast that already fits must not invent a scroll.
+
+   The percentage above is resolved against the row before the pane's
+   own vertical scrollbar is taken out of it, and on a two-performer
+   scene that put the pair at 338.7px inside a 328px row: 20px of
+   sideways scroll and a second card cut by the row's edge, both saying
+   there is more when there is not. A pair shares the row instead, which
+   lands each card on the 158.75px the two-up grid gave it and leaves
+   nothing to scroll. A lone card keeps the basis above, so it stays one
+   card wide rather than growing to fill the row; three or more keep
+   `flex-shrink: 0` and scroll, which is the point. */
+.refract-sp .refract-sp-cards > .performer-card:first-child:nth-last-child(2),
+.refract-sp .refract-sp-cards > .performer-card:first-child:nth-last-child(2) ~ .performer-card {
+    flex: 1 1 0;
+}
+
+/* A card in a grid takes its track (6.1). Stash sizes `.performer-card`
+   to a flat 280px for its own grids, which is 120px wider than the two
+   tracks this 328px column can hold: measured on 103836, card one ran
+   from x 39.5 to x 327.5 and card two started at x 211, so they
+   overlapped by 116.5px and card two ran to x 491 against a panel right
+   edge of 405. The theme's patched panel does not have the fault because
+   its own count-keyed rules hand the card `width: 100%` inside a two-up
+   grid; ours had no such rule and Stash's width was the only one on the
+   element. Same three declarations, unscoped from the count. */
+.refract-sp .refract-sp-cards > .performer-card {
+    /* Stash gives the card a 5px margin all round for its own grids.
+       In the row it is a second source of spacing beside the gap, and
+       it is the one that made the two-up case ambiguous: with the
+       margins in, a pair sharing the row landed at 148.75 and the row's
+       own arithmetic no longer matched the track the grid used to give.
+       The gap owns the spacing here; the card's painted box is
+       untouched either way, since a margin is outside it. */
+    margin: 0;
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+}
+
+/* ── The record ──────────────────────────────────────────────────── */
+
+/* The quietest thing in the panel, and the only place in the whole
+   application that Added and Updated appear. */
+.refract-sp .refract-sp-record {
+    color: var(--text-muted);
+    column-gap: var(--gap-md);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--fs-xs);
+    margin: 0;
+    row-gap: 2px;
+}
+
+.refract-sp .refract-sp-fact {
+    align-items: baseline;
+    display: flex;
+    gap: var(--gap-2xs);
+}
+
+.refract-sp .refract-sp-fact dt {
+    font-weight: 700;
+    letter-spacing: var(--track-tight);
+    margin: 0;
+}
+
+.refract-sp .refract-sp-fact dd {
+    color: rgba(var(--fg-rgb), 0.62);
+    font-weight: 500;
+    margin: 0;
+}
+
+/* ── Degrading in tiers (P5) ─────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .refract-sp .refract-sp-face,
+    .refract-sp .refract-sp-studio,
+    .refract-sp .refract-sp-more,
+    .refract-sp .refract-sp-tag {
+        transition: none;
+    }
+
+    .refract-sp .refract-sp-face:hover,
+    .refract-sp .refract-sp-face:focus-visible {
+        transform: none;
+    }
+}
+/*
+   Every width the panel is asked to be.
+
+   The scene panel is not a column at every width. Above 1200px it is a
+   fixed track, clamp(385px, 22.5vw, 405px), which is 338px of content at
+   1600 and 358 at 1920, and it does not grow. Below 1200px the page
+   stops being two columns: the theme's `12_mobile.css` restacks the
+   panel UNDER the player at the full width of the viewport, which is a
+   different surface with a different problem. Rule 7.17 is exactly this:
+   anything tuned to 338px has to say what it does at 1060.
+
+   So the steps below are the panel's own, in the two shapes it takes.
+*/
+
+/* ── The column, 1200 and up ─────────────────────────────────────── */
+
+/* Nothing changes here, and the reason is worth writing down because
+   the first draft had a step at 1500 that did not belong. The column is
+   `clamp(385px, 22.5vw, 405px)`, so 22.5vw only exceeds the 385px floor
+   above about 1711px: between 1200 and 1711 the panel is the SAME 385px
+   it is at 1440, and a breakpoint in that range changes type in a column
+   whose width did not move. Measured, a 0.04 step in the title's
+   line-height there put every landmark below it 0.8px out of line with
+   the panel it replaces, for nothing.
+
+   The steps that follow are keyed on the shape of the page, not on a
+   round number. */
+
+/* ── Stacked under the player, below 1200 ────────────────────────── */
+
+/* The panel is now as wide as the page, which is the width at which a
+   line of body text stops being readable. Text takes a measure; the
+   rows that were columns spread out. */
+@media (max-width: 1199.98px) {
+    .refract-sp .refract-sp-desc,
+    .refract-sp .refract-sp-names,
+    .refract-sp .refract-sp-tag-run {
+        max-width: 68ch;
+    }
+
+    /* With the pane no longer a fixed height there is nothing to pin the
+       credit row to, and pinning it would leave a band of nothing above
+       it. */
+    .refract-sp .refract-sp-credit-slot {
+        margin-top: 0;
+    }
+
+    .refract-sp .refract-sp-cards {
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    }
+}
+
+/* ── Touch, the whole stacked range ────────────────────────────────── */
+
+/*
+   A touch target is a physical size and does not scale with the type
+   ramp, so this floor is in pixels.
+
+   The sheet used to apply it to `.refract-sp-more` alone, give the face
+   40px and add padding to the tag chip's WRAPPER, which is not the hit
+   target: measured at 390 on 103836, 45 of the panel's 47 focusable
+   controls came in under 43.5px, the tag anchors at 20.7 inside a 34.7px
+   chip. The floor now reaches all 47, and it is the target's HEIGHT that
+   is brought to 44: that is what was measured short, and widening these
+   controls as well would make neighbours in a 386px strip overlap each
+   other, which trades one mis-tap for another.
+
+   Three techniques, and which one a control gets is decided by whether
+   it paints a box at rest, because the instruction is to reach 44
+   WITHOUT changing what is on screen.
+
+   1. A control with no resting box grows by padding and gives the growth
+      straight back as a negative margin. The element measures 44, its
+      ink does not move, and its container's height is unchanged. The
+      studio eyebrow is the only one, and only because it is a bare link
+      in the marquee.
+   2. A control that DOES paint a box at rest keeps its box and takes the
+      floor as a transparent overlay centred on it, so the target is what
+      receives the touch rather than what is drawn. The tier chip's
+      accent-tinted pill, the strip's 22px round buttons, the counters'
+      26px pill, the tag chip's glass pill and the credit row's discs are
+      all drawn at a size the design chose, and growing them to 44 would
+      be redrawing the panel rather than making it usable.
+   3. Links set in running prose become inline-flex boxes with a 44px
+      minimum, so the line pitch opens to hold them. An overlay is wrong
+      here and it is the one case where it would actively harm: 44px
+      overlays on links in a wrapped paragraph overlap each other
+      vertically, and the wrong link fires.
+
+   The tab strip is the exception that could not have both, and it is
+   recorded rather than hidden. `.nav-tabs` is `overflow-y: hidden` so
+   its horizontal scroller has no vertical bar, and overflow clipping
+   clips hit testing too: a 44px tab inside a 36.8px strip would measure
+   44 and be clipped to 36.8, which is worse than not doing it. So inside
+   this query the strip itself takes the floor and grows from 36.8px to
+   50px. That is 6.11's ruling applied one level down: at touch size this
+   theme imitates the platform's own chrome rather than its desktop self,
+   and a 36.8px tab row is not platform chrome.
+
+   WHY THE QUERY ENDS AT 1199.98 AND NOT AT 820. The floor shipped at
+   820; the layout it was written for runs to 1199.98. Below 1200 the
+   panel leaves the sidebar column, goes full page width under the
+   player, wraps its tag chips seven across and draws its faces at 34px,
+   and 6.4's own rule for this panel is that it must work at 700 to 1200
+   wide. Measured on 103836 at 968x900, that band had no floor at all:
+   0 of 47 controls cleared the 43.5px vertical test and 32 of 47 the
+   horizontal one, with the three disclosures at 21.75, the tag chips at
+   21.75 and the studio eyebrow at 15.75. A 1024x768 tablet in landscape,
+   a 960px Surface and a half-screen desktop window all land in that band
+   and every one of them is laid out for touch. 820 was never a
+   considered edge; 1199.98 is the edge the layout already has.
+
+   The strip's second line is the one part that keeps 820, because it is
+   bought by the strip being narrow rather than by the layout being
+   stacked. See cascade.css.
+*/
+@media (max-width: 1199.98px) {
+    /* ---- 1. Grow the box, give the growth back ---- */
+
+    /* 14.7 measured. The growth is weighted upward, because what is
+       above the eyebrow is the panel's own top inset and what is below
+       it is the title, which is a later sibling and therefore wins the
+       overlap: symmetric 15s measured a 43.5 band, the lower 1.2px
+       belonging to the title.
+
+       How FAR upward is set by the ink, not by the box. With a
+       negative margin cancelling each padding the ink does not move, so
+       the ink sits at `(padding-top - padding-bottom) / 2` from the box
+       centre, plus the -0.85 this element measures at desktop where it
+       has no padding at all. 18 over 12 put it at +2.15 against the
+       +0.50 that 6.7 names as this panel's house value and that every
+       correctly-set chip in it lands on. 16.35 over 13.65 is the same
+       30px of growth split to land the ink on +0.50 instead, so the box
+       and the touch floor are unchanged and only the ink moves. */
+    .refract-sp .refract-sp-studio {
+        margin-bottom: -13.65px;
+        margin-top: -16.35px;
+        padding-bottom: 13.65px;
+        padding-top: 16.35px;
+    }
+
+    /* ---- 2. Keep the box, overlay the target ---- */
+
+    /* Every control in the strip is here rather than in group 1, and the
+       measurement is why: the round buttons draw a 22px pill in
+       `--fill-2` with a hairline rim, the counters draw a 26px pill
+       around their pair, and the tier chip draws its accent tint. All
+       three are `!important` in 07 and all three are the panel's own
+       look. Growing them would be redrawing it. */
+    .refract-sp :is(
+        .st-tier-chip,
+        .scene-toolbar .organized-button,
+        .scene-toolbar .dropdown > .dropdown-toggle,
+        .scene-toolbar .adv-favourite-btn,
+        .scene-toolbar .mv-scene-page-btn,
+        .scene-toolbar .count-button > .btn,
+        .refract-sp-tag a,
+        .refract-sp-face
+    ) {
+        position: relative;
+    }
+
+    /* The overlay is on the LINK inside the tag chip, not on the chip's
+       badge wrapper, and that is not a detail: an absolutely positioned
+       pseudo-element paints above its host's in-flow children, so an
+       overlay on the wrapper covered the anchor and every one of the 24
+       tag targets went from 20.7px to nothing. Measured, the point
+       reported the wrapper. */
+    .refract-sp :is(.st-tier-chip, .refract-sp-tag a, .refract-sp-face)::before,
+    /* The strip's buttons take `::after` instead, because `::before` on
+       every one of them IS the glyph: 07:2516 draws the eye, the drop,
+       the heart, the box, the kebab and the grid as a masked
+       pseudo-element 14px square. Overwriting it would have replaced
+       the icon with an invisible box, which measured as a 14px target
+       and would have shipped as six missing icons. */
+    .refract-sp .scene-toolbar :is(
+        .organized-button,
+        .dropdown > .dropdown-toggle,
+        .adv-favourite-btn,
+        .mv-scene-page-btn,
+        .count-button > .btn
+    )::after {
+        background: none;
+        /* Bootstrap draws the dropdown caret as a bordered triangle on
+           this same pseudo-element. */
+        border: 0;
+        content: "";
+        display: block;
+        height: 44px;
+        left: 0;
+        margin: 0;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: auto;
+    }
+
+    /* The disc crops its image by clipping, and a clipped overlay is no
+       overlay. The crop moves onto the image itself so the anchor can
+       let the target out. */
+    .refract-sp .refract-sp-face {
+        height: 40px;
+        overflow: visible;
+        width: 40px;
+    }
+
+    .refract-sp .refract-sp-face img,
+    .refract-sp .refract-sp-face-initial {
+        border-radius: 50%;
+    }
+
+    /* ---- 3. Links in running prose ---- */
+
+    .refract-sp :is(.refract-sp-names, .refract-sp-tag-run, .refract-sp-fact dd) a {
+        align-items: center;
+        display: inline-flex;
+        min-height: 44px;
+    }
+
+    /* ---- The tab strip, which grows ---- */
+
+    .refract-sp .nav-tabs {
+        padding-bottom: 2px;
+        padding-top: 2px;
+    }
+
+    /* The floor only. The three flex declarations that used to sit here
+       never applied: `07_scene_details.css` pins this element to
+       `display: block !important`, so `align-items` had nothing to
+       centre and the whole of the extra height landed under the word.
+       Measured before they came out: computed `display` was `block` at
+       every width, and the label's ink sat 7.00px above the plate
+       centre at 390, 600 and 807. The centring is now stated as padding
+       in the rule that owns the padding, which is 07's, and the floor
+       here agrees with it rather than fighting it. */
+    .refract-sp .nav-tabs .nav-link {
+        min-height: 44px;
+    }
+
+    /* ---- Already there, kept ---- */
+
+    .refract-sp .refract-sp-more {
+        min-height: 44px;
+        padding-block: 0.5rem;
+    }
+
+    .refract-sp .refract-sp-tag {
+        padding: 5px 10px;
+    }
+
+    /* The chips wrap, and a wrapped row is where a touch floor runs out
+       of room: at a 34.7px chip and a 4.2px gap the pitch is 38.9, so
+       the row below's target reached up into this one's and every chip
+       measured 38.5 however tall its own overlay was. The chips keep
+       their size and the ROW gains the difference, 9.3px, which is the
+       spacing WCAG's own target-size rule allows in place of size. */
+    .refract-sp .refract-sp-tag-row {
+        column-gap: 15px;
+        row-gap: 9.3px;
+    }
+
+    /* ---- 4. The same floor on the horizontal axis ----
+
+       The vertical floor above was measured on one axis and passed 47
+       of 47 controls; the horizontal axis was never asked, and 18 of
+       the same 47 were under it, down to a 21px band on the two counter
+       numbers. Everything here follows the same law as the vertical
+       work: the painted control keeps its size, and the ROOM around it
+       grows by the difference, which is the spacing the target-size
+       rule allows in place of size.
+
+       The one thing this axis needs that the vertical one did not is
+       that the overlays must TILE. A 44px overlay centred on a 22px
+       button at a 28px pitch reaches 16px into its neighbour, and an
+       absolutely positioned pseudo-element on a later sibling paints
+       above an earlier one, so a centred overlay does not just fail to
+       help, it takes the neighbour's own glyph away. Every rule below
+       is therefore a pair: the room, and an overlay that fits inside
+       the room it was given. */
+
+    /* The tag chips take the room in the row's column gap, the same
+       trade the row gap already made on the vertical axis. The
+       narrowest chip in the library, "69", is a 29.2px anchor, so 15px
+       of gap and an overlay 7.5px proud on each side make its band
+       44.2; every wider chip gets more. Adjacent overlays stay 5.5px
+       apart, so no chip can take its neighbour's tag. */
+    .refract-sp .refract-sp-tag a::before {
+        left: -7.5px;
+        right: -7.5px;
+        width: auto;
+    }
+
+    /* The disclosures. "More" is a 38.8px box and "3 more" a 48.6px
+       one, so only the wordless pair is short, and it takes the last
+       5.2px as an overlay rather than as `min-width`.
+
+       That is not fussiness. At 600 and 807 the bottom dock covers the
+       foot of the panel, which the round-2 review recorded as
+       pre-existing on both panels, and the credit disclosure is the
+       last control in the pane. Measured with `min-width`, the box grew
+       from 38.8 to 44 and its CENTRE moved from x 25.4 to x 28, which
+       is past the dock's own inset at x 26: the floor would have been
+       bought by pushing the control's middle under the dock. The
+       overlay leaves the box and its centre exactly where they were. */
+    .refract-sp .refract-sp-more {
+        position: relative;
+    }
+
+    .refract-sp .refract-sp-more::after {
+        content: "";
+        display: block;
+        height: 100%;
+        left: 50%;
+        min-width: 44px;
+        position: absolute;
+        top: 0;
+        transform: translateX(-50%);
+        width: 100%;
+    }
+
+    /* The studio eyebrow, 37.9px wide, takes its 6.1px the way it took
+       its vertical growth: padding out, margin back, so the ink does
+       not move. */
+    .refract-sp .refract-sp-studio {
+        margin-inline: -3.1px;
+        padding-inline: 3.1px;
+    }
+}
+
+/* The strip's room, above the phone only. At 600 and below the strip is
+   one row of 32px controls whose touch bands are their own boxes
+   (cascade.css, the phone block), and 44px of room per button is what
+   had pushed it to three lines. */
+@media (min-width: 600.02px) and (max-width: 1199.98px) {
+    /* The round buttons: 22px painted, 44px of room, and an overlay that
+       spans exactly that margin box, so one overlay ends where the next
+       begins and neither can take the other's glyph. The strip's own
+       column gap goes to zero at these widths (cascade.css) because the
+       margins now carry the spacing, and 22px between painted pills is
+       what 44px of room looks like. */
+    .refract-sp .scene-toolbar :is(
+        .organized-button,
+        .dropdown > .dropdown-toggle,
+        .adv-favourite-btn,
+        .mv-scene-page-btn
+    ) {
+        margin-inline: 11px;
+    }
+
+    .refract-sp .scene-toolbar :is(
+        .organized-button,
+        .dropdown > .dropdown-toggle,
+        .adv-favourite-btn,
+        .mv-scene-page-btn
+    )::after {
+        /* 12 and not 11: the button carries a 1px transparent rim and
+           `box-sizing: border-box`, so the pseudo-element's containing
+           block is a 20px padding box, and an overlay inset -11 on each
+           side measured 42.5 rather than 44. Read from the measurement,
+           not from the 22 in the source. */
+        left: -12px;
+        right: -12px;
+        width: auto;
+    }
+
+    /* The counters are the hard case and the reason the overlays are
+       anchored rather than centred. Both halves of a counter live in
+       ONE 74.7px pill: the icon 28px wide, the number 20.5, with 4.2px
+       between them, and the pill's fill, rim and radius are the panel's
+       look. Two centred 44px overlays inside that would overlap by
+       15.6px and the number's would cover 7.6px of the icon's own
+       glyph. So the icon's overlay is anchored to the icon's RIGHT edge
+       and grows leftwards out of the pill, the number's is anchored to
+       its LEFT edge and grows rightwards, they meet at the 4.2px gutter
+       between the two, and the pill takes 13px of clear room on each
+       side so neither reaches a neighbour. The pill is not redrawn: it
+       is still 74.7 x 26 with the same fill and rim. */
+    .refract-sp .scene-toolbar .count-button {
+        margin-left: 5px;
+        margin-right: 13px;
+    }
+
+    .refract-sp .scene-toolbar .count-button > .btn:first-child::after {
+        left: auto;
+        right: 0;
+        width: 44px;
+    }
+
+    .refract-sp .scene-toolbar .count-button > .btn:last-child::after {
+        left: 0;
+        right: auto;
+        width: 44px;
+    }
+}
+
+/* The tab links fill their strip at 900 and below, each plate at least
+   44 wide (cascade.css, the 900 block), so they need no overlay here. */
+
+/* ── Phone, 600 and below ────────────────────────────────────────── */
+
+/* The title does NOT shrink here, and the instinct to shrink it is
+   wrong on this surface: stacked under the player the panel is WIDER
+   than the sidebar it replaces (366px at a 390 viewport against 338 in
+   the column), so the measure is not the constraint it looks like.
+   Measured, a step down here moved every landmark below it 4.2px out of
+   line with the panel it replaces for no gain. */
+@media (max-width: 600px) {
+    .refract-sp .refract-sp-details {
+        gap: var(--gap-lg);
+    }
+
+    /* The names run is the disambiguating information once the faces are
+       small, so it keeps its size while the record shrinks out of the
+       way. */
+    .refract-sp .refract-sp-record {
+        column-gap: var(--gap-sm);
+    }
+
+    .refract-sp .refract-sp-cards {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+}
+
+/* ── Reduced transparency ────────────────────────────────────────── */
+
+/* The chips borrow their fill from the panel's glass. With transparency
+   reduced the ramp goes opaque theme-wide; what needs saying here is
+   that the chip must still read as raised against a flat ground, which
+   the rim does on its own once the fill stops helping. */
+@media (prefers-reduced-transparency: reduce) {
+    .refract-sp .refract-sp-tag {
+        border-color: rgba(var(--fg-rgb), 0.22);
+    }
+
+    .refract-sp .refract-sp-face {
+        border-color: rgba(var(--fg-rgb), 0.22);
+    }
+}
+/*
+   The declarations that lost.
+
+   This is the one sheet in the bundle that carries `!important`, and
+   only on declarations that were measured losing a cascade to a rule
+   this page does not own. Each one names what beat it. Everything else
+   in the bundle is one plain rule per selector against markup this page
+   invented, which needs no weight at all.
+
+   The performer lane found the class of defect below the hard way, with
+   nothing visible in the source: a rule that ships, is correctly
+   written, and matches nothing on screen is indistinguishable from a
+   rule that was never written (7.20, 10.3).
+*/
+
+/* The theme pegs every link in the application to `--bs-link-color`,
+   which is `rgba(255,255,255,0.85)`, and the panel's own colour rule
+   loses to a body-level variable it cannot outrank by specificity. Ink
+   follows the channel token instead (3.1 rule 4). */
+body.stash-liquid-glass .refract-sp .refract-sp-names a,
+body.stash-liquid-glass .refract-sp .refract-sp-tag-run a,
+body.stash-liquid-glass .refract-sp .refract-sp-fact dd a {
+    color: rgba(var(--fg-rgb), 0.78) !important;
+}
+
+body.stash-liquid-glass .refract-sp a.refract-sp-studio {
+    color: var(--text-muted) !important;
+}
+
+body.stash-liquid-glass .refract-sp .refract-sp-names a:hover,
+body.stash-liquid-glass .refract-sp .refract-sp-tag-run a:hover,
+body.stash-liquid-glass .refract-sp .refract-sp-fact dd a:hover,
+body.stash-liquid-glass .refract-sp a.refract-sp-studio:hover,
+body.stash-liquid-glass .refract-sp a.refract-sp-studio:focus-visible {
+    color: var(--accent-ink) !important;
+}
+
+/*
+   The tag chip draws the surface; Stash's badge inside it is the label.
+
+   The theme's own badge recipe is
+   `body.stash-liquid-glass :is(.scene-tabs, .image-tabs, .gallery-tabs)
+   .tag-item.tag-link.badge.badge-secondary`, and every declaration in it
+   is `!important`. Counted properly (7.9) that is SIX classes and one
+   element, because an `:is()` takes the specificity of its strongest
+   branch. A doubled class here ties it at (0,6,1) and then loses on
+   source order, which is invisible: the label kept rendering at 10.08px
+   and weight 500 against the 11.2 and 600 the chip asks for, with both
+   rules correct in their own source. Tripled, it wins at (0,7,1).
+*/
+body.stash-liquid-glass
+    .refract-sp
+    .refract-sp-tag.refract-sp-tag.refract-sp-tag
+    .tag-item.tag-item {
+    font-size: var(--fs-sm) !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+
+/* Stash's `TagLink` renders a Bootstrap badge whose own recipe sets a
+   fill, a rim and a radius with weight the theme then matches. Inside
+   the panel's own chip the badge is the LABEL, not the chip: the chip
+   around it draws the surface. Without these the tag reads as a pill
+   inside a pill.
+
+   Tripled and doubled like the label rule above, and for the same
+   reason: at (0,4,1) this lost to the theme's
+   `:is(.scene-tabs, .image-tabs, .gallery-tabs) .tag-item.tag-link.badge
+   .badge-secondary` at (0,6,1), and the badge kept its 0.04 fill, its
+   rim and its pill radius inside the chip. Measured on a phone, every
+   tag was a pill inside a pill. At (0,7,1) it wins. */
+body.stash-liquid-glass .refract-sp .refract-sp-tag.refract-sp-tag.refract-sp-tag .tag-item.tag-item {
+    background: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    color: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* The theme sets `scrollbar-color` on `.scene-tabs`, and both standard
+   scrollbar properties are INHERITED, so every descendant with a
+   scrollport silently loses its `::-webkit-scrollbar` styling and draws
+   the 15px platform default instead (6.10). Handing the property back is
+   what restores the thin bar; the width is then the theme's own. */
+body.stash-liquid-glass .refract-sp .refract-sp-desc.is-open,
+body.stash-liquid-glass .refract-sp .refract-sp-tag-run {
+    scrollbar-color: auto;
+    scrollbar-width: auto;
+}
+
+/* The credit row's card scroller wants the same treatment for the same
+   reason, but it draws its own bar rather than handing the property
+   back: it is a content pane in its own right (6.10), so it takes the
+   thin accent bar the tab content already uses, and a stable gutter so
+   thin accent bar the tab content already uses.
+
+   Deliberately WITHOUT `scrollbar-gutter: stable`, which the tab
+   content does take. Measured with real scrollbars on: the gutter is
+   reserved on the inline axis, so on a row that only ever scrolls
+   sideways it cost 10px of WIDTH and took the card from the 158.75 the
+   grid used to give it down to 153.75, to avoid an 8px change of height
+   that the tag fold re-budgets for anyway. The card's width is the
+   thing worth keeping still. */
+body.stash-liquid-glass .refract-sp .refract-sp-cards {
+    scrollbar-color: rgba(var(--accent-rgb), 0.35) transparent;
+    scrollbar-width: thin;
+}
+
+/* Focus must be visible on every control (6.6, 10.3). The theme's own
+   ring is an outline rather than a shadow, because the surfaces these
+   controls sit on set `box-shadow: none` with weight; the disclosure
+   buttons in this panel are plain text buttons and would otherwise take
+   the browser default, which is the one thing 6.6 forbids. */
+body.stash-liquid-glass .refract-sp .refract-sp-more:focus-visible,
+body.stash-liquid-glass .refract-sp .refract-sp-face:focus-visible {
+    outline: 2px solid var(--accent-glow);
+    outline-offset: 2px;
+}
+
+/* Two of the strip's buttons have their `::after` cancelled outright
+   (07:2910, `content: none !important`, "no labels: the glyph is the
+   button"), and Bootstrap's own caret rule owns the third. That is the
+   pseudo-element the touch overlay needs across the stacked range,
+   because `::before` on all of them is the masked glyph. Content only:
+   the overlay's geometry is in responsive.css with the rest of the
+   floor, and so is the note on why the query ends at 1199.98. */
+@media (max-width: 1199.98px) {
+    body.stash-liquid-glass .refract-sp .scene-toolbar :is(
+        .organized-button,
+        .adv-favourite-btn,
+        .dropdown > .dropdown-toggle
+    )::after {
+        content: "" !important;
+        display: block !important;
+    }
+}
+
+/* The counter pair's group is `overflow: hidden !important` (07:771), so
+   it can clip its two buttons' fills to its own pill radius. Overflow
+   clipping clips HIT TESTING as well, so inside the stacked range the
+   two buttons could not reach past 26px however they were sized, and the
+   44px floor was unreachable on the two controls a touch user is most
+   likely to press. The clip is lifted at touch widths only; the pill's
+   own fill, rim, radius and height are untouched, and the buttons inside
+   it draw no fill of their own at rest. */
+@media (max-width: 1199.98px) {
+    body.stash-liquid-glass .refract-sp .scene-toolbar .count-button {
+        overflow: visible !important;
+    }
+}
+
+/* The column gap belongs to the floor and not to the second line, so it
+   runs the whole stacked range.
+
+   `07:2616` pins the strip to a 6px column gap. The round buttons take
+   `margin-inline: 11px` (responsive.css) and an overlay that spans
+   exactly that margin box, so with the gap at zero one overlay ends
+   where the next begins and 22px between painted pills is what 44px of
+   room looks like. Add the 6px back and the pitch stops matching the
+   overlay: measured at 968 with the gap still at 6, the favourite's
+   horizontal band read 39.00 while every other button in the strip read
+   44.50, because the organised button is a later sibling and its
+   absolutely positioned overlay paints over the favourite's right
+   edge. At zero it reads 44.50 like the rest. */
+@media (max-width: 1199.98px) {
+    body.stash-liquid-glass .refract-sp .scene-toolbar {
+        column-gap: 0 !important;
+    }
+}
+
+/* The phone lays the strip out on its own grid (the end of this file),
+   so the 11px room starts above it. */
+@media (min-width: 600.02px) and (max-width: 1199.98px) {
+
+    /* And the favourite's right margin, for the reason the block below
+       states about its left one: `10_pills_badges.css` gives every
+       control chip `margin: 0` as part of the control-material recipe,
+       and a shorthand resets the side the recipe never meant to talk
+       about. Above 820 the strip does not wrap and 07's
+       `margin-left: auto` is the desktop layout, so only the right side
+       is restated here. Measured at 968 without it, the favourite's
+       margin-right computed 0, the organised button sat 11px away
+       instead of 22, and its later-sibling overlay took the favourite's
+       band down to 33.00 while every other button read 44.50. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar .adv-favourite-btn {
+        margin-right: 11px !important;
+    }
+}
+
+/* Stash's external-player button.
+
+   Stash renders it only for an iPhone, iPad or Android user agent, so
+   the strip was designed without it and it was the one control left in
+   Stash's own idiom: a 26px glass circle with a rim around Font
+   Awesome's solid glyph, beside four bare glyphs from the strip's set.
+   It takes the set now, an outline arrow leaving a box at the same 1.7
+   stroke, and the bare treatment the other actions have. The anchor is
+   the control (the button around it has no handler), so the anchor
+   fills the button and carries the glyph.
+
+   Every declaration here is restating one from 07's
+   `> span > span > button` plate rule or Bootstrap's `px-0 pt-2`
+   utilities, all of which are `!important`. */
+body.stash-liquid-glass .refract-sp .scene-toolbar .refract-sp-ext > .btn {
+    --ic: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='M14 3.6h6.4V10'/><path d='M20.4 3.6 11 13'/><path d='M18 13.6v5.2a1.6 1.6 0 0 1-1.6 1.6H5.2a1.6 1.6 0 0 1-1.6-1.6V7.6A1.6 1.6 0 0 1 5.2 6h5.2'/></svg>");
+    width: 22px !important;
+    min-width: 22px !important;
+    height: 22px !important;
+    padding: 0 !important;
+    border-radius: var(--radius-pill) !important;
+    background: none !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    color: var(--text) !important;
+}
+body.stash-liquid-glass .refract-sp .scene-toolbar .refract-sp-ext > .btn:hover {
+    background: var(--fill-3) !important;
+    color: var(--accent-light) !important;
+}
+body.stash-liquid-glass .refract-sp .scene-toolbar .refract-sp-ext > .btn > a {
+    align-items: center;
+    color: inherit !important;
+    display: flex;
+    height: 100%;
+    justify-content: center;
+    position: relative;
+    width: 100%;
+}
+body.stash-liquid-glass .refract-sp .scene-toolbar .refract-sp-ext > .btn > a > svg {
+    display: none !important;
+}
+body.stash-liquid-glass .refract-sp .scene-toolbar .refract-sp-ext > .btn > a::before {
+    background-color: currentColor;
+    content: "";
+    display: block;
+    flex: 0 0 14px;
+    height: 14px;
+    -webkit-mask: var(--ic) center / contain no-repeat;
+            mask: var(--ic) center / contain no-repeat;
+    width: 14px;
+}
+
+/* ── Phones, 600 and below: the strip is one row ────────────────────
+
+   It was two lines by design and three in practice. The design counted
+   eight controls and gave every round one 11px of room each side for a
+   44px touch band, which no phone row can hold, so the tier chip took a
+   line of its own; Stash then adds the external-player button on phones
+   only, and the operations menu fell to a third line alone. Measured at
+   393 on scene 208575: 121px tall, the chip alone on line one, six
+   controls on line two, the kebab alone on line three.
+
+   One row now, in two groups on the strip's own bar (design C on the
+   2026-10-20 canvas, chosen over a flat bar and a cell grid):
+
+   - The facts lead: the tier chip, then the play and O counts, each a
+     32px chip. The counts take the tag chip's material, not the accent,
+     because they are data like the tags under them. The O count's auto
+     margin is the split, so the actions travel to the far end together
+     whichever plugins add to them.
+   - The actions (favourite, organised, multiview, external player, the
+     menu) are bare 18px glyphs in 32px boxes that may give up 6px each
+     when the row is short.
+   - Every control is 32px tall, so the row has one height and the strip
+     is 42. The touch band stays 44 tall (the overlays in responsive.css
+     are centred on the control), and across the row each control's
+     band is its own box, so they tile instead of overlapping.
+   - The chip is always compact here: the tier's colour, a star and the
+     number, never the name, so every scene draws the same row and a
+     LEGENDARY 4.8 with three-figure counts still fits a 360px phone.
+     Only if that is not enough does the strip wrap (07's
+     counts-on-a-second-row state), which no phone measured here
+     reaches.
+   - The edges and the tab strip are the 900 block's, below.
+
+   The same row on desktop, from 1200 up, where the panel is a side
+   column about 360px wide: the width of a phone. It was still the old
+   two-line strip there, the tier chip and four 22px glyphs on one line
+   and the two counts on a second at 26, three heights in 68px. The
+   record and credit rules at the end of this block stay phone-only. */
+@media (max-width: 600px), (min-width: 1200px) {
+    body.stash-liquid-glass .refract-sp .scene-toolbar.refract-sp-strip {
+        column-gap: 0 !important;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        padding-left: 5px !important;
+        padding-right: 5px !important;
+        row-gap: 0 !important;
+    }
+
+    /* Closed it is a pill; open, 07's drawer corners apply. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar.refract-sp-strip:not(.st-rating-open) {
+        border-radius: var(--radius-pill) !important;
+        padding-bottom: 4px !important;
+        padding-top: 4px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar.refract-sp-strip.st-rating-open {
+        flex-wrap: wrap !important;
+        padding-top: 4px !important;
+    }
+
+    /* The open drawer's band spans the strip edge to edge, sized from
+       07's 9px padding; restated for 5. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar.refract-sp-strip.st-rating-open .rating-stars {
+        margin: 4px -5px 0 !important;
+        width: calc(100% + 10px) !important;
+    }
+
+    /* The rating leads the facts. 07's halo on Legendary and Perfect is
+       for a chip alone in a desktop row; here it spilled 14px over the
+       bar and the count beside it, so the tier speaks in its colour. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar .st-tier-chip {
+        box-shadow: none !important;
+        flex: 0 0 auto !important;
+        height: 32px !important;
+        margin: 0 6px 0 0 !important;
+        padding: 0 9px !important;
+    }
+
+    /* The multiview button and the menu are in 07's 22px rule beside
+       `#operation-menu`, which gives that whole list ID weight, so both
+       are named here with ID weight of their own. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar :is(
+        .adv-favourite-btn,
+        .organized-button,
+        .dropdown > .dropdown-toggle,
+        .refract-sp-ext > .btn
+    ),
+    body.stash-liquid-glass .refract-sp .scene-toolbar .mv-scene-page-btn:not(#refract-none),
+    body.stash-liquid-glass .refract-sp .scene-toolbar #operation-menu {
+        flex: 1 1 26px !important;
+        height: 32px !important;
+        margin: 0 !important;
+        max-width: 32px !important;
+        min-width: 26px !important;
+        width: 32px !important;
+    }
+
+    /* The menu's wrapper is the flex item, so it is the one that gives
+       up width, and the toggle fills it.
+
+       Each action is based at 26 and grows back to 32, rather than based
+       at 32 and shrinking: the open drawer lets the strip wrap, and a
+       wrapping line breaks on the BASIS before anything shrinks. Based
+       at 32, the 360 row of a LEGENDARY 4.8 scene came to 326 of 324 and
+       the menu fell to a line of its own the moment the stars opened.
+       The O count's auto margin takes what is left once they are 32. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar div.dropdown {
+        display: flex !important;
+        flex: 1 1 26px !important;
+        max-width: 32px !important;
+        min-width: 26px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar div.dropdown > .dropdown-toggle,
+    body.stash-liquid-glass .refract-sp .scene-toolbar div.dropdown > #operation-menu {
+        width: 100% !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar :is(
+        .adv-favourite-btn,
+        .organized-button,
+        .dropdown-toggle,
+        .mv-scene-page-btn
+    )::before,
+    body.stash-liquid-glass .refract-sp .scene-toolbar .refract-sp-ext > .btn > a::before {
+        flex-basis: 18px !important;
+        height: 18px !important;
+        width: 18px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar .count-icon::before {
+        flex-basis: 15px !important;
+        height: 15px !important;
+        width: 15px !important;
+    }
+
+    /* The counts: the tag chip's material at the row's height, after the
+       tier chip and 6px apart. Ordered ahead of the actions here only;
+       07's wrap state still sends them to a second row, at higher
+       weight. The buttons own the padding and the chip has none, so the
+       glyph and the figure sit 5px apart inside 9px sides. 07's optical
+       2px above the number was set for its 11px figures in a 26px pill;
+       at this size it put the figure 1px below the glyph's centre
+       (scanned from pixels), so it goes. Weighted past
+       refract-sp-strip-tight's 4px, because these are already the
+       compact sizes. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar .count-button {
+        background: var(--fill-3) !important;
+        border-color: var(--glass-border) !important;
+        column-gap: 0 !important;
+        flex: 0 0 auto !important;
+        height: 32px !important;
+        margin: 0 6px 0 0 !important;
+        order: 1 !important;
+        padding: 0 !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar .count-button[data-action="o-counter"] {
+        margin-right: auto !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar .count-button > .btn {
+        height: 32px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp.scene-tabs .scene-toolbar.refract-sp-strip .count-button > .count-icon {
+        color: var(--text-muted) !important;
+        padding-left: 9px !important;
+        padding-right: 2.5px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp.scene-tabs .scene-toolbar.refract-sp-strip .count-button > .count-value {
+        font-size: var(--fs-sm) !important;
+        font-weight: 600 !important;
+        padding-left: 2.5px !important;
+        padding-right: 9px !important;
+        padding-top: 0 !important;
+    }
+
+    /* The chip: the tier's colour, a star and the number, not the name.
+       The star takes the place of 07's hairline between name and number,
+       in the number's own colour. An unrated chip has no number, so it
+       shows the star alone. */
+    body.stash-liquid-glass .refract-sp .st-tier-chip[data-rated="1"] .st-tier-name {
+        display: none !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar .st-tier-chip .st-tier-value {
+        gap: 4px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .scene-toolbar .st-tier-chip .st-tier-value::before {
+        background: currentColor !important;
+        height: 12px !important;
+        -webkit-mask: var(--st-star-svg) center / contain no-repeat;
+                mask: var(--st-star-svg) center / contain no-repeat;
+        width: 12px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .st-tier-chip[data-rated="0"] .st-tier-name {
+        font-size: 0 !important;
+        letter-spacing: 0 !important;
+    }
+
+    body.stash-liquid-glass .refract-sp .st-tier-chip[data-rated="0"] .st-tier-name::before {
+        background-color: currentColor;
+        content: "";
+        display: block;
+        height: 16px;
+        -webkit-mask: var(--st-star-svg) center / contain no-repeat;
+                mask: var(--st-star-svg) center / contain no-repeat;
+        width: 16px;
+    }
+
+}
+
+@media (max-width: 600px) {
+    /* ---- The record ----
+
+       Two facts on one line read as one run: "Created At 16 Oct 2026,
+       07:49 PM Updated At 16 Oct 2026, 07:52 PM", 5.6px apart. One fact
+       per line. */
+    body.stash-liquid-glass .refract-sp .refract-sp-record {
+        flex-direction: column !important;
+        row-gap: 4px !important;
+    }
+
+    /* ---- The credit ----
+
+       The names took the 44px floor as a min-height, which centred each
+       name in a 44 box under the faces: the ink sat 19px below the disc
+       it names and read as a separate line of text. The floor goes onto
+       an overlay instead, as it does for every control in the strip,
+       and the names sit 8px under the faces (the section's own 6px gap
+       plus 2). */
+    body.stash-liquid-glass .refract-sp .refract-sp-names a {
+        min-height: 0 !important;
+        position: relative;
+    }
+
+    body.stash-liquid-glass .refract-sp .refract-sp-names a::after {
+        content: "";
+        height: 44px;
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    body.stash-liquid-glass .refract-sp .refract-sp-credit-foot {
+        margin-top: 2px !important;
+    }
+}
+
+/* ── 900 and below: the bands sit on the text column ─────────────────
+
+   07's -10px bleed lines a strip's CONTENT up with the text in a desktop
+   column, where the panel has 18.5px of its own inset to bleed into.
+   Under the full-width panel of a phone or a portrait tablet the text is
+   12px from the screen and the bleed put the control strip, the tab
+   strip and the rating panel 2px from it: measured at 393 and at 700.
+   Their edges sit on the text column now and their contents are inset
+   inside them, like the tag chips below them. */
+@media (max-width: 900px) {
+    body.stash-liquid-glass .refract-sp .scene-toolbar.refract-sp-strip {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* The Advanced Rating panel welded under the strip bleeds 10px to
+       match 07's strip (09_buttons); here it matches this one. */
+    body.stash-liquid-glass .refract-sp .scene-toolbar.refract-sp-strip.st-rating-open + .adv-rating-inline-panel.open {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* ---- The tab strip ----
+
+       Its 9px sides paid for the bleed; without the bleed the inset is
+       the 3px the well already has top and bottom, so the corners stay
+       concentric all round. The tabs fill the strip, each label with
+       6px either side of it at the least, which is what puts a plate
+       around a word rather than a word with a plate behind it: at 393
+       the plates were 2px wider than their labels. Seven tabs (a play
+       queue adds one) need 335 of the 361 there is at 393; anything
+       narrower than a 370px screen scrolls rather than squeezes. A plate
+       is never narrower than 44, so Edit keeps its touch width as a
+       plate rather than as an overlay. */
+    body.stash-liquid-glass .refract-sp.scene-tabs .nav-tabs {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 3px !important;
+        padding-right: 3px !important;
+    }
+
+    body.stash-liquid-glass .refract-sp.scene-tabs .nav-tabs > .nav-item {
+        flex: 1 0 auto !important;
+    }
+
+    body.stash-liquid-glass .refract-sp.scene-tabs .nav-tabs .nav-link {
+        margin-inline: 0 !important;
+        padding-left: 6px !important;
+        min-width: 44px !important;
+        padding-right: 6px !important;
+        width: auto !important;
+    }
+}

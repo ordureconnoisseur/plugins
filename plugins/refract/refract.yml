@@ -1,12 +1,23 @@
 name: Refract Theme
 description: Liquid-glass theme for Stash. Frosted glass panels, floating navbar, dark base, configurable accent.
-version: 1.24.3
+version: 1.25.0
 url: https://github.com/ordureconnoisseur/stash-refract
 ui:
   assets:
     /: .
   javascript:
     - refract.js
+    - pages/dist/refract-pages.js
+    - grid/dist/refract-grid.js
+    - pages-scene/dist/refract-scene.js
+    - pages-tag/dist/refract-tag.js
+    - pages-group/dist/refract-group.js
+    - pages-front/dist/refract-front.js
+    - grid-entities/dist/refract-entitygrids.js
+    - grid-scenes/dist/refract-scenegrid.js
+    - pages-studio/dist/refract-studio.js
+    - pages-create/dist/refract-create.js
+    - pages-tagger/dist/refract-tagger.js
   css:
     - css/01_tokens.css
     - css/02_navbar.css
@@ -21,12 +32,23 @@ ui:
     - css/11_misc_tail.css
     - css/12_mobile.css
     - css/13_plugins.css
-    - css/14_light.css
+    - css/18_entity_pages.css
     - css/16_playing_card.css
     - css/17_scroll_perf.css
     - css/15_lite.css
+    - pages/dist/refract-pages.css
+    - grid/dist/refract-grid.css
+    - pages-scene/dist/refract-scene.css
+    - pages-tag/dist/refract-tag.css
+    - pages-group/dist/refract-group.css
+    - pages-front/dist/refract-front.css
+    - grid-entities/dist/refract-entitygrids.css
+    - grid-scenes/dist/refract-scenegrid.css
+    - pages-studio/dist/refract-studio.css
+    - pages-create/dist/refract-create.css
+    - pages-tagger/dist/refract-tagger.css
 settings:
   accent:
     displayName: Accent colour
-    description: "Pick the theme accent — Refract injects a swatch picker here."
+    description: "Pick the theme accent. Refract injects a swatch picker here."
     type: STRING

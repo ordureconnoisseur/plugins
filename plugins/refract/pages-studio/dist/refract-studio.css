@@ -1,0 +1,1681 @@
+/*
+   Refract's owned studio page.
+
+   This sheet styles only markup this bundle renders, under class names
+   nothing else in the theme uses, so it has no cascade to beat: one rule
+   per selector, no !important, no specificity doubling. That is the
+   whole point of owning the page rather than patching it. The three
+   phases of `18_entity_pages.css` exist because every rule there had to
+   out-argue Stash's `.detail-header`, a Bootstrap column and its own
+   float; none of that applies here.
+
+   Tokens come from `01_tokens.css` on `body.stash-liquid-glass`, so the
+   eight accents flip for free and nothing below writes a colour
+   literal. Every number that reproduces the 1.24 band was measured
+   off the live patched page at 1600x1000 on studio 464 (Brazzers) on
+   2026-09-06, with the purple accent live, which is also the check that
+   none of it depends on orange.
+*/
+
+/* ── The page ──────────────────────────────────────────────────── */
+
+/* Stash's `#studio-page` is `.row`, and the band inside it sits at x=27
+   in a 1600 viewport: the page gutter's 12 plus the 15 Bootstrap's row
+   contributes. Padding, not margin, so nothing can push past 100%. */
+.refract-sr {
+    padding: 0 15px;
+    /* `.detail-header`'s own bottom margin on the patched page. On the
+       host that leaves Stash's tab strip in place, this is the whole gap
+       between the band and the strip. */
+    margin-bottom: 11.9px;
+    min-width: 0;
+}
+
+/* ── The band ──────────────────────────────────────────────────── */
+
+/* Two columns and two rows. Row one is the mark and the name; row two is
+   everything else, at full width. The mark's track is fixed so a
+   wordmark is the same size on every studio and the name always starts
+   at the same x, which is the only way a network's pages read as one
+   set. */
+.refract-sr-band {
+    position: relative;
+    display: grid;
+    /* The last track is the action row's, beside the name (the shared
+       entity header: actions top right on every entity page). */
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 14px;
+    /* Items sit at the top of their row rather than stretching to it. A
+       grid item fills its row by default, so below 820 the 44px touch
+       floor on the name row was stretching the mark's box to 44 while
+       the mark itself stayed 30.6 tall. */
+    align-items: start;
+    /* 14 vertical and 17.5 horizontal are `.detail-header`'s own padding
+       on the patched page; the 1px rim makes the content edge 45.5 at
+       1600, which is what everything below aligns to. */
+    padding: 14px 17.5px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    /* The floor. An accent radial over --bg-1. */
+    background:
+        radial-gradient(
+            58% 76% at 18% 22%,
+            rgba(var(--accent-rgb), 0.1) 0%,
+            rgba(var(--accent-rgb), 0) 68%
+        ),
+        var(--bg-1);
+    /* The blurred mark is drawn at -60px inset and has to be clipped to
+       the band; the band has no card overhanging it, so unlike the
+       performer band it can clip itself. */
+    overflow: hidden;
+    isolation: isolate;
+    min-width: 0;
+}
+
+.refract-sr-band.has-logo {
+    grid-template-columns: 280px minmax(0, 1fr) auto;
+    column-gap: 14px;
+}
+
+.refract-sr-actions {
+    position: relative;
+    z-index: 1;
+    grid-row: 1;
+    grid-column: -2 / -1;
+    justify-self: end;
+    align-self: start;
+    min-width: 0;
+}
+
+.refract-sr-fill {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* A background-image blur, not a backdrop-filter: one raster for the
+   band rather than a compositor layer that recomposites with everything
+   moving over it. */
+.refract-sr-blur {
+    position: absolute;
+    inset: -60px;
+    background-image: var(--refract-sr-shot, none);
+    background-size: cover;
+    background-position: 50% 30%;
+    background-repeat: no-repeat;
+    filter: blur(52px) saturate(118%);
+    opacity: 0.55;
+}
+
+/* The veil, built from channels. Without it the band competes
+   with the grid below, which is P1 backwards: measured on real scene
+   thumbnails, the material behind this averages luminance 153 against a
+   page floor of 10. */
+/* The veil exists to tame the blurred mark, so a studio with no mark
+   does not get one: 516 of the 2,401 studios here resolve to Stash's
+   placeholder, and darkening a band that is already just its floor makes
+   it read as a hole rather than a surface. Floor-led means the floor can
+   stand alone. */
+.refract-sr-band:not(.has-logo) .refract-sr-veil {
+    display: none;
+}
+
+.refract-sr-veil {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        0deg,
+        rgba(var(--refract-sr-veil-rgb), 1) 1%,
+        rgba(var(--refract-sr-veil-rgb), 0.82) 46%,
+        rgba(var(--refract-sr-veil-rgb), 0.62) 100%
+    );
+}
+
+/* Local variables, because no token serves this: `--bg-0` has no rgb
+   form to build a veil from and the surface family serves a different
+   job. They are opaque-family surfaces, not glass fills, so they do NOT
+   belong to the fill ramp (3.2). Defined here rather than reaching into
+   the token file, which is another lane's. */
+.refract-sr {
+    --refract-sr-veil-rgb: 10, 10, 10;
+    --refract-sr-plate: rgba(var(--surface-rgb), 0.74);
+    --refract-sr-plate-hover: rgba(24, 22, 28, 0.86);
+}
+
+/* ── The mark ──────────────────────────────────────────────────── */
+
+.refract-sr-logo {
+    position: relative;
+    z-index: 1;
+    grid-row: 1;
+    grid-column: 1;
+    min-width: 0;
+}
+
+/* The plate takes a definite width and the image fills it. Sizing the
+   two from each other is circular and resolves to nothing: measured,
+   with both auto, the SVG wordmarks rendered at 22 x 22, which is their
+   padding and rim and no picture. `box-sizing` has to be stated because
+   the padding and rim would otherwise put the image 22px wider than its
+   track. The height cap sits above every ratio that occurs here (1.89:1
+   to 5.30:1), so nothing is letterboxed inside a frame it does not fill.
+   The dark ground is deliberate; LogoPlate.tsx carries the argument and
+   the measurement. */
+.refract-sr-logo-img {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: auto;
+    max-height: 11rem;
+    min-width: 0;
+    min-height: 0;
+    padding: 10px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.42);
+    object-fit: contain;
+}
+
+/* ── The name ──────────────────────────────────────────────────── */
+
+/* Top-aligned, not stretched. A grid item fills its row by default, and
+   a 33.6px name centred inside a 46.6px row of a tall wordmark reads 7px
+   low against the mark it names; the patched page has them share a top
+   edge because the mark is floated. */
+.refract-sr-title {
+    position: relative;
+    z-index: 1;
+    grid-row: 1;
+    grid-column: 2;
+    align-self: start;
+    display: flex;
+    align-items: center;
+    gap: 8.4px;
+    margin: 0;
+    min-width: 0;
+}
+
+.refract-sr-band:not(.has-logo) .refract-sr-title {
+    grid-column: 1;
+}
+
+.refract-sr-name {
+    display: block;
+    font-size: var(--fs-2xl);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The icons sit inside an h2 set at 28px, and an inline control on a
+   28px line box is 33.6px tall whatever height the button itself takes.
+   Resetting the type here puts the row back on its own controls. */
+.refract-sr-name-icons {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    flex: none;
+    font-size: var(--fs-body);
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: normal;
+}
+
+.refract-sr-name-icons .external-links-button {
+    display: flex;
+    align-items: center;
+}
+
+/* Brand hues beside the name would be a second palette competing with
+   the accent, so the row sits at the muted step and takes its colour
+   back on hover, which is when the colour is doing something.
+
+   Bare, the minimal button (6.5), as on the performer, scene and tag
+   pages: no plate at rest, the fill only on hover. Three boxed icons
+   beside the name were three more objects in a header that has to stay
+   quiet around the name. */
+.refract-sr-icon-btn,
+.refract-sr-name-icons .btn,
+.refract-sr-name-icons .dropdown-toggle {
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--text-muted);
+    transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.refract-sr-icon-btn:hover,
+.refract-sr-name-icons .btn:hover,
+.refract-sr-name-icons .dropdown-toggle:hover {
+    background: var(--fill-4);
+    color: var(--text);
+}
+
+.refract-sr-name-icons svg {
+    width: 0.85rem;
+    height: 0.85rem;
+}
+
+/* State, not brand: each keeps its own colour while set. */
+.refract-sr-favourite.is-on,
+.refract-sr-organised.is-on {
+    color: var(--accent-ink);
+}
+
+.refract-sr-icon-btn:disabled {
+    opacity: 0.45;
+}
+
+.refract-sr-icon-btn:focus-visible,
+.refract-sr-scope-seg:focus-visible,
+.refract-sr-kin-more:focus-visible,
+.refract-sr-kin-cell:focus-visible,
+.refract-sr-action-row .btn:focus-visible {
+    outline: none;
+    border-color: var(--accent-glow);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), 0.15);
+}
+
+/* ── The record ────────────────────────────────────────────────── */
+
+/* Row two, at full width, whether or not there is a mark. The sections
+   inside it set their own steps, because several of them are absent on
+   most studios and a fixed row rhythm would leave the gaps behind. */
+.refract-sr-head {
+    position: relative;
+    z-index: 1;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+}
+
+/* Each section carries its own step above it, so a studio with no
+   aliases contributes no gap rather than leaving an empty track with a
+   step on each side. The first section takes none: the mark's own bottom
+   edge is already the step. */
+.refract-sr-head > :first-child {
+    margin-top: 0;
+}
+
+/* ── Aliases ───────────────────────────────────────────────────── */
+
+.refract-sr-alias {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gap-sm);
+    margin-top: var(--gap-md);
+    min-width: 0;
+}
+
+/* The house chip, as 10_pills_badges draws it: a fixed 24px box with the
+   line centred inside it rather than leading doing the centring, which
+   is the one shape that survives a font whose descent is 3px at this
+   size (DESIGN_SYSTEM 6.7). */
+.refract-sr-alias-chip {
+    display: flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--text);
+    background: var(--fill-3);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+}
+
+/* ── The rating ────────────────────────────────────────────────── */
+
+/* The chip and the group it opens, in one row: the chip, Stash's stars
+   while they are open, then whatever a plugin appended to the group. */
+.refract-sr-rating {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    align-self: flex-start;
+    gap: var(--gap-sm);
+    margin-top: var(--gap-md);
+    min-width: 0;
+}
+
+/* The group keeps its element and its one static React child, because
+   plugins append to it, and gives up its box so its children line up
+   with the chip. With no box, the old 0.4 fade on an unrated group has
+   nothing to fade either: the chip's "Rate" is the quiet state now. */
+.refract-sr-rating > .refract-sr-quality {
+    display: contents;
+}
+
+.refract-sr-rating > .refract-sr-tier-chip {
+    order: 0;
+}
+
+.refract-sr-rating > .refract-sr-quality > * {
+    order: 2;
+}
+
+.refract-sr-rating > .refract-sr-quality > :is(.rating-stars, .rating-number) {
+    order: 1;
+}
+
+.refract-sr-rating:not(.is-open) > .refract-sr-quality > :is(.rating-stars, .rating-number) {
+    display: none;
+}
+
+/* The chip. Box and material are the chip recipe's (10_pills_badges);
+   these rules carry the theme's body class so they outweigh it. The
+   tier colours are the scene and performer chips' own values. */
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 2rem;
+    padding: 0 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-rating > .refract-sr-quality > .adv-rating-btn {
+    height: 2rem;
+    min-height: 2rem;
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip .st-tier-name {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: var(--track-eyebrow);
+    line-height: 1.35;
+    color: var(--text-muted);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip .st-tier-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-md);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.35;
+    color: var(--text);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip .st-tier-value::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 1px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.18);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip .st-tier-value[hidden] {
+    display: none;
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip:hover,
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[aria-expanded="true"] {
+    background: var(--fill-4);
+    border-color: var(--glass-border-bright);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip:focus-visible {
+    outline: 2px solid var(--accent-glow);
+    outline-offset: 2px;
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier]:not([data-tier=""]) {
+    background: rgba(var(--tier-color), 0.13);
+    border-color: rgba(var(--tier-color), 0.4);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier]:not([data-tier=""]):hover,
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier]:not([data-tier=""])[aria-expanded="true"] {
+    background: rgba(var(--tier-color), 0.2);
+    border-color: rgba(var(--tier-color-bright), 0.75);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier]:not([data-tier=""]) .st-tier-name {
+    color: rgba(var(--tier-color-bright), 0.95);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier]:not([data-tier=""]) .st-tier-value {
+    color: rgba(var(--tier-color-bright), 1);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier]:not([data-tier=""]) .st-tier-value::before {
+    background: rgba(var(--tier-color-bright), 0.34);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier="bronze"] { --tier-color: 215, 148, 92; --tier-color-bright: 240, 180, 130; }
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier="silver"] { --tier-color: 192, 196, 204; --tier-color-bright: 226, 230, 238; }
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier="gold"] { --tier-color: 230, 185, 78; --tier-color-bright: 255, 215, 120; }
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier="diamond"] { --tier-color: 165, 223, 219; --tier-color-bright: 205, 245, 242; }
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier="legendary"] { --tier-color: 244, 114, 182; --tier-color-bright: 255, 160, 210; }
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier="perfect"] { --tier-color: 255, 255, 255; --tier-color-bright: 255, 255, 255; }
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-tier="perfect"] {
+    background: linear-gradient(100deg,
+        rgba(244, 114, 182, 0.18), rgba(96, 165, 250, 0.18), rgba(192, 132, 252, 0.18));
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-rated="0"] .st-tier-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-base);
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text);
+}
+
+body.stash-liquid-glass .refract-sr .refract-sr-tier-chip[data-rated="0"] .st-tier-name::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    background-color: currentColor;
+    -webkit-mask: var(--st-star-svg) center / contain no-repeat;
+            mask: var(--st-star-svg) center / contain no-repeat;
+    opacity: 0.8;
+}
+
+/* ── The scope control ─────────────────────────────────────────── */
+
+/* Two segments, each carrying its own count, so the choice states its
+   own consequence before it is made. Three type levels in the bar and no
+   more: the name at --fs-2xl, the figure at --fs-lg, the label at the
+   house eyebrow. */
+/* EQUAL TRACKS, not content sizing, which is round 5's second finding:
+   the two halves of a two-state chooser have to be the same size or the
+   shape stops reading as one control with two states (6.23). Sized by
+   content they were 126 and 135.3 at 968 and 807 and 129.6 and 162.4 at
+   390 on this fixture's largest network, with the wider label taking the
+   wider half, and a flex `flex: 1 1 auto` does not fix that: growth is
+   shared equally, so the difference in base size survives it. Two `1fr`
+   tracks answer the question the control is asking, and the segments'
+   own `min-width` rungs still set the floor. There are always exactly
+   two segments (ScopeControl.tsx builds them). */
+.refract-sr-scope {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    align-self: flex-start;
+    gap: var(--gap-md);
+    margin-top: var(--gap-md);
+    min-width: 0;
+}
+
+.refract-sr-scope-seg {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 11rem;
+    padding: 0.5rem 1rem 0.55rem;
+    text-align: left;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    background: var(--glass-bg);
+    cursor: pointer;
+    transition:
+        background var(--dur-fast) ease,
+        border-color var(--dur-fast) ease,
+        color var(--dur-fast) ease;
+}
+
+.refract-sr-scope-seg:hover {
+    border-color: var(--glass-border-bright);
+    background: var(--glass-bg-strong);
+}
+
+.refract-sr-scope-label {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: var(--track-eyebrow);
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.refract-sr-scope-value {
+    font-size: var(--fs-lg);
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--text-muted);
+}
+
+/* The chosen side. Accent on the label and full-strength ink on the
+   figure, so the two segments differ by more than a border: the one you
+   are looking at is the one that reads loudest (P3). */
+.refract-sr-scope[data-scope="own"] .refract-sr-scope-seg[data-seg="own"],
+.refract-sr-scope[data-scope="all"] .refract-sr-scope-seg[data-seg="all"] {
+    border-color: var(--accent-glow);
+    background: var(--accent-tint);
+}
+
+.refract-sr-scope[data-scope="own"] .refract-sr-scope-seg[data-seg="own"] .refract-sr-scope-label,
+.refract-sr-scope[data-scope="all"] .refract-sr-scope-seg[data-seg="all"] .refract-sr-scope-label {
+    color: var(--accent-ink);
+}
+
+.refract-sr-scope[data-scope="own"] .refract-sr-scope-seg[data-seg="own"] .refract-sr-scope-value,
+.refract-sr-scope[data-scope="all"] .refract-sr-scope-seg[data-seg="all"] .refract-sr-scope-value {
+    color: var(--text);
+}
+
+/* ── The read-out grid ─────────────────────────────────────────── */
+
+/* One plate, and the 1px gaps between the cells ARE the dividers. Which
+   is why the plate colour shows through them and why every cell fills
+   its row: a cell that stops short leaves the hairline broken.
+
+   This is the same plate the network grid below it is built from, and
+   that is the point. On the patched page these two sit one above the
+   other in different vocabularies: Stash's two-column label-and-value
+   rows above a plate of eyebrow-over-value cells. Two tables, one
+   surface. */
+.refract-sr-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 1px;
+    margin-top: var(--gap-md);
+    border: 1px solid var(--glass-border-bright);
+    border-radius: var(--radius);
+    background: var(--refract-sr-plate);
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* The grid packs to its content: three read-outs in six fixed columns
+   fill half a row and leave a blank rectangle the width of the band.
+   Balanced to ceil(n/2) and capped at six, that becomes two even rows.
+   The count is the component's, handed over as an attribute, because CSS
+   cannot count children. Wide only: below 1200 the breakpoints own the
+   grid and they know more than a count does. */
+/* One read-out, and the plate hugs it rather than spanning the band. A
+   row whose value is one pill has no business being 1,509px wide: the
+   theme's own phase-3 pass measured that exact failure at a 1,009px box
+   holding 187.91px of ink and put those rows back into the flow. Most
+   studios here are this case, because a Stash ID is the only field 2,401
+   of them carry. */
+.refract-sr-grid[data-refract-cols="1"] {
+    width: -moz-fit-content;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 16rem;
+}
+
+@media (min-width: 1201px) {
+    .refract-sr-grid[data-refract-cols="1"] { grid-template-columns: minmax(0, 1fr); }
+    .refract-sr-grid[data-refract-cols="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .refract-sr-grid[data-refract-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .refract-sr-grid[data-refract-cols="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .refract-sr-grid[data-refract-cols="5"] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Opaque, not a fill: these sit over a blurred wordmark, and a 0.03
+   white on top of that is a lighter band rather than a surface. */
+.refract-sr-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8.4px 11.2px;
+    background: var(--refract-sr-plate);
+    box-shadow: 0 0 0 1px var(--glass-border);
+    min-width: 0;
+}
+
+.refract-sr-tile.is-wide {
+    grid-column: 1 / -1;
+}
+
+/* One eyebrow in this band, not two: these labels, the network grid's
+   keys and the scope control's all resolve to the same treatment. */
+.refract-sr-tile-label {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: var(--track-eyebrow);
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* A block at the cell's width, not a flex row: a flex box sizes to its
+   content, so the text runs on and gets clipped at the band's edge
+   instead of ellipsised at the cell's. */
+.refract-sr-tile-value {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    font-size: var(--fs-md);
+    line-height: 1.5;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A value that is a list of pills rather than a line: it wraps, and the
+   ellipsis that keeps one line honest would clip a second row. */
+.refract-sr-tile.is-wide .refract-sr-tile-value,
+.refract-sr-tile-stash_ids .refract-sr-tile-value {
+    white-space: normal;
+    overflow: visible;
+}
+
+.refract-sr-sid-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Each entry is the pill and the value it stands for, on one line while
+   there is room and on two when there is not. The owned tag page's list
+   is the same three rules. */
+.refract-sr-sid-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gap-xs);
+    min-width: 0;
+}
+
+/* The identifier itself, selectable. `--fs-sm` at 500 is the rung the
+   band's chips already sit on, so printing the value adds no size and
+   weight pair to the census; tabular figures because it is a machine
+   string, and `break-all` because a 36-character identifier with no
+   spaces in it will otherwise push a 336px band sideways. */
+.refract-sr-sid-value {
+    min-width: 0;
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    word-break: break-all;
+}
+
+.refract-sr-sid-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    /* The chip recipe's resting fill (DESIGN_SYSTEM 6.7: --fill-3 and the
+       glass rim). It was --fill-2, the one Stash ID pill of four on the
+       entity pages that was a step lighter than the rest. */
+    background: var(--fill-3);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-pill);
+    white-space: nowrap;
+}
+
+/* Stash's CustomFields, unmodified, so every plugin selector written
+   against it keeps matching. Nothing here styles its insides: that is
+   13_plugins' job and it already does it. A full-width cell of the plate
+   rather than a block under it, so the surface runs unbroken from the
+   first read-out to the last plugin row. */
+.refract-sr-extension {
+    grid-column: 1 / -1;
+    padding: 8.4px 11.2px;
+    background: var(--refract-sr-plate);
+    box-shadow: 0 0 0 1px var(--glass-border);
+    min-width: 0;
+}
+
+/* ── The description ───────────────────────────────────────────── */
+
+/* Free user text gets a budget from the layout, never from the content.
+   Six lines, then the rest is behind the page's own scroll rather than
+   an inner scrollbar, which is the same failure wearing a hat (6.4).
+   HIDDEN_INVENTORY G4: the theme used to hide this field entirely and
+   nothing else on the page carried it. */
+.refract-sr-details {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-2xs);
+    margin-top: var(--gap-md);
+    min-width: 0;
+}
+
+.refract-sr-details-body {
+    margin: 0;
+    max-width: 78ch;
+    font-size: var(--fs-body);
+    line-height: 1.5;
+    color: var(--text);
+    white-space: pre-line;
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* The way past the budget, which 6.4 asks for in the same sentence as
+   the budget itself: "clamp with a visible affordance". Without it the
+   remaining lines were not reachable by any means - no disclosure, no
+   title, no scroll - and at 600 and below, where the clamp is 4, a
+   fourteen-line description showed four. Every sibling owned page ships
+   this; this one did not. */
+.refract-sr-details.is-open .refract-sr-details-body {
+    -webkit-line-clamp: unset;
+    display: block;
+    overflow: visible;
+}
+
+.refract-sr-more {
+    align-self: flex-start;
+    margin-top: var(--gap-2xs);
+    line-height: 1.45;
+}
+
+/* ── Tags ──────────────────────────────────────────────────────── */
+
+.refract-sr-tags {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-xs);
+    margin-top: var(--gap-md);
+    min-width: 0;
+}
+
+.refract-sr-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--gap-sm);
+    min-width: 0;
+}
+
+/* ── The network ───────────────────────────────────────────────── */
+
+/* The geometry is the read-out plate's, lifted rather than approximated:
+   six tracks, a 1px gap letting the plate through as hairlines, one rim
+   at --radius, a key over a figure in each cell. Two grids in one
+   vocabulary is what makes the band read as one surface. */
+.refract-sr-kin {
+    margin-top: var(--gap-lg);
+    min-width: 0;
+}
+
+.refract-sr-kin-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--gap-lg);
+    margin-bottom: var(--gap-md);
+}
+
+.refract-sr-kin-label {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: var(--track-eyebrow);
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* A text control, not a button dressed as a peer of Edit and Delete: it
+   reveals, it does not act (6.5).
+
+   500, not 600, and the reason is the band rather than this control.
+   `--fs-sm` is also the alias chip's size, and the alias chip is the
+   house chip recipe verbatim (10_pills_badges: 24px, `--fs-sm`, 500,
+   `--fill-3`), so it cannot move. Two weights at one size was an
+   eighth size/weight pair on every studio that has an alias, which is
+   91 of 2,401 here and is why 464 never showed it. What tells this
+   control apart from the chip beside it is `--accent-ink` and the
+   hover underline, which is what a text control is told apart by
+   anyway; weight was carrying nothing. The description disclosure
+   below takes the same value for the same reason. */
+.refract-sr-kin-more,
+.refract-sr-more {
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--accent-ink);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* THE HOVER WAS A NO-OP. It read `color: var(--accent-bright)`, and
+   `--accent-ink` IS `--accent-bright`, so the only thing that moved
+   under a real pointer was the underline: measured on 464,
+   rgb(192,132,252) at rest and rgb(192,132,252) on hover. Round 2 gave
+   the same rule to the new description disclosure, so the band carried
+   two of them.
+
+   The house glaze instead, which is what the tag page's
+   `.refract-tr-reveal` and the group page's `.refract-gr-more` took:
+   the ink stays `--accent-ink` and `--accent-tint`, 6.5's
+   own 0.12 fill, arrives underneath. The underline stays, because it is
+   the half that already worked and it survives forced-colors.
+
+   The spread shadow is the glaze's padding. Both controls here are
+   `padding: 0`, unlike their two siblings, and a bare fill on a
+   zero-padding text control hugs the glyphs like a highlighter. Padding
+   would have moved them: the network disclosure is the flex-end item of
+   its row and the description's More is flush with the paragraph above
+   it, so 6px of side padding shifts one 6px left and the other 6px
+   right. An outer shadow paints outside the border box, is clipped
+   from under it so the two alphas cannot stack, follows the same
+   `--radius-sm`, and costs nothing in layout. Measured: both boxes are
+   identical to the pixel before and after. */
+.refract-sr-kin-more:hover,
+.refract-sr-more:hover {
+    background: var(--accent-tint);
+    box-shadow: 0 0 0 4px var(--accent-tint);
+    color: var(--accent-ink);
+    text-decoration: underline;
+}
+
+.refract-sr-kin-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 1px;
+    border: 1px solid var(--glass-border-bright);
+    border-radius: var(--radius);
+    background: var(--refract-sr-plate);
+    overflow: hidden;
+}
+
+.refract-sr-kin-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8.4px 11.2px;
+    background: var(--refract-sr-plate);
+    text-decoration: none;
+    transition: background var(--dur-fast) ease;
+    min-width: 0;
+}
+
+.refract-sr-kin-cell:hover {
+    background: var(--refract-sr-plate-hover);
+    text-decoration: none;
+}
+
+/* The eyebrow, and there is only one of it.
+
+   This was `--fs-xs` at 500 with `--track-label`, beside tile labels and
+   scope labels at 600 with `--track-eyebrow`, doing the same job in the
+   same band: one label over one value. Two weights at one size is not a
+   level (3.5 rule 3), it is a size doing two jobs, and it took the
+   band's size/weight pairs to eight. The rule above this file already
+   claimed "one eyebrow in this band, not two"; now it is true. */
+.refract-sr-kin-name {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: var(--track-eyebrow);
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.refract-sr-kin-count {
+    font-size: var(--fs-md);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--text);
+    /* The count arrives after the names do, and a cell that grows when it
+       lands would reflow the whole grid under the reader. The line box is
+       reserved from the start (6.22 rule 2). */
+    min-height: 1.5em;
+}
+
+/* ── The actions ───────────────────────────────────────────────── */
+
+/* Beside the name, top right, as on the performer page: the shared
+   entity header puts the same three controls in the same place on every
+   entity page. It was last in the band under a hairline, where Stash's
+   own `DetailsEditNavbar` sits, and the performer page had already left
+   that position, so the two pages put their actions in two places. */
+.refract-sr-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--gap-sm);
+}
+
+/* Three dots in a square of the row's own height. */
+.refract-sr-action-row .refract-sr-more-trigger {
+    width: 2rem;
+    padding: 0;
+    justify-content: center;
+}
+
+.refract-sr-more-dots {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+    display: block;
+}
+
+.refract-sr-more-menu {
+    position: relative;
+    flex: none;
+}
+
+/* Bootstrap's menu, dressed by the theme (04_filters): only where it
+   hangs and how wide it is are this page's to say. */
+.refract-sr-more-menu .refract-sr-menu {
+    right: 0;
+    left: auto;
+    min-width: 12rem;
+    max-width: min(18rem, calc(100vw - 2rem));
+}
+
+.refract-sr-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    white-space: nowrap;
+    font-size: var(--fs-base);
+    font-weight: 600;
+    cursor: pointer;
+    border: 0;
+    background: none;
+}
+
+.refract-sr-more-trigger:focus-visible,
+.refract-sr-menu-item:focus-visible {
+    outline: 2px solid var(--accent-glow);
+    outline-offset: -2px;
+}
+
+.refract-sr-action-row .btn {
+    height: 2rem;
+    padding: 0 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--fs-base);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+/* Buttons: the shape and the weight here, the ground in cascade.css,
+   which is where the theme's own !important button recipe has to be
+   answered. Splitting them keeps this sheet free of !important. */
+.refract-sr-action-row .btn-primary {
+    font-weight: 600;
+}
+
+.refract-sr-action-row .btn:disabled {
+    opacity: 0.45;
+}
+
+/* ── The tabs ──────────────────────────────────────────────────── */
+
+.refract-sr-tabs {
+    /* The shorthand, not margin-top: `detail-body` arrives with 15px of
+       side margin of its own and a longhand here would leave it. */
+    margin: 11.9px 0 0;
+    min-width: 0;
+}
+
+/* `detail-body` is one of Stash's landmarks and it arrives carrying a
+   Bootstrap column's side padding. The page already sets its own content
+   edge, so taking that back is what keeps the strip on the same line as
+   the band above it. */
+.refract-sr-tabs.detail-body {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* The strip starts where the content starts, and the rule that says so
+   is the theme's (`18_entity_pages.css`), which is where it belongs: the
+   theme's studio, tag and group pages share this strip and the page
+   override renders the same `.studio-tabs > .nav-tabs` chain, so one
+   rule serves all four surfaces.
+
+   A copy lived here, one selector deeper and without `!important`, on
+   the argument that a deeper rule would do what the theme's intended.
+   It was dead for the same reason the theme's was:
+   `07_scene_details.css` claimed `.nav-tabs` padding blanket and
+   `!important`, and specificity does not answer that. Simulated on the
+   live page by adding `refract-sr-tabs` to the ancestor of Stash's
+   strip, the padding stayed 2.8px and the first tab stayed at 29.8.
+   Both are fixed at the source now: 07 no longer claims these three
+   strips, and 18 sets the inset (and the scroll padding that the
+   phone-width snap needs to rest on it). Measured after: first tab
+   x=45.5 against a content edge of 45.5, at 1600, 1440, 968, 807, 600
+   and 390, switch on and switch off. */
+/*
+   Every width, and the two reduced-preference modes.
+
+   The steps are the theme's own, reproduced so the owned page and the
+   patched one behave the same way as the window shrinks, and measured
+   against it at 1440, 968, 807, 600 and 390. Loaded after `studio.css`
+   so a tie goes to the narrower rule by source order.
+
+   Where a number here looks arbitrary it is the theme's: the 112px mark
+   below 900 and the 2-track grid below 768 are `18_entity_pages.css`
+   rules, reproduced rather than re-decided, because two entity pages
+   that step differently are two pages.
+*/
+
+/* ── 1200: the tracks halve before anything wraps ───────────────── */
+
+/* Below the stack point the read-out and the network both drop to four
+   tracks. Six 187px cells become unreadable long before the page does,
+   and the two grids must move together: a grid nested inside a cell
+   cannot inherit its parent's tracks, and the theme carries a live drift
+   row for exactly that on the performer band. Here they are one file and
+   one step, which retires the class of fault rather than the instance. */
+/* The mark keeps its 280px track all the way to 900 and then becomes a
+   112px badge, which is the theme's own step and its only one. An extra
+   intermediate size here read as a third entity-page vocabulary for no
+   gain: measured at 968, 220px moved the name 60px left of where the
+   patched page puts it and changed nothing else. */
+@media (max-width: 1200px) {
+    .refract-sr-grid,
+    .refract-sr-grid[data-refract-cols],
+    .refract-sr-kin-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .refract-sr-grid[data-refract-cols="1"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* The floor only. The tracks are equal by `grid-template-columns`
+       in `studio.css`; `flex: 1 1 auto` used to live here and did not
+       make them equal, which is the finding. */
+    .refract-sr-scope-seg {
+        min-width: 9rem;
+    }
+}
+
+/* ── 900: the mark is a badge, not a banner ─────────────────────── */
+
+/* 112px is the theme's own figure for all three entity headers at this
+   width. The name keeps `--fs-2xl` all the way down, also the theme's:
+   a page title that shrinks with the window stops being the title. */
+@media (max-width: 900px) {
+    .refract-sr-band.has-logo {
+        grid-template-columns: 112px minmax(0, 1fr) auto;
+        column-gap: var(--gap-lg);
+    }
+}
+
+/* ── 820: touch targets take a floor ────────────────────────────── */
+
+/* 44px in pixels, not rem: a touch target is a physical size and does
+   not scale with the type ramp. */
+@media (max-width: 820px) {
+    .refract-sr-action-row .btn,
+    .refract-sr-icon-btn,
+    .refract-sr-name-icons .btn,
+    .refract-sr-name-icons .dropdown-toggle {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .refract-sr-name-icons {
+        gap: var(--gap-xs);
+    }
+
+    /* Three controls cannot take the floor by growing.
+
+       The Stash ID pill is a 20px pill and the network disclosure is a
+       text control, and both are the size they are on purpose; a pill
+       that grew to 44 would stop being a pill and the disclosure would
+       stop being text. So they take the floor as a HIT AREA: a
+       pseudo-element centred on the control, 44px tall, in the flow
+       nowhere. Measured at 390 before: 73.1 x 20 and 54.3 x 16.8, so the
+       width is already over the floor and only the height is short.
+
+       Centred is safe here and was checked rather than assumed. The
+       pill's 44px box spans y 261.5 to 305.5 in a plate that runs 246.5
+       to 303, over a label that is not a control; the disclosure's spans
+       299.8 to 343.8 between a plate ending at 303 (and a pill ending at
+       293.5, 160px to its left) and the first network cell at 351.7. A
+       hit area that overlaps a neighbouring control is worse than a
+       small one, because then the wrong thing answers. */
+    .refract-sr-sid-pill,
+    .refract-sr-kin-more {
+        position: relative;
+    }
+
+    .refract-sr-sid-pill::after,
+    .refract-sr-kin-more::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 44px;
+    }
+
+    .refract-sr-kin-more::after {
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    /* The description disclosure is the same kind of control and takes
+       the same floor, with one difference: it is 26.7px wide at 390
+       ("More"), so unlike the network disclosure's 54.3 its WIDTH is
+       short of the floor too and `left: 0; right: 0` would leave a
+       26.7 x 44 target. It gets a centred box that is at least 44 in
+       both directions. Checked for overlap at 390: the box spans x 36.9
+       to 80.9 and y 364.8 to 408.8, and the elements at both edges are
+       the description paragraph above and the band's own padding below,
+       neither of them a control. */
+    .refract-sr-more {
+        position: relative;
+    }
+
+    .refract-sr-more::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: max(44px, 100%);
+        height: 44px;
+    }
+
+    /* The pill's grows UPWARD instead of from its centre, because the
+       read-out plate clips it: the plate carries `overflow: hidden` for
+       its rounded corners, and a centred overlay measured 40px rather
+       than 44, cut off 4.5px below the pill. Upward it fits inside the
+       tile, which is 54.5px tall, over a label that is not a control.
+       This is the 10.3 case exactly: the rule was correct and the
+       computed result was not, and only the measurement said so. */
+    .refract-sr-sid-pill::after {
+        bottom: 0;
+    }
+
+    /* The rating stars are Stash's own control and there is no dead
+       space around them to expand into: measured at 390 the row sits 7px
+       under the icon buttons and 7px over the scope segments, both of
+       which are controls, so a centred overlay would take clicks from
+       them. The row grows instead, from 21px to 44, which is 23px of
+       band at the narrow steps only. The star itself does not change:
+       the glyph is a 17.5 by 14 svg and the button pads around it.
+
+       THE WIDTH TAKES THE SAME FLOOR, which corrects this block's own
+       earlier ruling. That ruling said five adjacent stars cannot each be
+       44 wide without either overlapping, and then a tap sets the wrong
+       score, or making the control 220px on a 390px screen. Neither half
+       holds. Adjacent flex items with a 1px gap do not overlap at any
+       width: measured at 390 and 600, zero rect overlaps and five
+       separate hit bands, before and after. And 220px is the width the
+       page this one replaces has always drawn: with the switch off the
+       theme's star row measures 249.5 by 44 at 390, five 44px buttons
+       with 1px between them, from `08_misc_mid.css`. The owned band's
+       content box at 390 is 299, so five 44px stars and their four 1px
+       gaps come to 224 and the whole row to 249.5, which is the theme's
+       own figure to the decimal, with 49.5 to spare. The glyph does not
+       change; the
+       button pads around it, which is what the first rule in this block
+       already does for the action row and the name icons. The group page
+       carried the same exemption from here and loses it in the same
+       commit. */
+    .refract-sr-quality .rating-stars .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* The chip and the plugin button beside it stay pills at 32, and take
+       the 44 as a band on a finger (below). */
+    body.stash-liquid-glass .refract-sr .refract-sr-tier-chip,
+    body.stash-liquid-glass .refract-sr .refract-sr-rating > .refract-sr-quality > .adv-rating-btn {
+        height: 32px;
+        min-height: 32px;
+    }
+
+    /* The theme draws each star across its whole button (08_misc_mid),
+       so a 44px button drew a 44px star. The button keeps its 44 for the
+       finger; the star is drawn at 26 in its middle. Both layers take the
+       same box, so the partial fill's clip still lands on the same star. */
+    .refract-sr .refract-sr-rating .rating-stars button::before,
+    .refract-sr .refract-sr-rating .rating-stars button::after {
+        width: 26px;
+        height: 26px;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+@media (max-width: 820px) and (pointer: coarse) {
+    body.stash-liquid-glass .refract-sr .refract-sr-tier-chip,
+    body.stash-liquid-glass .refract-sr .refract-sr-rating > .refract-sr-quality > .adv-rating-btn {
+        position: relative;
+    }
+
+    body.stash-liquid-glass .refract-sr .refract-sr-tier-chip::after,
+    body.stash-liquid-glass .refract-sr .refract-sr-rating > .refract-sr-quality > .adv-rating-btn::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 100%;
+        min-width: 44px;
+        height: 44px;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* ── 600: the actions take a row of their own ───────────────────── */
+/* Under the name, full width: Edit and Auto tag share it and "..." is a
+   44px square at the end, the performer page's phone row. Open, the
+   stars take a line of their own under the chip on a quiet plate. */
+@media (max-width: 600px) {
+    .refract-sr-band,
+    .refract-sr-band.has-logo {
+        row-gap: var(--gap-md);
+    }
+
+    /* The mark, the name, then the actions, then the record (the head
+       moves to row 4 in the stacking block below). */
+    .refract-sr-actions {
+        grid-row: 3;
+        grid-column: 1 / -1;
+        justify-self: stretch;
+    }
+
+    /* Full width, so an open drawer's plate spans the band rather than
+       the chip's own width, which put Stash's score over the fifth star. */
+    .refract-sr-rating {
+        align-self: stretch;
+    }
+
+    .refract-sr-action-row {
+        justify-content: flex-start;
+    }
+
+    .refract-sr-action-row > .btn {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    .refract-sr-action-row .refract-sr-more-trigger {
+        width: 44px;
+    }
+
+    .refract-sr-rating.is-open > .refract-sr-quality > :is(.rating-stars, .rating-number) {
+        order: 3;
+        flex: 0 0 100%;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        background: var(--fill-2);
+        border: 1px solid var(--glass-border);
+    }
+
+    .refract-sr-rating.is-open .rating-stars .star-rating-number {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        min-width: 0;
+    }
+}
+
+/* ── 768: two tracks, and fewer cells ───────────────────────────── */
+
+/* Fewer COLUMNS is not the same as less content: measured on the patched
+   page at 390, the studio header ran 701.52px on an 844px screen, so the
+   whole viewport was header and the scenes began below the fold. The
+   collapsed network therefore shows six cells rather than twelve, and
+   the disclosure still reaches all of them (P6). */
+@media (max-width: 768px) {
+    .refract-sr-grid,
+    .refract-sr-grid[data-refract-cols],
+    .refract-sr-kin-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .refract-sr-grid[data-refract-cols="1"] {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .refract-sr-kin:not(.is-open) .refract-sr-kin-cell:nth-child(n + 7) {
+        display: none;
+    }
+}
+
+/* ── 600: the identity centres, the record does not ─────────────── */
+
+/* The same ruling the performer band takes below its stack point, and
+   the theme applies to all three entity headers: a picture, a name and a
+   table of facts under them. The mark stops being a column and centres
+   as a box; the name centres its inline content.
+
+   Everything below keeps its own left edge, and that reset IS the rule
+   rather than a detail: the read-out grid, the network grid and the tag
+   list are data, read by scanning a left edge, and `text-align` is
+   inherited. Without the reset this becomes the centred-everything page
+   the ruling is trying to avoid. */
+@media (max-width: 600px) {
+    .refract-sr-band,
+    .refract-sr-band.has-logo {
+        grid-template-columns: minmax(0, 1fr);
+        row-gap: var(--gap-md);
+    }
+
+    .refract-sr-logo {
+        grid-row: 1;
+        grid-column: 1;
+        width: 112px;
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    .refract-sr-title {
+        grid-row: 2;
+        grid-column: 1;
+        justify-content: center;
+        flex-wrap: wrap;
+        text-align: center;
+    }
+
+    .refract-sr-head {
+        grid-row: 4;
+        text-align: left;
+    }
+
+    .refract-sr-name {
+        white-space: normal;
+    }
+
+    .refract-sr-scope {
+        align-self: stretch;
+    }
+
+    .refract-sr-scope-seg {
+        min-width: 0;
+    }
+
+    .refract-sr-details-body {
+        -webkit-line-clamp: 4;
+    }
+}
+
+/* ── Reduced preferences ────────────────────────────────────────── */
+
+/* The blurred mark is an effect; the band's ground is not. Reduced
+   transparency turns the one into a quiet wash rather than removing the
+   other, which is the same answer lite arrives at from a different
+   direction (cascade.css).
+
+   0.35 is the value the other three bands answer with: the theme's own
+   performer band (`08_misc_mid.css`), the owned performer page
+   (`pages/src/styles/responsive.css`), the tag band and the group band.
+   This one said 0.12, which is a wash so quiet that it is nearly the
+   removal the sentence above says it is not: measured on /studios/464 at
+   1600, over the 14px of band above the title where nothing is drawn but
+   the wash, it carried a channel spread of 4.3, 3.5, 2.5. At 0.35 the
+   same strip carries a mark a user
+   can see while the ink over it keeps its floor. The numbers are in the
+   build log. No `transform: none` beside it, unlike the other three:
+   `.refract-sr-blur` has no transform to reset. */
+@media (prefers-reduced-transparency: reduce) {
+    .refract-sr-blur {
+        filter: none;
+        opacity: 0.35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .refract-sr-icon-btn,
+    .refract-sr-scope-seg,
+    .refract-sr-kin-cell,
+    .refract-sr .refract-sr-tier-chip {
+        transition: none;
+    }
+}
+/*
+   The declarations that lose, and the reason each one loses.
+
+   `studio.css` is one plain rule per selector with no !important, which
+   is possible because it styles markup only this bundle renders. This
+   file is the exception list: elements the theme and Bootstrap already
+   claim BY NAME (`a`, `.btn`, `.nav-tabs`), where a correct rule pitched
+   below an `!important` recipe is indistinguishable from no rule at all
+   (DESIGN_SYSTEM 10.3).
+
+   Nothing goes in here on suspicion. Each entry was measured losing.
+*/
+
+/* The action row's own ground. The theme's button recipe in 09_buttons
+   is `!important`, so a rule pitched below it loses silently and the
+   buttons take the plain accent tint straight over the blurred wordmark.
+   The patched band measured 2.99:1 that way on a warm decile and solved
+   it with a half-black base; that rule is scoped to `.refract-ph` and
+   cannot reach this page.
+
+   The base is baked rather than tokenised because the ground here is
+   KNOWN (3.1 rule 6): this is one surface, not a token serving every
+   surface, so it can carry the composite that is actually correct on it
+   instead of a ground-blind fallback. */
+/* The `.btn` in every selector below is not decoration. This row carries
+   Stash's own `details-edit` class on purpose, so 08_misc_mid's
+   `.details-edit .btn.btn-secondary` (0,4,1) and `.details-edit
+   .btn.btn-primary` (0,4,1) claim it by name and are `!important` too.
+   Pitched at (0,3,1) these rules LOST, silently: Edit took the plain
+   accent tint and Auto tag took `--glass-bg` with `--glass-blur-md`
+   riding along, which is a 14px backdrop-filter on a small repeated
+   control and a direct breach of 6.5. One class deeper ties 08 and this
+   file loads after it, which is the whole mechanism; nothing here is
+   `!important` that was not `!important` before. Measured: Auto tag
+   `blur(14px)` -> `none`, Edit `rgba(168,85,247,0.12)` -> the composite
+   below. */
+body.stash-liquid-glass .refract-sr-action-row .btn.btn-primary,
+body.stash-liquid-glass .refract-sr-action-row .btn.btn-secondary {
+    background:
+        linear-gradient(0deg, var(--accent-tint), var(--accent-tint)),
+        rgba(0, 0, 0, 0.45) !important;
+    /* Inherited from the theme's secondary recipe, never asked for here.
+       Not `!important`, because 08 does not set it that way and a plain
+       declaration at equal specificity loading later is enough. */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+/* Hover, on the same base. Without these the row changed ground under
+   the pointer: 08's hover arms are `.details-edit .btn.btn-primary:hover`
+   (0,5,1) and `.details-edit .btn.btn-secondary:hover:not(:disabled)`
+   (0,6,1), so hovering dropped the composite and went back to the
+   theme's flat fill. The fill is 6.5's own hover step
+   (0.12 to 0.22) rather than a new value, and the `:not(:disabled)` on
+   the secondary arm is both the specificity match and the right
+   behaviour: a disabled Auto tag does not light up. */
+body.stash-liquid-glass .refract-sr-action-row .btn.btn-primary:hover,
+body.stash-liquid-glass .refract-sr-action-row .btn.btn-secondary:hover:not(:disabled) {
+    background:
+        linear-gradient(
+            0deg,
+            rgba(var(--accent-rgb), 0.22),
+            rgba(var(--accent-rgb), 0.22)
+        ),
+        rgba(0, 0, 0, 0.45) !important;
+}
+
+/* The row still carries `details-edit`, Stash's class and the anchor
+   plugins look for, and with it the theme's row recipe: a hairline above
+   and 0.85rem of margin and padding, all !important. That recipe is for
+   a row at the foot of the band, and this one sits beside the name. */
+body.stash-liquid-glass .refract-sr-action-row.details-edit {
+    border-top: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+/* The same recipe pads every button 11.9px a side, !important, which in
+   a 28px square left the three dots 2.2px wide. */
+body.stash-liquid-glass .refract-sr-action-row .btn.refract-sr-more-trigger {
+    padding: 0 !important;
+}
+
+body.stash-liquid-glass .refract-sr-more-dots {
+    flex: none;
+}
+
+/* Delete, in the "..." menu, in the danger colour. The theme's
+   `.dropdown-item` recipe sets its ink with !important. */
+body.stash-liquid-glass .refract-sr-menu-item.is-danger {
+    color: var(--danger-light) !important;
+}
+
+/* The Stash-ID pill is an `<a>`, and the theme pegs every link to
+   `--bs-link-color`, which is `rgba(255,255,255,0.85)`. The performer
+   lane answered the same element the same way. */
+body.stash-liquid-glass .refract-sr-sid-pill,
+body.stash-liquid-glass .refract-sr-parent-link,
+body.stash-liquid-glass .refract-sr-kin-cell {
+    color: var(--text) !important;
+}
+
+body.stash-liquid-glass .refract-sr-sid-pill:hover,
+body.stash-liquid-glass .refract-sr-parent-link:hover {
+    color: var(--accent-ink) !important;
+}
+
+body.stash-liquid-glass .refract-sr-kin-name {
+    color: var(--text-muted) !important;
+}
+
+/* The network cell is an anchor, so Bootstrap's own underline-on-hover
+   applies to a surface that is not a link in a sentence. */
+body.stash-liquid-glass .refract-sr-kin-cell,
+body.stash-liquid-glass .refract-sr-kin-cell:hover {
+    text-decoration: none !important;
+}
+
+/* `.quality-group` is Stash's class and the owned page keeps it on
+   purpose: it is the contract Advanced Rating and Ascension anchor on.
+   Keeping it means the theme's own rule on that class applies too, and
+   that rule adds a 3.5px top margin which put the rating 3.5px below
+   where the patched page has it. The section step belongs to the head's
+   own rhythm, not to a borrowed class. */
+/* The rating group gives up its box so the chip, the stars and a
+   plugin's button are one row (studio.css). Stash's own
+   `#studio-page .quality-group { display: inline-flex }` outranks a class
+   rule by its id, and measured, the open stars then filled the group's
+   243px rather than the band's 302, so Stash's score sat on the fifth
+   star. */
+body.stash-liquid-glass .refract-sr .refract-sr-rating > .refract-sr-quality {
+    display: contents !important;
+}
+
+body.stash-liquid-glass .refract-sr-head > .refract-sr-rating:first-child {
+    margin-top: 0 !important;
+}
+
+/* ── Lite mode ─────────────────────────────────────────────────── */
+
+/* Lite is the theme on a machine that cannot composite, and it strips
+   `backdrop-filter` everywhere. It does NOT strip `filter`: the only two
+   `filter: none` rules in 15_lite are scoped to navbar icons and the
+   organized button, so a blur(52px) over roughly 1546 by 400 survives
+   untouched, which is exactly the GPU work lite exists to remove.
+
+   So the blurred mark goes and the floor and the veil stay. The band is
+   still a coloured field, because the floor was always what carried it
+   and the mark only ever tinted it: the design degrading in tiers rather
+   than falling off a cliff (P5), and only possible because the band is
+   floor-led. `15_lite` loads last and with !important, so this has to
+   answer it in kind. */
+body.stash-liquid-glass.refract-lite .refract-sr-blur {
+    display: none !important;
+}
+
+/* Without the mark the floor is doing all the work, so it leans a little
+   harder on the accent to stay a band rather than a flat panel. */
+body.stash-liquid-glass.refract-lite .refract-sr-band {
+    background:
+        radial-gradient(
+            58% 76% at 18% 22%,
+            rgba(var(--accent-rgb), 0.16) 0%,
+            rgba(var(--accent-rgb), 0) 70%
+        ),
+        var(--bg-1) !important;
+}
+
+/* ── Standing Stash's own header down ─────────────────── */
+
+/* On the Stash this theme runs against, the owned page is portalled into
+   `#studio-page` from the `StudioDetailsPanel` host, so Stash's own
+   header is still rendered beside it (mount.tsx has the argument). It is
+   hidden here rather than unmounted, because unmounting it is not ours
+   to do: the host replaces one panel, not the page.
+
+   Stash's TAB BODY is deliberately left alone. Two of the same list on
+   one page is not a styling question: both own the URL query string and
+   the saved view, and Stash's own localForage hook hangs the second one
+   to mount, permanently and silently (useScope.ts carries the
+   measurement). So the owned page draws the band and Stash keeps the
+   lists, which is what P4 would have said first.
+
+   Direct children only, so the strip the owned page draws for itself on
+   a Stash that HAS the page override is untouched: it is a descendant of
+   the portal container rather than a child of the page.
+
+   The sticky compressed header is caught by the same rule, which is
+   correct and is what the theme already does with it (08_misc_mid). */
+body.stash-liquid-glass.refract-owned-studio #studio-page > .detail-header {
+    display: none !important;
+}
+
+/* `#studio-page` is a Bootstrap `.row`, so it is a flex container and
+   the band's place in the page is one property rather than a DOM
+   insertion between nodes React owns. Appending and then ordering is
+   safe in a way that inserting is not: React reorders its own children
+   with `insertBefore` against its own anchors, and a foreign node used
+   as one of those anchors moves. */
+body.stash-liquid-glass .refract-sr-host {
+    order: -1;
+    width: 100%;
+    min-width: 0;
+}
+
+/* Stash's own switch stands down only while our proxy is actually up.
+   `refract-sr-has-scope` is set by the control itself and dropped the
+   moment it cannot draw, so any failure leaves Stash's control on screen
+   rather than leaving the page with no way to change scope at all (P6).
+
+   The second guard is narrower than it looks: hide the row only when the
+   switch is the ONLY thing in it. Stash puts other controls in
+   `.item-list-header` on other surfaces, and hiding those would take a
+   working control away with no proxy standing in for it. This is the
+   theme's own rule (18_entity_pages.css), keyed on our class instead of
+   its own. */
+body.stash-liquid-glass.refract-sr-has-scope
+    .item-list-header:has(#showSubContent):not(:has(> *:not(.custom-control))) {
+    display: none !important;
+}

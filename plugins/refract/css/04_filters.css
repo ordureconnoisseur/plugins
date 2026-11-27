@@ -3,12 +3,12 @@
    ─────────────────────────────────────────────────────────────────── */
 
 body.stash-liquid-glass .dropdown-menu {
-    background: rgba(20, 20, 24, 0.85) !important;
+    background: rgba(var(--surface-rgb), 0.85) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius-sm) !important;
     box-shadow: var(--shadow-xl);
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur-xl);
+    backdrop-filter: var(--glass-blur-xl);
     padding: 0.4rem;
     color: var(--text);
     /* Bootstrap defaults to 1000, below Refract's fixed navbar (~1030).
@@ -17,21 +17,23 @@ body.stash-liquid-glass .dropdown-menu {
 }
 body.stash-liquid-glass .dropdown-menu.bg-secondary.text-white,
 body.stash-liquid-glass .dropdown-menu.show.bg-secondary.text-white {
-    background: rgba(20, 20, 24, 0.9) !important;
+    background: rgba(var(--surface-rgb), 0.9) !important;
     color: var(--text) !important;
     border: 1px solid var(--glass-border) !important;
-    -webkit-backdrop-filter: var(--glass-blur) !important;
-    backdrop-filter: var(--glass-blur) !important;
+    -webkit-backdrop-filter: var(--glass-blur-xl) !important;
+    backdrop-filter: var(--glass-blur-xl) !important;
 }
 body.stash-liquid-glass .dropdown-item {
     color: var(--text);
-    border-radius: 8px;
+    /* Concentric with the menu (3.4, 6.8): its 12px --radius-sm less its
+       0.4rem padding. A literal 8px sat 1.6px off. */
+    border-radius: calc(var(--radius-sm) - 0.4rem);
     padding: 0.4rem 0.7rem;
-    transition: background 0.12s ease, color 0.12s ease;
+    transition: background var(--dur-instant) ease, color var(--dur-instant) ease;
 }
 body.stash-liquid-glass .dropdown-item:hover,
 body.stash-liquid-glass .dropdown-item:focus {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill-4);
     color: #fff;
 }
 body.stash-liquid-glass .dropdown-item.bg-secondary.text-white {
@@ -40,7 +42,7 @@ body.stash-liquid-glass .dropdown-item.bg-secondary.text-white {
 }
 body.stash-liquid-glass .dropdown-item.bg-secondary.text-white:hover,
 body.stash-liquid-glass .dropdown-item.bg-secondary.text-white:focus {
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: var(--fill-4) !important;
     color: #fff !important;
 }
 body.stash-liquid-glass .dropdown-item.active,
@@ -51,18 +53,30 @@ body.stash-liquid-glass .dropdown-item:active {
 body.stash-liquid-glass .dropdown-divider {
     border-top: 1px solid var(--glass-border);
 }
+/* Bootstrap's danger text class, used by Stash and by plugins that add
+   their own menu items (Undo Autotag's "Reset Autotag Data"), maps to the
+   theme's danger ink instead of Bootstrap's stock red. A danger menu item
+   keeps its red on hover over a danger tint, per the shared recipe. */
+body.stash-liquid-glass .text-danger {
+    color: var(--danger-ink) !important;
+}
+body.stash-liquid-glass .dropdown-item.text-danger:hover,
+body.stash-liquid-glass .dropdown-item.text-danger:focus {
+    background: rgba(var(--danger-rgb), 0.18);
+    color: var(--danger-light) !important;
+}
 
 /* ───────────────────────────────────────────────────────────────────
    Modals + toasts + popovers
    ─────────────────────────────────────────────────────────────────── */
 
 body.stash-liquid-glass .modal-content {
-    /* Neutral grey — avoid (n,n,n+4) mixes that read as blue next to --bg-0 */
-    background: rgba(11, 11, 11, 0.94) !important;
+    /* Neutral grey - avoid (n,n,n+4) mixes that read as blue next to --bg-0 */
+    background: var(--surface-solid) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius) !important;
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur-xl);
+    backdrop-filter: var(--glass-blur-xl);
     color: var(--text);
     color-scheme: dark;
     box-shadow:
@@ -83,10 +97,10 @@ body.stash-liquid-glass .modal-header {
        from flex-start. Headers with a close button are unchanged;
        headers without one no longer fling their title to the far edge. */
     justify-content: flex-start;
-    gap: 0.75rem;
+    gap: var(--gap-lg);
     flex-wrap: wrap;
     padding: 0.85rem 1.05rem !important;
-    background: rgba(255, 255, 255, 0.035) !important;
+    background: var(--fill-2) !important;
     border-bottom: 1px solid var(--glass-border) !important;
     border-color: var(--glass-border) !important;
     font-size: var(--fs-body);
@@ -125,7 +139,7 @@ body.stash-liquid-glass .modal-header .close {
     font-size: 1.35rem;
     font-weight: 400;
     line-height: 1;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 body.stash-liquid-glass .modal-header button.close:hover,
 body.stash-liquid-glass .modal-header .close:hover,
@@ -178,7 +192,7 @@ body.stash-liquid-glass .modal-footer {
     flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
-    gap: 0.5rem;
+    gap: var(--gap-md);
     padding: 0.75rem 1.05rem !important;
     background: rgba(0, 0, 0, 0.18) !important;
     border-top: 1px solid var(--glass-border) !important;
@@ -202,7 +216,7 @@ body.stash-liquid-glass .modal-footer .btn {
     margin: 0 !important;
 }
 
-/* Modals are often portaled outside .settings — footer buttons otherwise keep default Bootstrap blues. */
+/* Modals are often portaled outside .settings - footer buttons otherwise keep default Bootstrap blues. */
 body.stash-liquid-glass .modal .modal-footer .btn,
 body.stash-liquid-glass .modal .modal-footer button.btn {
     border-radius: var(--radius-sm) !important;
@@ -251,7 +265,7 @@ body.stash-liquid-glass .modal-content .form-control,
 body.stash-liquid-glass .modal-content input.form-control,
 body.stash-liquid-glass .modal-content textarea.form-control,
 body.stash-liquid-glass .modal-content select.form-control {
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: var(--fill-3) !important;
     border: 1px solid var(--glass-border) !important;
     color: var(--text) !important;
     border-radius: var(--radius-sm) !important;
@@ -259,7 +273,7 @@ body.stash-liquid-glass .modal-content select.form-control {
 }
 body.stash-liquid-glass .modal-body .form-control:focus,
 body.stash-liquid-glass .modal-content .form-control:focus {
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: var(--fill-4) !important;
     border-color: var(--accent-glow) !important;
     color: #fff !important;
     outline: none !important;
@@ -274,8 +288,8 @@ body.stash-liquid-glass #setting-dialog .modal-content {
     background: rgba(11, 11, 11, 0.96) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius) !important;
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur-xl);
+    backdrop-filter: var(--glass-blur-xl);
     color: var(--text) !important;
     box-shadow:
         var(--glass-shadow),
@@ -300,7 +314,7 @@ body.stash-liquid-glass .modal-backdrop.show {
 body.stash-liquid-glass .modal-header {
     display: flex !important;
     align-items: center !important;
-    gap: 0.75rem !important;
+    gap: var(--gap-lg) !important;
     flex-wrap: nowrap !important;
 }
 body.stash-liquid-glass .modal-header > div:first-child {
@@ -310,7 +324,7 @@ body.stash-liquid-glass .modal-header > div:first-child {
     color: var(--text);
 }
 body.stash-liquid-glass .modal-header .search-input {
-    background: rgba(255,255,255,0.05) !important;
+    background: var(--fill-3) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius-pill) !important;
     color: var(--text) !important;
@@ -346,7 +360,7 @@ body.stash-liquid-glass .search-term-row .clearable-input-group {
     min-width: 0 !important;
 }
 
-/* Clear (×) button inside any .clearable-input-group — fill the parent
+/* Clear (×) button inside any .clearable-input-group - fill the parent
    vertically (top:0 + bottom:0 + height:100%) and flex-center the SVG
    inside, so Bootstrap's .btn padding can't offset it. */
 body.stash-liquid-glass .clearable-input-group {
@@ -371,7 +385,7 @@ body.stash-liquid-glass .clearable-text-field-clear.btn.btn-secondary {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: color 0.15s ease;
+    transition: color var(--dur-fast) ease;
 }
 body.stash-liquid-glass .clearable-text-field-clear:hover {
     color: var(--text) !important;
@@ -385,7 +399,7 @@ body.stash-liquid-glass .clearable-text-field-clear svg {
     margin: 0 !important;
 }
 body.stash-liquid-glass .search-term-row .clearable-text-field {
-    background: rgba(255,255,255,0.05) !important;
+    background: var(--fill-3) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius-pill) !important;
     color: var(--text) !important;
@@ -396,7 +410,7 @@ body.stash-liquid-glass .search-term-row .clearable-text-field {
     box-shadow: none !important;
 }
 
-/* Criterion accordion — flat list, override glass card styling */
+/* Criterion accordion - flat list, override glass card styling */
 body.stash-liquid-glass .criterion-list {
     border-top: 1px solid rgba(255,255,255,0.07) !important;
     margin-top: 0.25rem !important;
@@ -436,11 +450,11 @@ body.stash-liquid-glass .filter-item-header {
     cursor: pointer !important;
     text-align: left !important;
     box-shadow: none !important;
-    transition: background 0.15s, color 0.15s !important;
-    gap: 0.5rem !important;
+    transition: background var(--dur-fast), color var(--dur-fast) !important;
+    gap: var(--gap-md) !important;
 }
 body.stash-liquid-glass .filter-item-header:hover {
-    background: rgba(255,255,255,0.04) !important;
+    background: var(--fill-2) !important;
     color: var(--text) !important;
 }
 body.stash-liquid-glass .filter-item-header .mr-auto {
@@ -451,13 +465,13 @@ body.stash-liquid-glass .filter-item-header .mr-auto {
     min-width: 0 !important;
 }
 
-/* Collapse chevron — small, rotates when open */
+/* Collapse chevron - small, rotates when open */
 body.stash-liquid-glass .collapse-icon {
     width: 0.55rem !important;
     height: 0.55rem !important;
     opacity: 0.35 !important;
     flex-shrink: 0 !important;
-    transition: transform 0.18s ease, opacity 0.15s !important;
+    transition: transform var(--dur-move) ease, opacity var(--dur-fast) !important;
 }
 body.stash-liquid-glass .filter-item-header:hover .collapse-icon {
     opacity: 0.65 !important;
@@ -467,7 +481,7 @@ body.stash-liquid-glass .criterion-list .card:has(.collapse.show) .collapse-icon
     opacity: 0.75 !important;
 }
 
-/* Pin button — hidden until row is hovered */
+/* Pin button - hidden until row is hovered */
 body.stash-liquid-glass .pin-criterion-button {
     background: transparent !important;
     border: none !important;
@@ -475,7 +489,7 @@ body.stash-liquid-glass .pin-criterion-button {
     padding: 0.15rem 0.3rem !important;
     opacity: 0 !important;
     color: var(--text-muted) !important;
-    transition: opacity 0.15s, color 0.15s !important;
+    transition: opacity var(--dur-fast), color var(--dur-fast) !important;
     flex-shrink: 0 !important;
 }
 body.stash-liquid-glass .filter-item-header:hover .pin-criterion-button {
@@ -496,11 +510,11 @@ body.stash-liquid-glass .criterion-list .card-body {
     padding: 0.35rem 0.5rem 0.65rem 1.25rem !important;
 }
 
-/* Modifier pills — override global .btn-primary */
+/* Modifier pills - override global .btn-primary */
 body.stash-liquid-glass .modifier-options {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 0.3rem !important;
+    gap: var(--gap-xs) !important;
     margin-bottom: 0.6rem !important;
 }
 body.stash-liquid-glass .modifier-option.btn-primary {
@@ -517,10 +531,10 @@ body.stash-liquid-glass .modifier-option.btn-primary {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     box-shadow: none !important;
-    transition: background 0.14s, border-color 0.14s, color 0.14s !important;
+    transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast) !important;
 }
 body.stash-liquid-glass .modifier-option.btn-primary:hover {
-    background: rgba(255,255,255,0.07) !important;
+    background: var(--fill-4) !important;
     border-color: rgba(255,255,255,0.22) !important;
     color: var(--text) !important;
     box-shadow: none !important;
@@ -539,7 +553,7 @@ body.stash-liquid-glass .criterion-editor .form-group {
 }
 body.stash-liquid-glass .criterion-editor input.form-control,
 body.stash-liquid-glass .criterion-editor select.form-control {
-    background: rgba(255,255,255,0.05) !important;
+    background: var(--fill-3) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius-sm) !important;
     color: var(--text) !important;
@@ -557,8 +571,8 @@ body.stash-liquid-glass .popover.bs-popover-bottom,
 body.stash-liquid-glass .popover.bs-popover-start,
 body.stash-liquid-glass .popover.bs-popover-end,
 body.stash-liquid-glass [data-popper-placement] {
-    background: rgba(20, 20, 24, 0.97) !important;
-    background-color: rgba(20, 20, 24, 0.97) !important;
+    background: rgba(var(--surface-rgb), 0.97) !important;
+    background-color: rgba(var(--surface-rgb), 0.97) !important;
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 12px !important;
     -webkit-backdrop-filter: var(--glass-blur-xl);
@@ -567,13 +581,13 @@ body.stash-liquid-glass [data-popper-placement] {
     box-shadow: var(--shadow-xl) !important;
 }
 body.stash-liquid-glass .popover-inner {
-    background: rgba(20, 20, 24, 0.97) !important;
-    background-color: rgba(20, 20, 24, 0.97) !important;
+    background: rgba(var(--surface-rgb), 0.97) !important;
+    background-color: rgba(var(--surface-rgb), 0.97) !important;
     border-radius: 11px !important;
     overflow: hidden;
 }
 body.stash-liquid-glass .popover-header {
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: var(--fill-3) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
     color: var(--text) !important;
 }
@@ -582,7 +596,7 @@ body.stash-liquid-glass .popover-body {
     background-color: transparent !important;
     color: var(--text) !important;
 }
-/* Arrow tinted to match — covers all four directions */
+/* Arrow tinted to match - covers all four directions */
 body.stash-liquid-glass .popover-arrow::before,
 body.stash-liquid-glass .bs-popover-top .popover-arrow::before,
 body.stash-liquid-glass .bs-popover-bottom .popover-arrow::before,
@@ -596,7 +610,7 @@ body.stash-liquid-glass .bs-popover-bottom .popover-arrow::after,
 body.stash-liquid-glass .bs-popover-start .popover-arrow::after,
 body.stash-liquid-glass .bs-popover-end .popover-arrow::after {
     border-color: transparent !important;
-    border-top-color: rgba(20, 20, 24, 0.97) !important;
+    border-top-color: rgba(var(--surface-rgb), 0.97) !important;
 }
 /* Tags inside the overflow popup: same orange pill style */
 body.stash-liquid-glass .popover-body a {
@@ -611,7 +625,7 @@ body.stash-liquid-glass .popover-body a {
     color: rgba(255, 255, 255, 0.75) !important;
     text-decoration: none;
     white-space: nowrap;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast);
 }
 body.stash-liquid-glass .popover-body a:hover {
     background: var(--accent-tint) !important;
@@ -629,8 +643,8 @@ body.stash-liquid-glass .toast.bg-success .toast-header {
 }
 body.stash-liquid-glass .toast.bg-danger,
 body.stash-liquid-glass .toast.bg-danger .toast-header {
-    background: rgba(217, 45, 32, 0.22) !important;
-    border-color: rgba(217, 45, 32, 0.5) !important;
+    background: rgba(var(--danger-rgb), 0.22) !important;
+    border-color: rgba(var(--danger-rgb), 0.5) !important;
 }
 body.stash-liquid-glass .toast.bg-warning,
 body.stash-liquid-glass .toast.bg-warning .toast-header {
@@ -652,11 +666,11 @@ body.stash-liquid-glass .popover-body .comma-list li::after {
     content: none !important;
 }
 body.stash-liquid-glass .toast {
-    background: rgba(20, 20, 24, 0.85) !important;
+    background: rgba(var(--surface-rgb), 0.85) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: var(--radius-sm) !important;
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur-xl);
+    backdrop-filter: var(--glass-blur-xl);
     color: var(--text);
 }
 
@@ -671,11 +685,11 @@ body.stash-liquid-glass textarea.form-control {
     /* `background-color` instead of `background` shorthand so the native
        Bootstrap select chevron (set via `background-image` on the base
        `select` rule) and any plugin-supplied chevrons aren't clobbered. */
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: var(--fill-2);
     border: 1px solid var(--glass-border);
     color: var(--text);
     border-radius: var(--radius-sm);
-    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+    transition: border-color var(--dur-move) ease, background-color var(--dur-move) ease, box-shadow var(--dur-move) ease;
 }
 body.stash-liquid-glass .form-control:focus,
 body.stash-liquid-glass .form-select:focus {
@@ -689,12 +703,47 @@ body.stash-liquid-glass .form-control::placeholder {
     color: var(--text-muted);
 }
 
+/* The saved-filter name field in the filter sheet ("Filter name..."
+   under Save filter / Set as default). Stash renders it as
+   `FormControl className="bg-secondary text-white border-secondary
+   saved-filter-search-input"` (SavedFilterList.tsx), and Bootstrap's
+   three utilities are `!important`:
+     .bg-secondary      background-color: #394b59 !important
+     .border-secondary  border-color:     #394b59 !important
+     .text-white        color:            #fff    !important
+   so the recipe above (not important) lost on all three. Measured at
+   1440 on /scenes and /performers, at rest, hover and focus: fill and
+   border rgb(57, 75, 89) and text rgb(255, 255, 255)
+   in every state, while the sheet's Search... fields read the recipe
+   (rest rgba(255,255,255,0.04) / border rgba(255,255,255,0.12) /
+   text rgba(255,255,255,0.92)). The focus ring (box-shadow) and the
+   placeholder colour already matched, because no utility sets them.
+   These two rules restate the recipe's three contested values, and
+   only those, at `!important` to beat the three utilities named
+   above; the values are the recipe's own tokens and literal, exactly
+   as the Search... fields use them (the recipe's focus fill is the
+   literal white 0.06, and so is this). No hover rule: the recipe has
+   no hover state and the Search... fields measure identical at rest
+   and under a real pointer. The Save filter dialog's field carries the
+   same utilities but is already won by the modal recipe (0,3,1
+   !important). */
+body.stash-liquid-glass .form-control.saved-filter-search-input.bg-secondary {
+    background-color: var(--fill-2) !important;
+    border-color: var(--glass-border) !important;
+    color: var(--text) !important;
+}
+body.stash-liquid-glass .form-control.saved-filter-search-input.bg-secondary:focus {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    border-color: var(--accent-glow) !important;
+    color: var(--text) !important;
+}
+
 /* ───────────────────────────────────────────────────────────────────
-   Filter list toolbar — each button is its own rounded rectangle.
-   No capsule pill, no overflow:hidden — dropdowns can't be clipped.
+   Filter list toolbar - each button is its own rounded rectangle.
+   No capsule pill, no overflow:hidden - dropdowns can't be clipped.
    ─────────────────────────────────────────────────────────────────── */
 
-/* Sticky toolbar — pins below the floating navbar while scrolling.
+/* Sticky toolbar - pins below the floating navbar while scrolling.
    Glass platform painted via ::before pseudo-element (so React/Stash
    inline styles can't wipe it). Width shrinks to fit contents and
    centres horizontally so the platform hugs the buttons rather than
@@ -704,7 +753,7 @@ body.stash-liquid-glass .filtered-list-toolbar {
     border: 0 !important;
     display: inline-flex !important;
     flex-wrap: nowrap !important;
-    gap: 0.5rem !important;
+    gap: var(--gap-md) !important;
     padding: 0.45rem 1.25rem !important;
     min-height: 2.9rem !important;
     align-items: center;
@@ -718,7 +767,7 @@ body.stash-liquid-glass .filtered-list-toolbar {
     top: calc(var(--nav-btn-size) + 2.6rem) !important;
     z-index: 90 !important;
     max-width: 100% !important;
-    /* margin: 0 auto on inline element doesn't centre — wrap parent
+    /* margin: 0 auto on inline element doesn't centre - wrap parent
        padding instead. The toolbar will sit left-aligned within Stash's
        container, but with breathing room from the column edges. */
 }
@@ -742,7 +791,7 @@ body.stash-liquid-glass .filtered-list-toolbar > * {
     margin-left: 0 !important;
     margin-right: 0 !important;
 }
-/* Pill-shaped glass platform — matches the floating pagination at the
+/* Pill-shaped glass platform - matches the floating pagination at the
    bottom of long lists. Painted via ::before so React/Stash inline
    style overrides on the toolbar itself can't wipe it. Negative inset
    provides visual breathing room around the buttons. */
@@ -765,27 +814,707 @@ body.stash-liquid-glass .filtered-list-toolbar::before {
     pointer-events: none !important;
 }
 
-/* Hide Stash's redundant left filter sidebar entirely — the top filter
-   toolbar already exposes search/saved-filters/edit-filter/etc., so the
-   sidebar duplicates UI. Also kill the sidebar-toggle button and the
-   sidebar-pane-content's hard-coded margin-left so the main list fills
-   the row instead of leaving a 235px reservation for the hidden
-   sidebar. (An opt-in restore with a TagSidebar-style skin was tried
-   2026-07-28 and pulled before shipping — the restored panel never
-   looked right; revisit with a real design if the forum asks again.) */
-body.stash-liquid-glass .sidebar,
-body.stash-liquid-glass [class*="col-"]:has(> .sidebar),
-body.stash-liquid-glass .sidebar-toggle-button-container {
+/* Stash's left filter sidebar, and the button that opens it.
+
+   Both were hidden here, on the reading that the top toolbar duplicates
+   the sidebar. It does not: the toolbar's Filter button opens a modal
+   where you choose a field, then configure it, then apply, and the
+   sidebar is a standing panel of one-click toggles - Studios,
+   Performers, Tags, Rating, Duration, Folder, Markers, Organised,
+   Duplicated, Performer Age. Different affordance, same data. The note
+   that stood here said an opt-in restore "never looked right" and was
+   pulled; measured again 2026-09-06 with the hide lifted, the panel
+   comes up on the theme's own glass at 250px with the accent chevrons
+   and Albert Sans, and the ONE thing wrong with it was this file's own
+   margin reset below, which left it lying over the grid.
+
+   So the hide goes. Nothing changes for anyone who does not ask for it:
+   Stash opens the sidebar closed by default and remembers per view, so
+   what comes back is the toggle, and the panel only when it is clicked.
+
+   Nothing the sheet does moves the list. Stash reserves a column for an
+   open sidebar in two places, both on the pane's SECOND child, and both
+   are cancelled here at every width and in both states:
+
+   - `margin-left: calc(250px - 15px)` at 768 and up
+     (`Shared/styles.scss:946`). This file used to raise it to
+     `calc(250px + 1.5rem)` so the reserve cleared Bootstrap's -8px row
+     margin. Measured on this build at 1440 the reserve moved the grid
+     root from x -3 to x 275 and its `clientWidth` from 1431 to 1153,
+     and the WebGL grid reads exactly that `clientWidth`
+     (`grid/src/layout.ts`), so opening the panel re-laid out the whole
+     canvas. The author's ruling: the panel floats above everything
+     else, so there is no column to reserve and the grid never reflows.
+   - `padding-left: 0.5rem` when open (`styles.scss:932`, zeroed again
+     by Stash's own `.hide-sidebar` rule at 937). 0.5rem is 7px at this
+     theme's 14px root, and it is what moved the grid root from x 12 to
+     x 19 at 617 and 390, where the margin reserve does not apply at
+     all. A 7px shift is still a shift.
+
+   With the column gone the sheet lies over the toolbar wherever the
+   toolbar row starts at the page gutter, which is 900 and below (above
+   it the pill is `width: fit-content` with auto margins and its own left
+   edge is past the sheet: measured 392.6 at 1440 and 222.6 at 1100
+   against a sheet ending at 262, so the overlap is zero). Measured open
+   at 900, 807, 617 and 390 the overlap is 239.5px wide, and
+   `elementFromPoint` at the toolbar's own left edge returns the SHEET's
+   search field at 900, 807 and 390 and its Edit Filter button at 617.
+
+   That is deliberate, and it is the same answer Stash gives at 767 and
+   below, where `fixedSidebarMediaQuery` already overlays the panel on
+   the content. The alternative, dropping the sheet below the toolbar
+   there, needs a different top line per tier: the toolbar's own y is
+   64.8 at 900 and 807 and 23 at 617 and 390, so no single expression
+   clears it, and the sheet would lose 40px of height on the screens
+   that have the least. P6 is what makes covering safe rather than
+   lossy: nothing the toolbar carries becomes unreachable, because the
+   sheet's own search field is the covered one's twin, the Filters tab
+   rides the sheet's outer edge at every width, and everything past
+   x 262 in the toolbar is still hit-testable. The filter-sidebar lane
+   settled this below 768 and the ledger carries it; one design at every
+   width is why the 768-to-900 band now gets the same answer.
+
+   Both are matched on `> :nth-child(2)`, which is Stash's own target,
+   and on `> .sidebar-pane-content`, which is what that child is on every
+   list route; a pane whose second child is something else still gets the
+   reset. `!important` beats nothing of Stash's here (its rules carry
+   none and this chain outranks them anyway) but the block's neighbours
+   below all carry it and one exception would read as an oversight. */
+body.stash-liquid-glass .sidebar-pane > .sidebar-pane-content,
+body.stash-liquid-glass .sidebar-pane > :nth-child(2),
+body.stash-liquid-glass .hide-sidebar > .sidebar-pane-content {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+}
+/* ── The sheet ────────────────────────────────────────────────────────
+   Stash paints the panel as a wall: `left: 0; bottom: 0`, square
+   corners, full viewport height. Measured at 1440 it is 830px tall
+   carrying about 350px of content, welded to two window edges, in a
+   theme where the navbar, this file's own toolbar pill and the
+   pagination capsule all float inset from the edge (6.18). It was also
+   `rgba(16,16,19,0.7)` (the old block in `08_misc_mid.css`, now
+   deleted): a hand-written dark outside the surface family (3.2).
+
+   So it becomes a floating sheet.
+
+   `left: 12px` is the page gutter (3.6), the same inset the floating
+   navbar takes, so the sheet lines up with the chrome above it.
+
+   `margin-top` is the stuck toolbar's own top line. The toolbar pins at
+   `calc(var(--nav-btn-size) + 2.6rem)` and its glass plate starts
+   `-0.1rem` above that, so `+ 2.5rem` puts the sheet's top edge exactly
+   on the plate's, and the two read as one band.
+
+   `height: auto` with a `max-height`, rather than `bottom: 0`: the sheet
+   ends where its content ends and floats 12px clear of the viewport
+   floor. P7 - the panel was reserving 480px of empty column below its
+   last section while its tag chips sat behind a scrollbar.
+
+   The fill is the surface family (3.2) at the same 0.72 the narrow
+   toolbar plate already uses. Blur is a ladder rung. The shadow is a
+   token.
+
+   The shadow is `--shadow-2xl`, not the `--shadow-lg` this sheet shipped
+   with. When the sheet reserved a column there was nothing underneath
+   it and the shadow only had to separate it from the page ground; it
+   now floats over the card grid, so the shadow is what says the sheet
+   is a plane above the cards rather than a panel cut into them.
+   Measured at 1440 on `/performers`, the same 100px band beside the
+   sheet's right edge captured with the shadow off and with each rung,
+   differenced per column so only the shadow is being read:
+
+     dark, over a card at ground luminance 0.627
+       --shadow-lg   deepest drop 0.158, 1.30:1 against the card, 37px
+       --shadow-xl   deepest drop 0.313, 1.86:1,                   46px
+       --shadow-2xl  deepest drop 0.428, 2.72:1,                   73px
+
+   1.30:1 over a bright card reads as a line ON the card. 2.72:1 reads
+   as a plane above it, which is the fact the sheet now has to carry.
+   3.3: all three are tokens.
+
+   `z-index` is Stash's own 100, restated here because this design now
+   depends on the value rather than inheriting it. Measured on the live
+   ladder at 1440: the tier ranks are 20 to 70 (`03_cards.css`), the
+   sticky toolbar pill is 90 (this file), the floating pagination is 400
+   (`--z-pager`) and the navbar is 1030 (Stash's). 100 is the only rung
+   that is above every card, every hover halo and every tier ribbon and
+   still under the navbar, which the sheet must never cover. The open
+   tab sits one over it at 101.
+
+   `visibility` is the keyboard fix: closed, the panel is only MOVED
+   (`margin-left: -250px`), never hidden, so it kept nine focusable
+   controls in the tab order off screen. Hiding is delayed by the slide
+   so the animation still shows, and is immediate on the way in so
+   Stash's own focus-the-search-field effect still lands. The closed
+   margin also grows by the new 12px inset, or 12px of the sheet would
+   sit on screen at x 0 to 12.
+
+   Every declaration is `!important` because it beats Stash's own
+   `.sidebar-pane .sidebar` rules, which are two cascading blocks in its
+   compiled sheet. */
+body.stash-liquid-glass .sidebar-pane .sidebar {
+    left: 12px !important;
+    top: 0 !important;
+    bottom: auto !important;
+    height: auto !important;
+    margin-top: calc(var(--nav-btn-size) + 2.5rem) !important;
+    max-height: calc(100vh - var(--nav-btn-size) - 2.5rem - 12px) !important;
+    padding: 1rem 0.75rem 0.75rem !important;
+    background: rgba(var(--surface-rgb), 0.72) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-2xl) !important;
+    z-index: 100 !important;
+    -webkit-backdrop-filter: var(--glass-blur-xl-sat) !important;
+    backdrop-filter: var(--glass-blur-xl-sat) !important;
+    color: var(--text) !important;
+    visibility: visible;
+    transition: margin-left var(--dur-enter) var(--ease-glide),
+                visibility 0s !important;
+}
+body.stash-liquid-glass .sidebar-pane.hide-sidebar .sidebar {
+    margin-left: calc(-250px - 12px) !important;
+    visibility: hidden;
+    transition: margin-left var(--dur-enter) var(--ease-glide),
+                visibility 0s linear var(--dur-enter) !important;
+}
+/* Section rules are the sheet's only internal structure: a hairline in
+   the theme's rim colour, and none under the last one, which would
+   otherwise close on the sheet's own padding. `.sidebar-footer` is
+   always the final child (Stash hides it above 575.98px, which does not
+   affect the `+` match). Moved here from `08_misc_mid.css`. */
+body.stash-liquid-glass .sidebar-section {
+    border-bottom: 1px solid var(--glass-border) !important;
+}
+body.stash-liquid-glass .sidebar .sidebar-section:has(+ .sidebar-footer) {
+    border-bottom: 0 !important;
+}
+body.stash-liquid-glass .sidebar-toolbar,
+body.stash-liquid-glass .sidebar-footer {
+    background: transparent !important;
+}
+
+/* ── The handle: a vertical edge tab that reads "Filters" ─────────────
+   Stash's toggle is a sticky button in an absolutely positioned
+   full-height container, with `margin-left: -15px` and an `fa-sliders`
+   glyph inside. Against this theme's 12px content edge that is x -3:
+   measured 3px off the left of the window at 1440 on every list route,
+   39.5 x 33.5, with one border missing, so it read as a torn fragment.
+
+   The first answer to that was a round glass icon button at the page
+   gutter. It was rejected: a lone orb in the left margin is one more
+   floating object on a page that already has three, and an icon alone
+   never says what the door opens.
+
+   So the handle becomes an edge tab, and the recipe is one this theme
+   already ships: the TagSidebar plugin's own vertical tab
+   (`13_plugins.css`, `.tag-sidebar__toggle`), lifted whole. A thin
+   strip welded to the window edge, the word running up it, no icon.
+   Nothing new enters the vocabulary and the two sidebars in the theme
+   now open the same way.
+
+   The word comes from `::before` because the DOM is Stash's: the button
+   holds an svg and nothing else, and CSS cannot put a text node in it.
+   The svg is hidden rather than removed for the same reason. Chrome
+   folds generated content into the accessible name, so the button
+   announces "Filters"; its `title` is untouched and stays the tooltip.
+
+   Geometry. `margin-left: -12px` is the page gutter (3.6): the toggle's
+   container is absolutely positioned at `.sidebar-pane-content`'s left
+   edge, which on a list route IS the gutter, so minus the gutter is
+   x 0, flush to the window. `margin-top: 0.2rem` is the toolbar's own
+   top margin, so the tab's top edge starts on the toolbar's top edge
+   rather than centred on it, which is the mockup's line.
+
+   The sticky `top` is the TOOLBAR's own expression,
+   `calc(var(--nav-btn-size) + 2.6rem)`, not the
+   `calc(var(--nav-btn-size) + 2.4rem)` the round handle used. The 2.4rem
+   was derived on the assumption that a sticky offset clamps the MARGIN
+   box, which would make the 0.2rem margin part of the sum; Chrome clamps
+   the BORDER box, so it does not. Measured with 2.4rem at 1200px of
+   scroll: tab stuck at y 67.2, toolbar stuck at 70.0, a 2.8px
+   separation that does not exist at rest. With the toolbar's own value
+   both read 70.0 stuck and 86.5 resting, and they never separate.
+
+   The shadow is directional, thrown to the right off the edge the tab
+   is welded to, and no token gives that, so it is the tag sidebar's
+   literal (3.3).
+
+   Every declaration is `!important` because `09_buttons.css` loads
+   after this file and its `.btn` block sets radius, padding and fill
+   the same way; this chain is (0,4,1), which wins the tie. */
+body.stash-liquid-glass .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button {
+    opacity: 1 !important;
+    position: sticky !important;
+    top: calc(var(--nav-btn-size) + 2.6rem) !important;
+    margin: 0.2rem 0 0 -12px !important;
+    display: inline-block !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    /* 0.7rem by 0.2rem. At this theme's 14px root that is 9.8 by 2.8,
+       which with a 10.08px line box and the 1px right border measures
+       16.7px of protrusion. It was the tag sidebar's 0.28rem, 18.9px,
+       and the first card column starts at x 17 on `/performers` and
+       `/galleries` at 1440 and 968, so the closed tab lay 1.9px over
+       the column whenever the page was scrolled (review-filters F7).
+       The hit area is not this box: `::after` below carries it to
+       24px. */
+    padding: 0.7rem 0.2rem !important;
+    writing-mode: vertical-rl !important;
+    text-orientation: mixed !important;
+    font-size: var(--fs-xs) !important;
+    font-weight: 600 !important;
+    letter-spacing: var(--track-eyebrow) !important;
+    text-transform: uppercase !important;
+    line-height: 1 !important;
+    background: rgba(var(--surface-rgb), 0.92) !important;
+    border: 1px solid var(--glass-border) !important;
+    /* Welded to the edge: no left border, and only the right corners
+       are rounded. `--radius-sm` is the control radius (3.4). */
+    border-left: none !important;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
+    color: var(--text-muted) !important;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.35) !important;
+    -webkit-backdrop-filter: var(--glass-blur-xl) !important;
+    backdrop-filter: var(--glass-blur-xl) !important;
+    transition: background var(--dur-fast) ease,
+                border-color var(--dur-fast) ease,
+                color var(--dur-fast) ease,
+                margin-left var(--dur-enter) var(--ease-glide),
+                margin-top var(--dur-enter) var(--ease-glide),
+                top var(--dur-enter) var(--ease-glide) !important;
+}
+/* The word. Sentence case in the source (6.21); the tab's own
+   `text-transform` is what makes it an eyebrow (6.13).
+
+   The text after the slash is the accessible name. Chrome computes a
+   name from generated content AFTER `text-transform`, so the bare
+   `content: "Filters"` announced FILTERS, which some readers spell
+   letter by letter (filters-tab ledger, review-filters F10). The
+   alternative text of `content` is not transformed, so the name is
+   "Filters" in sentence case while the eyebrow still reads in capitals.
+   With criteria applied it says how many, read off the same count the
+   closed tab's dot shows. */
+body.stash-liquid-glass .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button::before {
+    content: "Filters";
+    content: "Filters" / "Filters";
+}
+body.stash-liquid-glass .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button[data-refract-filters]::before {
+    content: "Filters" / "Filters, " attr(data-refract-filters) " active";
+}
+/* The hit area. The visible tab is 16.7px across and stays that way
+   (minimal protrusion, the author's brief); the box a pointer can hit
+   is 24px, WCAG 2.2's target minimum (2.5.8), by a transparent
+   `::after` laid over the tab's own box and 7.3px past its right edge.
+   A pseudo-element hit-tests as its button, so a press on the extra
+   strip is a press on Stash's toggle. It paints nothing, so nothing
+   protrudes, and the 7.3px it reaches past the tab is a strip a card's
+   own hit target loses only while it passes under the tab.
+
+   Not 44px at 390, which the brief asked for only if it could be had
+   without collision: the closed tab sits at x 0 and the narrow
+   toolbar's search field starts at x 22.5, so a 44px zone would take
+   the first 21.5px of the search field's own hits at rest and when
+   stuck. 24 reaches 1.5px into that pill's rounded end, where its
+   outer corner already curves away from the field. Ledgered.
+
+   The same pseudo-element draws the active-filter dot, below. */
+body.stash-liquid-glass .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 24px;
+    background: none;
+}
+/* Criteria applied, the closed tab carries a dot. The count is the
+   one the toolbar's Filter button already prints in its badge
+   (`refract.js`, refractSyncSidebarPane, copies it to
+   `data-refract-filters`); a dot rather than the number because the
+   number would run sideways in a vertical tab, and the toolbar beside
+   it already says how many. It is a mark, so it takes
+   `--accent-bright` (3.1 rule 4), 5px across, centred on the word's
+   axis in 8px of extra bottom padding. Open, the sheet itself shows
+   the criteria, so the dot is the closed tab's only.
+
+   It is drawn on the hit-area pseudo-element rather than the button's
+   own fill so the hover, lite and reduced-transparency rules, which
+   replace the button's whole `background`, cannot erase it. The x is
+   the word's axis: 2.8px of padding plus half the 10.08px line. */
+/* Open, the strip reaches outward too, away from the sheet. It used to
+   reach back over the sheet's edge, on the reasoning that the sheet's
+   10.5px right padding holds no control; that holds only while the
+   sheet does not scroll, because a long sheet's scrollbar takes that
+   padding's place, and the strip took the top 66px of the scrollbar
+   track, which is where the thumb sits at the top of the sheet: a press
+   there closed the sheet and a drag never scrolled it (review2-filters
+   R1). The sheet's own scrollbar always belongs to the sheet. Where a
+   toolbar control would be within reach of the outward strip (901 to
+   about 1050), the tab is not beside the toolbar at all: `refract.js`
+   (refractPlaceOpenTab) drops it below the toolbar, the block after the
+   entity-page rules below. */
+body.stash-liquid-glass .sidebar-pane.hide-sidebar .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button[data-refract-filters] {
+    padding-bottom: calc(0.7rem + 8px) !important;
+}
+body.stash-liquid-glass .sidebar-pane.hide-sidebar .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button[data-refract-filters]::after {
+    background: radial-gradient(circle at 7.84px calc(100% - 0.7rem),
+                var(--accent-bright) 0 2.5px, transparent 3px) no-repeat;
+}
+/* The glyph goes. It is hidden rather than removed because the node is
+   Stash's; `display: none` also takes it out of the accessible name. */
+body.stash-liquid-glass .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button svg {
     display: none !important;
 }
-body.stash-liquid-glass .sidebar-pane-content {
-    margin-left: 0 !important;
+/* Hover is the tag sidebar's, which is also this file's own toolbar
+   `.btn-secondary:hover` recipe: accent tint, accent rim, accent ink.
+   `--accent-ink` rather than `--accent-bright`, which 3.1 rule 4
+   reserves for fills and marks: the word is the sole carrier of its
+   information and owes the 4.5:1 reading floor. `--accent-ink`
+   resolves to `--accent-bright`, so this is the recipe unchanged. */
+body.stash-liquid-glass .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button:hover {
+    background: var(--accent-tint) !important;
+    border-color: var(--accent-glow) !important;
+    color: var(--accent-ink) !important;
+}
+/* Open, every width. `.sidebar-pane` carries `hide-sidebar` and the
+   button is a descendant, so the state is selectable with no JS.
+
+   The tab rides the sheet's right edge and OVERLAPS it by 1px, 16px
+   below the sheet's top so it clears the sheet's 16px corner radius.
+
+   `position: sticky !important`, restated rather than inherited,
+   because this is the line the lane exists to fix. The tab used to be
+   `position: fixed` here. `position` cannot interpolate, so the tab
+   jumped clear of the sheet on the first frame while the sheet's own
+   0.22s `margin-left` slide caught up 220ms later. Sampled every frame
+   at 1440 on the build before this lane, opening: the sheet's right
+   edge and the tab's left were 250px apart on the first frame, 122.8
+   apart at 78ms and 43.9 at 119ms, and only met at 219. Closing, the
+   tab was back at x 12 on the first frame with the sheet's edge still
+   at 262. The author read the result as "the tab button is
+   disconnected and floating in the middle of the screen".
+
+   The reason for `fixed` was real and is now gone. The handle's
+   container is absolutely positioned inside `.sidebar-pane-content`,
+   and the pane content used to MOVE right by the whole 271px reserve
+   when the sheet opened, so anything measured from it landed past the
+   sheet (the filter-sidebar lane measured x 494.4 for a sheet ending
+   at 262). The `sheet-float` lane deleted the reserve: measured on
+   this build, the container is at x 12 open AND closed at every width,
+   so the tab can be placed from it again.
+
+   What is left is the vertical, and the sticky clamp answers it. A
+   sticky box renders at `max(its flow position, its own top)`, so an
+   open `top` on the sheet's line pins the tab to that line at every
+   scroll position exactly as `fixed` did, PROVIDED its flow position
+   is above the line. Measured on this build, the container's top is
+   83.8 at 1440 and 1100 and 60.8 at 900, 807 and 617, against an open
+   line of 84.6: the clamp binds at every width, with 0.8px of headroom
+   at 1440. `12_mobile.css` carries the below-768 pair, where the line
+   is 28 and the container's top is 60.8 at 617, so the flow position
+   has to be lifted by a negative margin there.
+
+   Three properties carry the travel and all three interpolate:
+   `margin-left` 0.2rem-with--12px to 249px, `margin-top`, and `top`
+   from the toolbar's stuck line to the sheet's. The tab's own
+   transition (the closed block above) runs them at
+   `var(--dur-enter) var(--ease-glide)`, which is the sheet's own
+   duration and easing, so the two edges move as one: sampled every
+   frame at 1440, the tab's left is 0 to 1.02px left of the sheet's
+   right edge at EVERY frame of both travels, where 1px of that is the
+   overlap below and the rest is subpixel rounding.
+
+   `margin-left: 249px` is the 1px overlap. The container's content
+   edge is at x 12, the sheet's right edge at 262, so 12 + 249 = 261
+   puts the tab's left edge ON the sheet's 1px `--glass-border`. The
+   tab has `border-left: none`, so its fill covers that border and the
+   two surfaces meet with no line between them, the way a folder tab
+   meets its folder. Read off the rendered pixels at 1440 dark, x 256
+   to 267 at the tab's mid-height: before, x 261 was the sheet's rim at
+   luminance 47.0 between a 23.0 sheet and a 38.1 tab, a bright seam
+   line; after, the span runs 28.6 then 36.9 with nothing between them.
+
+   The fill is the SHEET's, not the closed tab's: `--surface-rgb` at
+   0.72 and the sheet's own `--glass-blur-xl-sat`, with `--accent-tint`
+   composited over it as a flat gradient layer. The closed tab is a
+   thing welded to the window (0.92 over the page, plain blur); the
+   open tab is part of the sheet, and 0.92-over-0.12 beside a 0.72
+   sheet read as a sticker stuck next to the panel rather than a tab of
+   it. The gradient layer is the composite the `filters-tab` ledger
+   asked for by name: it keeps the accent hue that says OPEN while the
+   surface underneath matches the sheet exactly. Resolved alpha is
+   0.754 against the sheet's 0.720.
+
+   The shadow is the sheet's `--shadow-2xl` rather than the closed
+   tab's own `4px 0 16px`. That literal is thrown sideways off the
+   window edge, which is the right story for a tab welded to the
+   window and the wrong one for a tab on a floating sheet: it painted
+   a second edge INTO the seam. `--shadow-2xl` has no horizontal
+   offset, so nothing lands in the seam (3.3).
+
+   z-index 101 is one over the sheet's 100. Measured open at 617 before
+   the filter-sidebar lane, the handle was at z 91 underneath the sheet,
+   and between 576 and 767 that left no visible way to close the panel
+   at all (Stash's "Show N results" footer only appears below 576). */
+body.stash-liquid-glass .sidebar-pane:not(.hide-sidebar) .sidebar-toggle-button-container .sidebar-toggle-button {
+    position: sticky !important;
+    left: auto !important;
+    top: calc(var(--nav-btn-size) + 2.5rem + 16px) !important;
+    margin: 0 0 0 249px !important;
+    background: linear-gradient(var(--accent-tint), var(--accent-tint)),
+                rgba(var(--surface-rgb), 0.72) !important;
+    border-color: var(--accent-glow) !important;
+    color: var(--accent-ink) !important;
+    box-shadow: var(--shadow-2xl) !important;
+    -webkit-backdrop-filter: var(--glass-blur-xl-sat) !important;
+    backdrop-filter: var(--glass-blur-xl-sat) !important;
+    z-index: 101 !important;
+}
+/* The tab is back in flow when the sheet is open, so its container
+   shrink-to-fits around it AND around its 249px left margin: 267.9px
+   wide over a document-height absolute box, which would sit above the
+   grid (positioned beats in-flow) and swallow every click on the left
+   third of the page. Pinned to 0, which is what the container measured
+   open on the build before this lane, when the tab was out of flow.
+   The tab overflows it and hit-tests on its own box, as it already
+   does closed, where the container is 6.9px wide against an 18.9px
+   tab. Measured open at 1440: `elementFromPoint` at (150, 400) returns
+   a card's own hit target, not the container. */
+body.stash-liquid-glass .sidebar-pane:not(.hide-sidebar) .sidebar-toggle-button-container {
+    width: 0 !important;
+}
+/* Hover on the open tab. The open rule above is later and as specific
+   as the closed `:hover`, so an open tab under the pointer did not
+   change (tab-travel ledger, review-filters F8). This is the primary
+   button's own hover step (6.5): the tint from 0.12 to 0.22 over the
+   same sheet surface, and the ink to `--text`, which carries the word
+   further above the 4.5:1 floor than the accent ink does. */
+body.stash-liquid-glass .sidebar-pane:not(.hide-sidebar) .sidebar-toggle-button-container .sidebar-toggle-button:hover {
+    background: linear-gradient(rgba(var(--accent-rgb), 0.22), rgba(var(--accent-rgb), 0.22)),
+                rgba(var(--surface-rgb), 0.72) !important;
+    color: var(--text) !important;
+}
+/* Focus keeps the tab's own shadow. `09_buttons.css` nulls
+   `box-shadow` on `.btn.minimal:focus` to kill Bootstrap's blue-grey
+   ring, and Stash's toggle carries `minimal`, so the tab lost its
+   shadow whenever it held focus (tab-travel ledger). Focus now comes
+   back to the tab every time the sheet closes from the keyboard, so
+   that is most of the time. The ring itself is an `outline` (6.6) and
+   is untouched. One `.btn` more than 09's (0,6,1) chain, closed then
+   open. */
+body.stash-liquid-glass .sidebar-pane .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button.btn:focus {
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.35) !important;
+}
+body.stash-liquid-glass .sidebar-pane:not(.hide-sidebar) .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button.btn:focus {
+    box-shadow: var(--shadow-2xl) !important;
+}
+
+/* ── The sheet on an entity page's list ───────────────────────────────
+   A performer's, studio's, tag's or group's Scenes (and every other
+   list) tab draws the same sidebar, and Stash styles it differently
+   there: `.detail-body .sidebar` is `position: sticky`, in flow, so
+   the open sheet was a reserved 250px column that pushed the grid
+   right, appeared without sliding, and dragged the tab 249px past its
+   own edge to x 526, against the toolbar (review-filters F2). The
+   width change also re-ran the grid's ResizeObserver three times per
+   toggle, each one logging "ResizeObserver loop completed with
+   undelivered notifications".
+
+   It floats here too, with one difference that is the page's, not
+   the sheet's: a list route's list starts at the top of the window,
+   an entity page's starts under the entity's header, so the sheet
+   keeps Stash's `sticky` and rides the list. It sits on the toolbar's
+   line where the list begins and pins to the same line a list route's
+   sheet uses once the list reaches the top, 68.6 above 900 and 12 at
+   900 and below (`12_mobile.css`).
+
+   It takes no room. A sticky box is in flow, so its margins cancel its
+   width: `margin-left + 250 + margin-right` is 0 in both states, and
+   the two margins run on the same duration and easing, so the sum stays
+   0 through the slide and nothing beside the sheet moves.
+
+   The numbers are the page's own inset. `.detail-body` carries
+   Bootstrap's 15px `margin-left` inside a 12px gutter, so the pane is
+   at x 27 at every width measured (1440, 968, 807, 600 and 390, on
+   performer 705, studio 2359, tag 350 and group 1). Open,
+   `margin-left: -15px` puts the sheet at x 12 exactly as on a list
+   route; shut, `-277px` puts its right edge at x 0. `left: auto`
+   because the shared `left: 12px` is a horizontal sticky offset on a
+   sticky box and would hold the shut sheet on screen. The tab's
+   container sits at the pane's x 27 now that nothing pushes it, so the
+   tab's margins are the list route's less 15: -27 shut (x 0) and 234
+   open (x 261, the 1px overlap).
+
+   The open tab's flow position is the sheet's plus 16 and its sticky
+   line is the sheet's plus 16, so at rest and stuck it is 16 below the
+   sheet's top, the list route's relation, with no clamp to hold. */
+body.stash-liquid-glass .detail-body .sidebar-pane .sidebar {
+    position: sticky !important;
+    left: auto !important;
+    top: calc(var(--nav-btn-size) + 2.5rem) !important;
+    margin-top: 0.1rem !important;
+    margin-left: -15px !important;
+    margin-right: -235px !important;
+    /* Minus the sheet's own height, written by `refract.js`
+       (refractWatchSheetSize): a sticky box stops where its margin box
+       meets the end of its pane, so this lets the sheet hold its line
+       until the end of its LIST reaches that line, never past it. Before,
+       at the bottom of a page whose list is shorter than the window, the
+       pane's end pushed the open sheet's top above the window's edge
+       (600, group 1: -15, the search field's rim cut off,
+       review2-filters N4). */
+    margin-bottom: calc(-1 * var(--refract-sheet-h, 0px)) !important;
+    transition: margin-left var(--dur-enter) var(--ease-glide),
+                margin-right var(--dur-enter) var(--ease-glide),
+                visibility 0s,
+                max-height 0s,
+                min-height 0s !important;
+}
+/* Shut, the sheet also gives its height back once the slide is over.
+   With the bottom margin above it takes no room in the pane, but a
+   hidden box still counts toward the page's scrollable height, so a
+   519px shut sheet hanging past a one-card list held the page open:
+   300px of blank under the card at 1440 on performer 997
+   (review2-filters N5). `max-height` and `min-height` step to 0 after
+   the slide, the way `visibility` does, and come back at once on open,
+   before the first frame of the slide in. What is left while shut is
+   the sheet's padding and border, 26px, under the list's own top. The
+   sheet stays mounted, so a typed search or an open section is still
+   there; only its own scroll position starts from the top again. */
+body.stash-liquid-glass .detail-body .sidebar-pane.hide-sidebar .sidebar {
+    margin-left: -277px !important;
+    margin-right: 27px !important;
+    max-height: 0 !important;
+    min-height: 0 !important;
+    transition: margin-left var(--dur-enter) var(--ease-glide),
+                margin-right var(--dur-enter) var(--ease-glide),
+                visibility 0s linear var(--dur-enter),
+                max-height 0s linear var(--dur-enter),
+                min-height 0s linear var(--dur-enter) !important;
+}
+body.stash-liquid-glass .detail-body .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button {
+    margin-left: -27px !important;
+}
+/* The tab leaves with its list. Its container is Stash's absolute,
+   `height: 100%` box, and on an entity page the pane is static, so the
+   100% was the whole page's wrapper (1,840px on performer 997's 230px
+   list at 600): scrolled past the list's end the open tab stayed pinned
+   at 28 while its sheet had gone off the top with the list, the two
+   visibly apart. The pane's content becomes the containing block (its
+   other children, the toolbar, the caption row, the grid and the pager,
+   are all in flow, so nothing else moves), and the container ends just
+   past the list: shut, by the 2rem the tab is taller than the toolbar
+   it rides beside, so the two leave together; open, by
+   `--refract-tab-tail`, the open tab's distance below the sheet's top
+   plus its own height (`refract.js`, refractPlaceOpenTab). The sheet
+   holds its line until the list's end reaches it (its negative bottom
+   margin above), so the tab, held to that end plus its own offset,
+   stays on the sheet's edge until both go together. */
+body.stash-liquid-glass .detail-body .sidebar-pane-content {
+    position: relative !important;
+}
+body.stash-liquid-glass .detail-body .sidebar-pane-content > .sidebar-toggle-button-container {
+    height: calc(100% + 2rem) !important;
+}
+body.stash-liquid-glass .detail-body .sidebar-pane:not(.hide-sidebar) .sidebar-pane-content > .sidebar-toggle-button-container {
+    height: calc(100% + var(--refract-tab-tail, 82px)) !important;
+}
+body.stash-liquid-glass .detail-body .sidebar-pane:not(.hide-sidebar) .sidebar-toggle-button-container .sidebar-toggle-button {
+    margin: calc(0.1rem + 16px) 0 0 234px !important;
+}
+/* ── The open tab below the toolbar ───────────────────────────────────
+   Between 901 and about 1050 the toolbar re-centres when the sheet opens
+   and its first controls land where the open tab rides (968: the
+   saved-filter dropdown under the tab on every list route, the Filter
+   button's badge standing out above the tab's shoulder on `/scenes`).
+   The author's ruling: there the tab sits lower on the sheet's edge,
+   below the toolbar, still attached, and nothing pokes out around it.
+   `refract.js` (refractPlaceOpenTab) reads the toolbar when the sheet
+   opens and marks the pane `data-refract-tab="low"`; elsewhere the tab
+   keeps the line above.
+
+   Low, the tab takes its CLOSED pair (the toolbar's own sticky line and
+   top margin) moved down by `--refract-tab-drop`, the toolbar's height
+   plus 8px, which is the phone rule's recipe in `12_mobile.css`: the
+   closed tab and the toolbar share a line resting and stuck, so the
+   open tab clears the toolbar by 8px in both, and the travel is a
+   straight drop with the slide. Only `margin-top` is set, so the left
+   margin (249 on a list route, 234 on an entity page) is the open
+   rule's. The attribute and the `:not()` lift the chain to (0,7,1),
+   over the list, entity and narrow-tier open rules alike.
+
+   The sheet gets a floor, `--refract-sheet-floor`, tall enough to carry
+   the low tab 16px clear of its bottom corner at every scroll position,
+   so a short sheet (`/tags`, 145px at 968) grows a little rather than
+   leaving the tab hanging past its foot. It stays while the sheet
+   closes, so the sheet does not change height mid-slide. */
+body.stash-liquid-glass .sidebar-pane[data-refract-tab="low"]:not(.hide-sidebar) .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button {
+    top: calc(var(--nav-btn-size) + 2.6rem + var(--refract-tab-drop, 0px)) !important;
+    margin-top: calc(0.2rem + var(--refract-tab-drop, 0px)) !important;
+}
+@media (max-width: 900px) {
+    body.stash-liquid-glass .sidebar-pane[data-refract-tab="low"]:not(.hide-sidebar) .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button {
+        top: calc(12px + env(safe-area-inset-top, 0px) + var(--refract-tab-drop, 0px)) !important;
+        margin-top: calc(0.3rem + var(--refract-tab-drop, 0px)) !important;
+    }
+}
+body.stash-liquid-glass .sidebar-pane[data-refract-tab="low"] .sidebar {
+    min-height: var(--refract-sheet-floor, 0px) !important;
+}
+/* A list arriving with Stash's remembered open state is shut before
+   its first paint (`refract.js`, refractCloseSheetOnArrival). This
+   holds the slide off for those two frames so the shut is a state, not
+   an animation. The repeated class only lifts the chain over every
+   sheet and tab rule above, the entity-page ones included. */
+body.stash-liquid-glass.refract-sheet-arriving .sidebar-pane.sidebar-pane.sidebar-pane .sidebar,
+body.stash-liquid-glass.refract-sheet-arriving .sidebar-pane.sidebar-pane.sidebar-pane .sidebar-toggle-button {
+    transition: none !important;
+}
+/* P5: reduced motion keeps the colour change and drops the movement
+   (3.7 rule 3). */
+@media (prefers-reduced-motion: reduce) {
+    /* The tab's chain carries `.sidebar-pane` as well: the rule it has
+       to beat is the (0,4,1) `!important` block above, and between two
+       `!important` declarations specificity decides. Measured first with
+       a (0,3,1) selector here, which lost and left the handle with its
+       0.22s travel under the query. */
+    body.stash-liquid-glass .sidebar-pane .sidebar,
+    body.stash-liquid-glass .sidebar-pane.hide-sidebar .sidebar,
+    body.stash-liquid-glass .detail-body .sidebar-pane .sidebar,
+    body.stash-liquid-glass .detail-body .sidebar-pane.hide-sidebar .sidebar,
+    body.stash-liquid-glass .sidebar-pane .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button {
+        transition: none !important;
+    }
+}
+/* P5: reduced transparency. `01_tokens.css` already nulls every blur
+   rung and strips `backdrop-filter` document-wide under this query; the
+   sheet's and the tab's fills are per-use alphas, so they have to be
+   lifted here. The tab's chain carries `.sidebar-pane` so it beats the
+   (0,4,1) closed block above on specificity, the way the reduced-motion
+   partner does, and it ties the (0,5,1) open block and wins on source
+   order: under this query the OPEN tab loses its 0.12 accent tint too,
+   deliberately. Open, the tab rides the sheet's outer edge with the
+   card grid behind it, so a 0.12 fill with no blur is a film over
+   scrolling content, which is the one thing this query exists to stop.
+   The accent rim and the accent ink still say the sheet is open. */
+@media (prefers-reduced-transparency: reduce) {
+    body.stash-liquid-glass .sidebar-pane .sidebar,
+    body.stash-liquid-glass .sidebar-pane .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button {
+        background: rgba(var(--surface-rgb), 0.97) !important;
+    }
+    /* The open tab's hover lifts the tint over a 0.72 surface; here it
+       keeps the opaque one and the ink change alone says hover. */
+    body.stash-liquid-glass .sidebar-pane:not(.hide-sidebar) .sidebar-pane-content .sidebar-toggle-button-container .sidebar-toggle-button:hover {
+        background: rgba(var(--surface-rgb), 0.97) !important;
+    }
 }
 
 /* Image lists now use the same sticky-pill toolbar design as scene/
    performer lists. But inside a gallery → Images tab the panel is its
    own scroll container (height = grid track), so the viewport-level
-   `top: 5rem` puts the toolbar 80px below the panel top — leaving a
+   `top: 5rem` puts the toolbar 80px below the panel top - leaving a
    visual gap. Pin to `top: 0` in that nested scroll context so the pill
    sits flush with the tab nav above it. */
 body.stash-liquid-glass .gallery-container .image-list .filtered-list-toolbar {
@@ -804,7 +1533,7 @@ body.stash-liquid-glass .filtered-list-toolbar .btn-group > * {
 }
 
 /* Every toolbar control: glass rounded rectangle. No backdrop-filter
-   here — these sit on top of the toolbar's already-blurred ::before
+   here - these sit on top of the toolbar's already-blurred ::before
    pill platform, so re-blurring inside is wasted GPU. */
 body.stash-liquid-glass .filtered-list-toolbar .btn-secondary,
 body.stash-liquid-glass .filtered-list-toolbar select.form-control,
@@ -816,7 +1545,7 @@ body.stash-liquid-glass .filtered-list-toolbar .clearable-input-group .form-cont
     border-radius: var(--radius-sm) !important;
     height: 2.2rem;
     padding: 0 0.75rem !important;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 
 body.stash-liquid-glass .filtered-list-toolbar .btn-secondary:hover {
@@ -846,7 +1575,7 @@ body.stash-liquid-glass .filtered-list-toolbar .btn-secondary svg {
    and :has() rules so :has() parser failure doesn't invalidate the
    explicit-class side. */
 
-/* Explicit class list — works in all browsers */
+/* Explicit class list - works in all browsers */
 body.stash-liquid-glass .filtered-list-toolbar .filter-button.btn.btn-secondary,
 body.stash-liquid-glass .filtered-list-toolbar .play-button.btn.btn-secondary,
 body.stash-liquid-glass .filtered-list-toolbar #more-menu.btn.btn-secondary,
@@ -872,7 +1601,7 @@ body.stash-liquid-glass .filtered-list-toolbar .saved-filter-dropdown > button.d
     border: none !important;
 }
 
-/* :has() fallback — catches any other icon-only toolbar buttons (shuffle
+/* :has() fallback - catches any other icon-only toolbar buttons (shuffle
    inside .sort-by-select, etc.) without enumerating them */
 body.stash-liquid-glass .filtered-list-toolbar .btn.btn-secondary:has(> svg:only-child) {
     background: transparent !important;
@@ -911,24 +1640,24 @@ body.stash-liquid-glass .filtered-list-toolbar .sort-by-select .input-group-prep
     color: #fff !important;
 }
 
-/* Danger / delete button — red-tinted glass instead of Bootstrap solid red */
+/* Danger / delete button - red-tinted glass instead of Bootstrap solid red */
 body.stash-liquid-glass .filtered-list-toolbar .btn.btn-danger,
 body.stash-liquid-glass .filtered-list-toolbar .btn.btn-danger-minimal {
-    background: rgba(239, 68, 68, 0.10) !important;
-    border: 1px solid rgba(239, 68, 68, 0.32) !important;
-    color: #f87171 !important;
+    background: rgba(var(--danger-rgb), 0.10) !important;
+    border: 1px solid rgba(var(--danger-rgb), 0.32) !important;
+    color: var(--danger-bright) !important;
     box-shadow: none !important;
     border-radius: var(--radius-sm) !important;
     height: 2.2rem;
     padding: 0 0.75rem !important;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 body.stash-liquid-glass .filtered-list-toolbar .btn.btn-danger:hover,
 body.stash-liquid-glass .filtered-list-toolbar .btn.btn-danger-minimal:hover {
-    background: rgba(239, 68, 68, 0.18) !important;
-    border-color: rgba(239, 68, 68, 0.55) !important;
-    color: #fca5a5 !important;
-    box-shadow: 0 0 12px rgba(239, 68, 68, 0.30) !important;
+    background: rgba(var(--danger-rgb), 0.18) !important;
+    border-color: rgba(var(--danger-rgb), 0.55) !important;
+    color: var(--danger-light) !important;
+    box-shadow: 0 0 12px rgba(var(--danger-rgb), 0.30) !important;
 }
 body.stash-liquid-glass .filtered-list-toolbar .btn.btn-danger svg,
 body.stash-liquid-glass .filtered-list-toolbar .btn.btn-danger-minimal svg {
@@ -936,7 +1665,7 @@ body.stash-liquid-glass .filtered-list-toolbar .btn.btn-danger-minimal svg {
     height: 0.95rem;
 }
 
-/* Zoom slider container — Stash renders an empty <div class="zoom-slider-container"></div>
+/* Zoom slider container - Stash renders an empty <div class="zoom-slider-container"></div>
    on list views that don't have a zoom slider (no children). Hide the
    empty wrapper so it doesn't reserve dead space in the toolbar row. */
 body.stash-liquid-glass .filtered-list-toolbar .zoom-slider-container:empty,
@@ -965,7 +1694,7 @@ body.stash-liquid-glass .filtered-list-toolbar .selected-items-info .selected-co
     min-width: 1.4rem;
     text-align: center;
 }
-/* Strip the toolbar's glass-button style off the inner minimal buttons —
+/* Strip the toolbar's glass-button style off the inner minimal buttons -
    they live inside the pill and should feel like icon-only affordances. */
 body.stash-liquid-glass .filtered-list-toolbar .selected-items-info .btn.btn-secondary.minimal {
     background: transparent !important;
@@ -1009,7 +1738,7 @@ body.stash-liquid-glass .filtered-list-toolbar .filter-button .badge {
     box-shadow: 0 0 6px var(--accent-glow);
 }
 
-/* Zoom slider — match toolbar control height (2.2rem), longer track, thumb orange “flow” */
+/* Zoom slider - match toolbar control height (2.2rem), longer track, thumb orange “flow” */
 body.stash-liquid-glass .zoom-slider-container {
     display: inline-flex;
     align-items: center;
@@ -1037,7 +1766,7 @@ body.stash-liquid-glass .filtered-list-toolbar .zoom-slider-container {
         0 1px 0 rgba(255, 255, 255, 0.04) inset,
         0 4px 12px rgba(0, 0, 0, 0.18);
 }
-/* Zoom slider — accent-tracking thumb + filled-track on the left side.
+/* Zoom slider - accent-tracking thumb + filled-track on the left side.
    The filled portion uses a webkit-only trick: ::-webkit-slider-thumb has a
    massive box-shadow extending leftward, and the track's overflow:hidden
    clips it to the track bounds. Firefox has a native ::-moz-range-progress
@@ -1086,7 +1815,7 @@ body.stash-liquid-glass input[type="range"].zoom-slider::-webkit-slider-thumb {
         -100vw 0 0 calc(100vw - 6px) rgba(var(--accent-rgb), 0.45),
         /* outer accent glow */
         0 0 10px rgba(var(--accent-rgb), 0.45);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 body.stash-liquid-glass input[type="range"].zoom-slider:hover::-webkit-slider-thumb {
     transform: scale(1.15);
@@ -1120,7 +1849,7 @@ body.stash-liquid-glass input[type="range"].zoom-slider::-moz-range-thumb {
     border: none;
     box-shadow:
         0 0 10px rgba(var(--accent-rgb), 0.45);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
 body.stash-liquid-glass input[type="range"].zoom-slider:hover::-moz-range-thumb {
     transform: scale(1.15);
@@ -1133,13 +1862,13 @@ body.stash-liquid-glass input[type="range"].zoom-slider:hover::-moz-range-thumb 
    ─────────────────────────────────────────────────────────────────── */
 
 body.stash-liquid-glass .filter-tags {
-    gap: 0.35rem;
+    gap: var(--gap-sm);
     margin-bottom: 0.6rem;
 }
 body.stash-liquid-glass .filter-tags .tag-item {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--gap-md);
     background: var(--glass-bg) !important;
     border: 1px solid var(--glass-border) !important;
     color: var(--text) !important;
@@ -1179,8 +1908,34 @@ body.stash-liquid-glass .filter-tags .tag-item .btn:hover {
    Detail-page tag / entity pills  (.tag-item.badge.badge-secondary)
    ─────────────────────────────────────────────────────────────────── */
 
-body.stash-liquid-glass .tag-item.badge,
-body.stash-liquid-glass .tag-item.badge-secondary {
+/* The `:not()` keeps BOTH owned bands out of this block. Every
+   declaration here is !important, so nothing downstream could reach
+   those chips: on the tag band they measured 0.22em/0.7em padding and a
+   1.4 line-height against the chip recipe's 0 10px and 1, with the fill
+   coming from 08's blanket badge rule on top, and the group band read
+   the same way one release later. They join the recipe in
+   10_pills_badges instead, which is where a chip's box belongs.
+
+   The two selectors live in ONE `:not()` rather than in two chained
+   ones, and that is arithmetic rather than taste. A second `:not()`
+   contributes its own argument's weight, which would have taken this
+   block from (0,4,0) to (0,5,0) and put it above 08's blanket badge fill
+   inside the !important layer, changing the ground of every
+   detail-page tag pill on every page as a side effect of excluding one
+   band. A selector list inside one `:not()` takes the weight of its most
+   specific argument and nothing more. The owned studio band joined the
+   list the same release (its tag chips measured 26.6px on 0.08 beside
+   its own 24px alias chips on a develop fixture).
+
+   The owned PERFORMER band is the fourth and last. Measured on
+   performer 46 at 570: 26.6 tall on this block's 0.22em by 0.7em and
+   1.4 line-height, beside its own 24px alias chips, exactly the pair
+   the studio band reported. It is excluded by its list class rather
+   than a page id because the tab panels under the same
+   `#performer-page` are full of other people's `.tag-item`, and the
+   list is the only run of chips the band owns. */
+body.stash-liquid-glass .tag-item.badge:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *),
+body.stash-liquid-glass .tag-item.badge-secondary:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *) {
     display: inline-flex !important;
     align-items: center !important;
     background: var(--glass-bg) !important;
@@ -1192,21 +1947,21 @@ body.stash-liquid-glass .tag-item.badge-secondary {
     font-weight: 500 !important;
     line-height: 1.4 !important;
     text-decoration: none !important;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
 }
-body.stash-liquid-glass .tag-item.badge a,
-body.stash-liquid-glass .tag-item.badge-secondary a {
+body.stash-liquid-glass .tag-item.badge:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *) a,
+body.stash-liquid-glass .tag-item.badge-secondary:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *) a {
     color: inherit !important;
     text-decoration: none !important;
 }
-body.stash-liquid-glass .tag-item.badge:hover,
-body.stash-liquid-glass .tag-item.badge-secondary:hover {
+body.stash-liquid-glass .tag-item.badge:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *):hover,
+body.stash-liquid-glass .tag-item.badge-secondary:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *):hover {
     background: var(--glass-bg-strong) !important;
     border-color: var(--accent-glow) !important;
     color: var(--accent-bright) !important;
 }
-body.stash-liquid-glass .tag-item.badge:hover a,
-body.stash-liquid-glass .tag-item.badge-secondary:hover a {
+body.stash-liquid-glass .tag-item.badge:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *):hover a,
+body.stash-liquid-glass .tag-item.badge-secondary:not(.refract-tr *, .refract-gr *, .refract-sr-band *, .refract-pr-tag-list *):hover a {
     color: var(--accent-bright) !important;
 }
 
@@ -1222,7 +1977,7 @@ body.stash-liquid-glass .tag-item .tag-icon {
 }
 
 /* ───────────────────────────────────────────────────────────────────
-   Pagination — capsule pill (no overflow:hidden)
+   Pagination - capsule pill (no overflow:hidden)
    The base `.pagination` capsule is now defined in 09_buttons.css with
    `!important`s and a more comprehensive declaration set; only the
    button-based (.pagination.btn-group) variant rules remain here.
@@ -1292,7 +2047,7 @@ body.stash-liquid-glass .pagination-index-container {
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.35rem;
+    gap: var(--gap-sm);
     width: 100%;
     text-align: center;
 }
@@ -1313,15 +2068,56 @@ body.stash-liquid-glass .pagination-index-container .filter-container.pagination
     white-space: nowrap;
     text-align: center !important;
 }
+/* The list totals caption: the author's redesign (122fcc3, v1.13.11),
+   "a subtle caption above the top-right of the grid instead of a centered
+   glass pill", as the ONE recipe at every width, route and page count
+   (stats-redesign lane). Until this lane the recipe lived only inside the
+   >=901 route block below, and this selector drew the pill it replaced
+   (fill-2, glass rim, pill radius, blur) everywhere else: every list below
+   901 (the pill 12_mobile adopted on 2026-09-27) and the entity pages'
+   scene tabs at every width. Measured on the 122fcc3 tree at 1440 and on
+   this lane's tree at 1440 through 390: no fill, no rim, no radius, no
+   blur; a 1.5px accent underline fading in from transparent across a 3rem
+   tail left of the text and reaching full accent at the right corner
+   (--accent-rgb, so it follows the preset); weight 500,
+   tracked 0.06em, --text-muted, right-aligned, tabular
+   figures, one line. The size is --fs-xs (10.08px) rather than the
+   redesign's 0.68rem (9.52px): the audit (05dec9e) put it on the type
+   scale and DESIGN_SYSTEM 3.5 rule 1 keeps it there. */
 body.stash-liquid-glass .pagination-index-container .filter-container.text-muted.paginationIndex.center-text {
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: var(--radius-pill) !important;
+    background: linear-gradient(90deg, transparent 0%, rgba(var(--accent-rgb), 0.12) 22%, rgba(var(--accent-rgb), 0.9) 100%) no-repeat right bottom / 100% 1.5px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 0 0.22rem 3rem !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    font-size: var(--fs-xs) !important;
+    font-weight: 500 !important;
+    letter-spacing: var(--track-label) !important;
     color: var(--text-muted) !important;
-    padding: 0.2rem 0.7rem !important;
-    line-height: 1.25 !important;
-    -webkit-backdrop-filter: var(--glass-blur-sm);
-    backdrop-filter: var(--glass-blur-sm);
+    /* Full --text-muted, not the redesign's 0.85 opacity. The caption is
+       the only place the list's totals are written (Stash's own count is
+       collapsed behind it), so it takes 3.9's reading floor, 4.5:1, and
+       at 0.85 it measured 4.40 to 4.61 on the 122fcc3 tree (807 to 1440)
+       and 4.49 to 4.60 on entity-pages 4187b04 at 1440, dark, from
+       rendered pixels; at 1 it measures 5.79 to 6.06. */
+    opacity: 1;
+    font-variant-numeric: tabular-nums !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+    text-align: right !important;
+    line-height: 1.3 !important;
+}
+/* The count, once (db0e518, performer-sweep F1): the rule above sets a
+   size on the whole span at (0,6,1) with !important, which would beat
+   the (0,3,2) font-size 0 below that collapses Stash's native "1-40 of N"
+   behind refract.js's overlay and print the count twice. Same classes
+   plus .refract-scene-stats, (0,7,1). */
+body.stash-liquid-glass .pagination-index-container .filter-container.text-muted.paginationIndex.center-text.refract-scene-stats {
+    font-size: 0 !important;
 }
 
 /* refract.js reformats the scenes-list totals NON-destructively: it leaves
@@ -1339,9 +2135,42 @@ body.stash-liquid-glass span.paginationIndex.refract-scene-stats > .scenes-stats
     display: none !important;
 }
 body.stash-liquid-glass span.paginationIndex.refract-scene-stats > .refract-stats-overlay {
-    font-size: var(--fs-sm);
+    /* The caption's size (--fs-xs, see the recipe above), and its
+       tracking re-declared here: 0.06em on the span computes against the
+       span's font-size 0 to 0px and the overlay inherited that, so from
+       f9bfb31 (the overlay's introduction) the /scenes caption read
+       untracked, measured letter-spacing "normal" at 1440 against the
+       redesign's 0.5712px (0.06em of its 9.52px). */
+    font-size: var(--fs-xs);
+    letter-spacing: var(--track-label);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+}
+
+/* /images: Stash's "<br>(N Megapixels - S GiB)" joins the count on the
+   caption's one line, without its parentheses and dash: the wrapper's
+   own text nodes collapse to size 0 (the trick above), the two values
+   keep the caption size and a middle dot leads each. This used to live
+   in 12_mobile's narrow tier keyed on the floating pager's tag, so a
+   one-page /images list, and every /images list above 900, still read
+   Stash's two-line "1-11 of 11" over "(14 Megapixels - 4 MiB)"
+   (stats-caption lane, measured at 390 through 1440). It is one line
+   now so the caption can be one pill at every width. */
+body.stash-liquid-glass .pagination-index-container .paginationIndex:has(> .images-stats) > br {
+    display: none;
+}
+body.stash-liquid-glass .pagination-index-container .paginationIndex .images-stats {
+    font-size: 0 !important;
+}
+body.stash-liquid-glass .pagination-index-container .paginationIndex .images-stats > span {
+    /* The caption's size (the recipe above), not the pill's --fs-sm. */
+    font-size: var(--fs-xs) !important;
+    color: inherit;
+    font-variant-numeric: tabular-nums;
+}
+body.stash-liquid-glass .pagination-index-container .paginationIndex .images-stats > span::before {
+    content: "\00a0\00b7\00a0";
+    white-space: pre;
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -1357,7 +2186,19 @@ body.stash-liquid-glass span.paginationIndex.refract-scene-stats > .refract-stat
    /scenes/<id>. The desktop caption treatment is
    gated to >=768px; on mobile it stays in refract's default centered pill
    (the top-right corner is too cramped on narrow screens). The inner span
-   is de-chromed into a subtle muted caption (no chip) by the rule below. */
+   is de-chromed into a subtle muted caption (no chip) by the rule below.
+
+   Every top-level list route, not only /scenes (stats-caption lane).
+   Measured before at 1440: /performers, /images and /galleries with more
+   than one page showed NO caption (the floating-pager hide swallowed the
+   row, the fault the comment below describes for /scenes, which only
+   /scenes was ever rescued from), and the same routes with ONE page showed
+   a centred 14px pill, because on one page nothing is tagged. One recipe
+   at every page count means showing it or hiding it on every list, and
+   hiding Stash's own count is P6. /scenes is unchanged: ':is()' carries
+   the (0,1,0) the lone route class did. The entity pages' list tabs
+   (stash-route-performers-26-scenes and friends) are NOT in the list: they
+   reserve no slot for it, which is a ledger row of its own. */
 
 /* Hide the native TOP pager (page-number buttons) GLOBALLY and UNSCOPED
    from the JS route class, so it's gone from the very first paint. This is
@@ -1371,6 +2212,16 @@ body.stash-liquid-glass span.paginationIndex.refract-scene-stats > .refract-stat
 body.stash-liquid-glass .pagination-index-container > .pagination {
     display: none !important;
 }
+/* And its one-page stand-in. With one page Stash's Pagination returns a
+   bare '<div />' (List/Pagination.tsx: 'if (totalPages <= 1) return <div />')
+   where the pager would be. It is an empty flex item, so it took a slot in
+   the caption row: measured at 613 on a one-page /scenes list it pushed
+   the caption to the middle of a space-between row (x 176.8 against 26 on
+   the multi-page row) and, at 390 to 1440 in the centred default, 2.8px
+   right of centre through the row's gap (stats-caption lane). */
+body.stash-liquid-glass .pagination-index-container > div:empty:not([class]) {
+    display: none !important;
+}
 /* 901, not 768. 12_mobile.css makes the toolbar full-bleed at <=900px,
    but this top-right caption pin was gated at >=768px, so between 768 and
    900 both applied and `.pagination-index-container`'s -0.85rem margin
@@ -1378,15 +2229,22 @@ body.stash-liquid-glass .pagination-index-container > .pagination {
    12.36px caption covered, 62.4%, with elementFromPoint returning the
    toolbar. */
 @media (min-width: 901px) {
-    body.stash-liquid-glass.stash-route-scenes .sidebar-pane-content > .pagination-index-container {
+    /* Keyed on the list layout, not a route list: every list Stash draws
+       (the seven top-level routes and the entity pages' scene, gallery,
+       image and performer tabs) puts the top pager row directly in
+       .sidebar-pane-content, measured on /scenes and on performer 201's
+       scenes tab at 1440. The route list left the entity tabs hidden on
+       many pages and a centred pill on one (stats-caption ledger row);
+       this lane measured the same slot on them clear of the toolbar. */
+    body.stash-liquid-glass .sidebar-pane-content > .pagination-index-container {
         /* refract.js's floating-pager logic tags THIS container
            data-pager-row="hide" (rowOf() resolves the top pager's wrapper
            to .pagination-index-container, which also holds the stats), so
            09_buttons.css hides it with display:none. That's why the totals
-           were invisible — and why they "randomly" reappeared: on a
+           were invisible - and why they "randomly" reappeared: on a
            single-page result Stash renders the top pager as an empty <div>
            (not .pagination), so nothing gets tagged and the row stays
-           visible. This selector out-specifies the hide rule (0,4,1 vs
+           visible. This selector out-specifies the hide rule (0,3,1 vs
            0,2,1), so re-assert display to bring the stats back on every
            scenes list. The inner .pagination page buttons keep their own
            data-pager-role="hide" (a separate rule we don't touch), so only
@@ -1411,50 +2269,15 @@ body.stash-liquid-glass .pagination-index-container > .pagination {
         --refract-stats-inset: 0.85rem;
         margin: -0.85rem 0 0.05rem 0 !important;
         padding: 0 var(--refract-stats-inset) 0 0 !important;
-        /* It's a passive label — never intercept clicks on the toolbar
+        /* It's a passive label - never intercept clicks on the toolbar
            controls or cards it floats over. */
         pointer-events: none;
     }
-    /* Subtle caption, not a pill. Strip the glass-chip chrome inherited
-       from the .paginationIndex rule above (background/border/radius/blur/
-       padding) and render the totals as a small, tracked, muted caption so
-       it reads as quiet reference text rather than a UI control. Selector
-       carries .text-muted.center-text so it reliably out-specifies that
-       chip rule. Color is --text-muted + opacity (not a hardcoded faint
-       white) so it stays legible in both dark and light themes. */
-    body.stash-liquid-glass.stash-route-scenes .sidebar-pane-content > .pagination-index-container .filter-container.text-muted.paginationIndex.center-text {
-        /* Slick accent: a gradient underline that fades from transparent up
-           to full accent at the right corner, painted as a 1.5px background
-           image. The left padding extends the underline ~3rem PAST the text
-           on the left, giving a long fade-in tail rather than a line that
-           stops at the first glyph. Resolves --accent-rgb, so it recolors
-           with the active preset. */
-        background: linear-gradient(90deg, transparent 0%, rgba(var(--accent-rgb), 0.12) 22%, rgba(var(--accent-rgb), 0.9) 100%) no-repeat right bottom / 100% 1.5px !important;
-        border: 0 !important;
-        border-radius: 0 !important;
-        padding: 0 0 0.22rem 3rem !important;
-        -webkit-backdrop-filter: none !important;
-        backdrop-filter: none !important;
-        /* font-size:0 collapses Stash's native "1-40 of N" text node; the
-           overlay child below restores the caption size. The remaining text
-           props (weight/spacing/colour/opacity/tabular-nums) cascade down to
-           the overlay via inheritance, so they only need declaring once here. */
-        font-size: 0 !important;
-        font-weight: 500 !important;
-        letter-spacing: 0.06em !important;
-        color: var(--text-muted) !important;
-        opacity: 0.85;
-        font-variant-numeric: tabular-nums !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        max-width: 100% !important;
-        text-align: right !important;
-        line-height: 1.3 !important;
-    }
-    body.stash-liquid-glass.stash-route-scenes .sidebar-pane-content > .pagination-index-container span.paginationIndex.refract-scene-stats > .refract-stats-overlay {
-        font-size: var(--fs-xs);
-    }
+    /* The caption's own recipe (type, underline, no chip) is the global
+       rule above the /images block; this tier only places the row. The
+       per-route copies of it that lived here (the redesign's rule, the
+       overlay size, the no-overlay size, the /images size) are folded
+       into that one rule (stats-redesign lane). */
 }
 
 /* ───────────────────────────────────────────────────────────────────
@@ -1468,9 +2291,63 @@ body.stash-liquid-glass h3 {
     font-weight: 600;
 }
 
+/* The theme's base link ink, and 3.1 rule 4 in one line: the
+   foreground channels rather than a literal white. --fg-rgb is
+   255, 255, 255, so the ink is byte-identical to the white it replaced.
+
+   Every element taking its colour from THIS rule, across twelve
+   routes: 31 studio-card caption links, 24 marker-card titles, and 4
+   scene-card studio overlays. Only the overlays sit on artwork, and the
+   tell is the one 3.1 rule 4 names -- they are the only ones carrying a
+   text-shadow -- so they keep their own ink below. */
 body.stash-liquid-glass a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(var(--fg-rgb), 0.85);
     text-decoration: none;
+}
+/* Artwork is its own ground (3.1 rule 4). This link sits on a card
+   thumbnail, so its ink is a fixed white with the shadow that makes it
+   legible over a picture. Deliberately NOT on --fg-rgb.
+
+   The :not() chain is repeated rather than trimmed, and it is the whole
+   reason this rule works. Each :not() takes its argument's specificity,
+   so the rule above is FIVE classes; the readable short form of this
+   carve-out is three and loses to it. Measured: the first attempt lost
+   to it, and it looked like a correct exception in the source.
+
+   Scoped to .grid-card rather than .scene-card, because the overlay was
+   never a scene-card element: Stash renders one StudioOverlay component
+   from exactly three call sites in v0.31.1 (SceneCard, GalleryCard,
+   ImageCard) and every one of them goes through GridCard's `overlays`
+   slot, so .grid-card names all three and nothing else. Naming only the
+   scene card left the other two on the base rule's ink: measured on
+   /studios/1026/galleries and /studios/1026/images at 1440,
+   rgba(255,255,255,0.85) over the photograph. .grid-card keeps the
+   (0,6,2) the base rule's five classes need to be beaten.
+
+   The shadow and the ink alpha are the rest of the fix, and pinning the
+   ink alone would have been a regression rather than a fix. Measured
+   over 22 covers on /studios/1026/galleries and /studios/1026/images at
+   1440, as the 95th-to-5th luminance spread inside the glyph box (the
+   number a reader sees, since shadowed text on a photograph stands on
+   its own halo and not on the picture): with Stash's single
+   `0 0 3px #000` the base ink's floor was 1.83, because a white ink
+   dies on a pale cover. Four layers and an opaque ink take the floor
+   to 4.70.
+
+   Two things about the recipe are not obvious and were measured, not
+   reasoned. A WIDER halo is worse, not better: .studio-overlay's own
+   `opacity: 0.75` means the ink composites at 0.75 over its own shadow,
+   so a 12px spread darkens the glyph as much as the ground and the
+   floor fell back to 2.49. And the ink is opaque here rather than the
+   0.85 the base rule uses, because 0.75 effective is already the
+   recede the alpha was for; keeping both took the floor to 4.17. */
+body.stash-liquid-glass .grid-card .studio-overlay a:not(.btn):not(.nav-link):not(.dropdown-item):not(.page-link) {
+    color: rgb(255, 255, 255);
+    text-shadow:
+        0 0 2px rgba(0, 0, 0, 0.98),
+        0 0 4px rgba(0, 0, 0, 0.95),
+        0 1px 3px rgba(0, 0, 0, 0.9),
+        0 0 10px rgba(0, 0, 0, 0.7);
 }
 body.stash-liquid-glass a:not(.btn):not(.nav-link):not(.dropdown-item):hover {
     color: var(--accent);
@@ -1511,7 +2388,7 @@ body.stash-liquid-glass .table-striped > tbody > tr:nth-of-type(odd) {
     color: var(--text);
 }
 
-/* Filtered list grid (scenes / movies / performers table view) — glass shell like package manager */
+/* Filtered list grid (scenes / movies / performers table view) - glass shell like package manager */
 body.stash-liquid-glass .table-responsive:has(> table.table:has(thead th.select-col)) {
     background: rgba(10, 10, 12, 0.9) !important;
     border: 1px solid var(--glass-border) !important;
@@ -1563,7 +2440,7 @@ body.stash-liquid-glass table.table.table-striped.table-bordered:has(thead th.se
     background: rgba(6, 6, 8, 0.34) !important;
 }
 body.stash-liquid-glass table.table.table-striped.table-bordered:has(thead th.select-col) tbody > tr:hover {
-    background: rgba(255, 255, 255, 0.045) !important;
+    background: var(--fill-3) !important;
     color: #fff !important;
 }
 body.stash-liquid-glass table.table.table-striped.table-bordered:has(thead th.select-col) td,
@@ -1600,7 +2477,7 @@ body.stash-liquid-glass table.table.table-striped.table-bordered:has(thead th.se
 
 
 /* ───────────────────────────────────────────────────────────────────
-   A-01 / R5 — page-level horizontal overflow and gutter alignment.
+   A-01 / R5 - page-level horizontal overflow and gutter alignment.
 
    Every list route scrolled sideways by exactly 3px: measured
    documentElement.scrollWidth 1588 against clientWidth 1585 on scenes,
